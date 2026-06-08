@@ -1,0 +1,56 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import '@economic/taco/taco.css';
+@import 'tailwindcss/utilities';
+
+html, body, #root {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background: #f6f6f7;
+}
+
+/* taco's base stylesheet adds large default margins to text elements; reset them
+   (element-level specificity so Tailwind margin utilities still take precedence) */
+h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+}
+
+@keyframes animIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.anim-in {
+    animation: animIn 0.28s ease-out both;
+}
+
+@keyframes evaSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes animSlide {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+.anim-slide {
+    animation: animSlide 0.22s ease-out both;
+}
+
+/* Chart theming — use the e-conomic design-system colours */
+.va-chart .recharts-rectangle {
+    fill: #ed9b2c;
+}
+.va-chart .recharts-bar-rectangle:hover .recharts-rectangle {
+    fill: #d98a1f;
+}
+.va-chart .charts-cartesian-axis-tick-value,
+.va-chart .recharts-cartesian-axis-tick-value {
+    fill: #6b6b76;
+}
+.va-chart .charts-cartesian-grid-horizontal line,
+.va-chart .recharts-cartesian-grid-horizontal line {
+    stroke: #ececed;
+}
