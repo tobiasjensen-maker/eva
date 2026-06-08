@@ -266,11 +266,14 @@ export function SpacesIcon({ active }: { active: boolean }) {
     );
 }
 
+// Resolve a file in /public against the app's base path (so it works under /eva/ on GitHub Pages).
+const asset = (file: string) => `${import.meta.env.BASE_URL}${file}`;
+
 // e-conomic orange symbol mark (official asset)
 export function NodeMark({ size = 26 }: { size?: number }) {
     return (
         <img
-            src="/econ-symbol.png"
+            src={asset('econ-symbol.png')}
             alt=""
             width={size}
             height={size}
@@ -281,7 +284,7 @@ export function NodeMark({ size = 26 }: { size?: number }) {
 
 // Full e-conomic logo: mark + wordmark (official asset). `white` uses the negative logo for dark backgrounds.
 export function EconomicLogo({ white }: { white?: boolean }) {
-    return <img src={white ? '/econ-logo-white.png' : '/econ-logo.png'} alt="e-conomic" style={{ height: 22, width: 'auto', display: 'block' }} />;
+    return <img src={asset(white ? 'econ-logo-white.png' : 'econ-logo.png')} alt="e-conomic" style={{ height: 22, width: 'auto', display: 'block' }} />;
 }
 
 // User profile photo with a graceful fallback to the brand mark if the image isn't present.
@@ -290,7 +293,7 @@ export function ProfileAvatar({ size = 28 }: { size?: number }) {
     if (ok) {
         return (
             <img
-                src="/profile.png"
+                src={asset('profile.png')}
                 alt=""
                 onError={() => setOk(false)}
                 style={{ width: size, height: size, borderRadius: 8, objectFit: 'cover', display: 'block' }}
