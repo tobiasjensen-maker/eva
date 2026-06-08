@@ -16,7 +16,7 @@ function AgreementChip({ id, className = '' }: { id: string; className?: string 
             className={`shrink-0 inline-flex items-center gap-1 rounded-md text-xs font-medium ${className}`}
             style={{ padding: '1px 6px', background: portfolio ? '#eef2ff' : '#eef6f1', color: portfolio ? '#4456c7' : '#2f7d54' }}
         >
-            <Icon name={portfolio ? 'contacts' : 'building'} /> {agreementLabel(id)}
+            <Icon name={portfolio ? 'contacts' : 'person'} /> {agreementLabel(id)}
         </span>
     );
 }
