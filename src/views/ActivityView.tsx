@@ -413,8 +413,10 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
                         tabIndex={0}
                         title="Ask Eva about this"
                         onClick={(ev) => { ev.stopPropagation(); onAsk(); }}
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium shrink-0"
-                        style={{ background: '#f3f0fb', color: '#7c3aed', cursor: 'pointer' }}
+                        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shrink-0 text-white"
+                        style={{ background: 'linear-gradient(90deg, #ed9b2c 0%, #7c3aed 100%)', cursor: 'pointer', boxShadow: '0 1px 3px rgba(124,58,237,0.35)' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.07)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
                     >
                         <Icon name="ai-stars" /> Ask Eva
                     </span>
