@@ -403,6 +403,8 @@ export default function App() {
                         scopeName={scopeName}
                         onActiveChange={setChatActive}
                         analyticsUnlocked={insightsPro}
+                        onOpenScopeSwitcher={() => setScopeOpen(true)}
+                        onSelectClient={applyScope}
                     />
                 )}
                 {view === 'review' && <ReviewView scope={scope} scopeName={scopeName} items={reviewItems} setItems={setReviewItems} />}

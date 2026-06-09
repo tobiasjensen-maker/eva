@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Orb, MicIcon, EmojiTile, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
-import { CHAT_SUGGESTIONS } from '../data';
+import { CHAT_SUGGESTIONS, AGREEMENTS } from '../data';
 import type { Skill, Space, ViewId } from '../types';
 
 type PlanStep = { label: string; status: 'todo' | 'running' | 'done' };
@@ -10,6 +10,7 @@ type PlanStep = { label: string; status: 'todo' | 'running' | 'done' };
 type AssistantMsg =
     | { id: number; role: 'assistant'; kind: 'text'; text: string }
     | { id: number; role: 'assistant'; kind: 'data'; dataKey: string }
+    | { id: number; role: 'assistant'; kind: 'clienttable'; dataKey: string }
     | {
           id: number;
           role: 'assistant';
@@ -44,12 +45,101 @@ interface Props {
     scopeName?: string;
     onActiveChange?: (active: boolean) => void;
     analyticsUnlocked?: boolean;
+    onOpenScopeSwitcher?: () => void;
+    onSelectClient?: (id: string) => void;
 }
 
 const MONTHS = [
     'january', 'february', 'march', 'april', 'may', 'june',
     'july', 'august', 'september', 'october', 'november', 'december',
 ];
+
+// ---- portfolio (cross-client) mode ----
+const PORTFOLIO_SUGGESTIONS = [
+    'Which clients have overdue invoices?',
+    'Which client had the highest revenue last month?',
+    'Show me clients with missing documents',
+    "Which clients haven't been reconciled this month?",
+    'Flag any client with a cash runway under 2 months',
+];
+
+interface ClientRow {
+    id: string;
+    cells: string[]; // values after the Client column
+    negative?: number[]; // indices of cells to show in red
+}
+interface ClientTableData {
+    summary: string;
+    head: string[]; // includes 'Client' as the first column
+    rows: ClientRow[];
+}
+
+const CLIENT_TABLES: Record<string, ClientTableData> = {
+    overdue: {
+        summary: '5 of your 8 clients have overdue invoices, totalling 214.500 DKK.',
+        head: ['Client', 'Overdue', 'Oldest', 'Invoices'],
+        rows: [
+            { id: 'nordic', cells: ['84.200 kr', '38 days', '3'], negative: [0] },
+            { id: 'tech', cells: ['52.650 kr', '33 days', '2'], negative: [0] },
+            { id: 'dmp', cells: ['38.500 kr', '42 days', '2'], negative: [0] },
+            { id: 'office', cells: ['24.900 kr', '21 days', '1'], negative: [0] },
+            { id: 'cafe', cells: ['14.250 kr', '36 days', '1'], negative: [0] },
+        ],
+    },
+    revenue: {
+        summary: 'Across your 8 clients, Nordic Build ApS had the highest revenue last month at 1,90 mio. kr.',
+        head: ['Client', 'Revenue', 'vs prev', 'Margin'],
+        rows: [
+            { id: 'nordic', cells: ['1,90 mio. kr', '+12%', '31%'] },
+            { id: 'tech', cells: ['880.000 kr', '+8%', '18%'] },
+            { id: 'cloud', cells: ['760.000 kr', '+34%', '78%'] },
+            { id: 'bryg', cells: ['520.000 kr', '+15%', '42%'] },
+            { id: 'dmp', cells: ['310.000 kr', '+22%', '62%'] },
+            { id: 'office', cells: ['290.000 kr', '+5%', '34%'] },
+            { id: 'lys', cells: ['270.000 kr', '+18%', '58%'] },
+            { id: 'cafe', cells: ['155.000 kr', '+6%', '22%'] },
+        ],
+    },
+    docs: {
+        summary: '3 of your 8 clients have entries missing documentation — 14 receipts in total.',
+        head: ['Client', 'Missing', 'Oldest', 'Value'],
+        rows: [
+            { id: 'cafe', cells: ['6 receipts', '28 days', '8.400 kr'] },
+            { id: 'tech', cells: ['5 receipts', '19 days', '31.200 kr'] },
+            { id: 'office', cells: ['3 receipts', '12 days', '6.900 kr'] },
+        ],
+    },
+    reconcile: {
+        summary: "4 of your 8 clients haven't been reconciled this month.",
+        head: ['Client', 'Unreconciled', 'Last reconciled', 'Amount'],
+        rows: [
+            { id: 'nordic', cells: ['14 transactions', '18 days ago', '142.000 kr'] },
+            { id: 'cafe', cells: ['9 transactions', '22 days ago', '18.430 kr'] },
+            { id: 'office', cells: ['6 transactions', '15 days ago', '24.100 kr'] },
+            { id: 'lys', cells: ['4 transactions', '11 days ago', '9.800 kr'] },
+        ],
+    },
+    runway: {
+        summary: '2 of your 8 clients have a cash runway under 2 months — worth flagging.',
+        head: ['Client', 'Runway', 'Cash', 'Monthly burn'],
+        rows: [
+            { id: 'cafe', cells: ['1,4 mo.', '85.000 kr', '61.000 kr'], negative: [0] },
+            { id: 'tech', cells: ['1,8 mo.', '480.000 kr', '267.000 kr'], negative: [0] },
+        ],
+    },
+};
+
+const PORTFOLIO_REMINDER_PLAN = {
+    intro: "Here's my plan to send reminders across every client with overdue invoices. Review it before I start — nothing goes out until you approve.",
+    steps: [
+        'Process 5 clients · 9 invoices · draft reminder emails per client',
+        'Pick the right template and currency for each client',
+        'Send and log a note on each invoice',
+        'Schedule a 7-day follow-up for anything still unpaid',
+    ],
+    result: 'Sent 9 reminders across 5 clients (214.500 DKK overdue). I logged a note on each invoice and will follow up automatically in 7 days.',
+    outcome: { title: '9 reminders sent across 5 clients', sub: '214.500 DKK overdue · logged to each invoice' },
+};
 
 // ---- domain catalogue: areas the assistant can help with ----
 interface Domain {
@@ -313,6 +403,8 @@ function statusesFor(reply: AssistantMsg): string[] {
             return ['Checking what I can do…', 'Looking up available skills…'];
         case 'upsell':
             return ['Checking your plan…', 'Seeing what this needs…'];
+        case 'clienttable':
+            return ['Checking all 8 agreements…', 'Gathering the numbers…', 'Comparing across clients…'];
         case 'data': {
             const k = (reply as Extract<AssistantMsg, { kind: 'data' }>).dataKey;
             if (k === 'overdue') return ['Searching invoices…', 'Checking due dates…'];
@@ -380,7 +472,7 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onOpenScopeSwitcher, onSelectClient }: Props) {
     // Seed Eva's getting-started message right after onboarding (lazy init → StrictMode-safe)
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : []));
     const [input, setInput] = useState('');
@@ -434,6 +526,39 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                 spaceId: mentioned.id,
                 note: `Here's your “${mentioned.title}” Space${ctx}. I pulled it in live — ask me to filter, extend, or export it.`,
             };
+        }
+
+        // ---- portfolio (cross-client) mode: answer across all agreements ----
+        if (scope === 'portfolio') {
+            // Cross-client action: send reminders to every client with overdue invoices.
+            if (/remind|chase|follow up/.test(t) && /all client|every client|overdue|across/.test(t)) {
+                return {
+                    id: nextId(),
+                    role: 'assistant',
+                    kind: 'plan',
+                    intro: PORTFOLIO_REMINDER_PLAN.intro,
+                    steps: PORTFOLIO_REMINDER_PLAN.steps.map((label) => ({ label, status: 'todo' as const })),
+                    phase: 'awaiting',
+                    result: PORTFOLIO_REMINDER_PLAN.result,
+                    outcome: PORTFOLIO_REMINDER_PLAN.outcome,
+                };
+            }
+            // Cross-client utilities surfaced as follow-ups.
+            if (/export/.test(t) && /pdf|report/.test(t)) {
+                return { id: nextId(), role: 'assistant', kind: 'text', text: "Done — I've generated a PDF report of this view across your 8 clients and saved it to your Documents. In production this would download or land in your inbox." };
+            }
+            if (/weekly alert|set up.*alert|alert for this|weekly/.test(t)) {
+                return { id: nextId(), role: 'assistant', kind: 'text', text: "I'll run this check every Monday at 08:00 and message you a summary whenever something changes. You can manage alerts anytime in Settings." };
+            }
+            // Cross-client data tables.
+            const ctKey =
+                /overdue/.test(t) ? 'overdue' :
+                /highest revenue|revenue last month|top.*revenue|highest.*revenue|best.*revenue/.test(t) ? 'revenue' :
+                /missing document|missing receipt|missing doc|documents?/.test(t) ? 'docs' :
+                /reconcil/.test(t) ? 'reconcile' :
+                /runway|cash runway|burn/.test(t) ? 'runway' :
+                null;
+            if (ctKey) return { id: nextId(), role: 'assistant', kind: 'clienttable', dataKey: ctKey };
         }
 
         const gate = (kw: string[], skillId: string) => (kw.some((k) => t.includes(k)) ? skillId : null);
@@ -606,6 +731,8 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
     }
 
     const empty = messages.length === 0;
+    const suggestions = scope === 'portfolio' ? PORTFOLIO_SUGGESTIONS : CHAT_SUGGESTIONS;
+    const scopePill = <ScopePill scope={scope} scopeName={scopeName} count={AGREEMENTS.length} onClick={() => onOpenScopeSwitcher?.()} />;
 
     return (
         <div className="flex h-full">
@@ -640,9 +767,10 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     <h1 className="mt-6 text-2xl font-semibold" style={{ color: COLORS.text }}>What can I do for you?</h1>
                     <div className="w-full" style={{ maxWidth: 640 }}>
                         <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} className="mt-7" />
-                        <p className="mt-6 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
+                        <div className="mt-2.5 flex justify-center">{scopePill}</div>
+                        <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
                         <div className="grid grid-cols-2 gap-3">
-                            {CHAT_SUGGESTIONS.map((s) => (
+                            {suggestions.map((s) => (
                                 <button
                                     key={s}
                                     onClick={() => send(s)}
@@ -683,6 +811,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                                                 onEnableSkill={onEnableSkill}
                                                 onNavigate={onNavigate}
                                                 onFollowUp={(t) => send(t)}
+                                                onSelectClient={onSelectClient}
                                                 onStream={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })}
                                             />
                                         </div>
@@ -694,6 +823,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     <div className="px-6 pb-5">
                         <div className="mx-auto" style={{ maxWidth: 720 }}>
                             <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} autoFocus />
+                            <div className="mt-2 flex justify-center">{scopePill}</div>
                         </div>
                     </div>
                 </>
@@ -870,6 +1000,25 @@ function ThinkingBubble({ statuses }: { statuses: string[] }) {
     );
 }
 
+// Context indicator under the chat input — shows what the chat is scoped to;
+// clicking it opens the client switcher.
+function ScopePill({ scope, scopeName, count, onClick }: { scope: string; scopeName: string; count: number; onClick: () => void }) {
+    const portfolio = scope === 'portfolio';
+    return (
+        <button
+            onClick={onClick}
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
+            style={{ color: COLORS.textMuted, background: '#f4f4f5', border: `1px solid ${COLORS.cardBorder}` }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#ececee')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+        >
+            <Icon name={portfolio ? 'contacts' : 'person'} />
+            {portfolio ? `Asking across all clients · ${count} agreements` : `Asking about: ${scopeName}`}
+            <Icon name="chevron-down" />
+        </button>
+    );
+}
+
 function UserText({ text }: { text: string }) {
     const parts = text.split(/(@[^@]+?(?=\s|$))/g);
     return (
@@ -999,6 +1148,15 @@ function followUpsFor(msg: AssistantMsg): string[] {
             if (DOMAINS.some((d) => d.key === k)) return ['Export as a PDF', 'Filter the list', 'What changed this month?'];
             return ['Compare Q4 to Q3', 'Show revenue by month', 'Export as a PDF'];
         }
+        case 'clienttable': {
+            const k = (msg as Extract<AssistantMsg, { kind: 'clienttable' }>).dataKey;
+            if (k === 'overdue') return ['Send reminders to all clients with overdue invoices', 'Export this as a PDF report', 'Set up a weekly alert for this'];
+            if (k === 'revenue') return ['Show me clients with missing documents', 'Export this as a PDF report', 'Set up a weekly alert for this'];
+            if (k === 'docs') return ["Which clients haven't been reconciled this month?", 'Export this as a PDF report', 'Set up a weekly alert for this'];
+            if (k === 'reconcile') return ['Which clients have overdue invoices?', 'Export this as a PDF report', 'Set up a weekly alert for this'];
+            if (k === 'runway') return ['Which client had the highest revenue last month?', 'Export this as a PDF report', 'Set up a weekly alert for this'];
+            return ['Export this as a PDF report', 'Set up a weekly alert for this'];
+        }
         case 'plan':
             return ['Show me the result in Review', 'Set this to run every month', 'Summarise what changed'];
         case 'spacecall':
@@ -1040,7 +1198,7 @@ function FollowUps({ items, onPick }: { items: string[]; onPick: (t: string) => 
 }
 
 function AssistantBubble({
-    msg, skills, spaces, instant, isLast, onApprove, onEnableSkill, onNavigate, onStream, onFollowUp,
+    msg, skills, spaces, instant, isLast, onApprove, onEnableSkill, onNavigate, onStream, onFollowUp, onSelectClient,
 }: {
     msg: AssistantMsg;
     skills: Skill[];
@@ -1052,6 +1210,7 @@ function AssistantBubble({
     onNavigate: (v: ViewId) => void;
     onStream: () => void;
     onFollowUp: (t: string) => void;
+    onSelectClient?: (id: string) => void;
 }) {
     const [textDone, setTextDone] = useState(instant);
     useEffect(() => {
@@ -1104,6 +1263,22 @@ function AssistantBubble({
         if (msg.kind === 'text') {
             return (
                 <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{lead(msg.text)}</p>
+            );
+        }
+        if (msg.kind === 'clienttable') {
+            const d = CLIENT_TABLES[msg.dataKey];
+            return (
+                <div>
+                    <p className="text-sm mb-3" style={{ color: COLORS.text }}>{lead(d.summary)}</p>
+                    {reveal && (
+                        <div className="anim-in">
+                            <ClientTable data={d} onPick={(id) => onSelectClient?.(id)} />
+                            <p className="text-xs mt-2 flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                <Icon name="info" /> Click a row to switch to that client.
+                            </p>
+                        </div>
+                    )}
+                </div>
             );
         }
         if (msg.kind === 'data') {
@@ -1283,6 +1458,42 @@ function StepMarker({ status, index }: { status: PlanStep['status']; index: numb
         <span className="flex items-center justify-center shrink-0 rounded-full" style={{ width: 20, height: 20, border: '1.5px solid #cfcfd6', color: '#9b9ba4', fontSize: 11 }}>
             {index}
         </span>
+    );
+}
+
+// Cross-client table: first column is the client, each row clickable to switch context.
+function ClientTable({ data, onPick }: { data: ClientTableData; onPick: (id: string) => void }) {
+    const nameOf = (id: string) => AGREEMENTS.find((a) => a.id === id)?.name ?? id;
+    return (
+        <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+            <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                    <tr style={{ background: '#f7f7f8' }}>
+                        {data.head.map((h, i) => (
+                            <th key={i} className="font-medium px-3 py-2" style={{ color: COLORS.textMuted, textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {data.rows.map((r) => (
+                        <tr
+                            key={r.id}
+                            onClick={() => onPick(r.id)}
+                            style={{ borderTop: `1px solid ${COLORS.cardBorder}`, cursor: 'pointer' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            <td className="px-3 py-2 font-medium" style={{ color: COLORS.text }}>
+                                <span className="flex items-center gap-1.5">{nameOf(r.id)} <Icon name="chevron-right" style={{ color: '#c4c4cc' }} /></span>
+                            </td>
+                            {r.cells.map((c, ci) => (
+                                <td key={ci} className="px-3 py-2" style={{ textAlign: 'right', color: r.negative?.includes(ci) ? '#dc2626' : COLORS.text }}>{c}</td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
 
