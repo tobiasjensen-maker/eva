@@ -1,6 +1,6 @@
-import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, useRef, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, COLORS } from '../ui';
+import { Card, EmojiTile, Orb, MicIcon, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -193,6 +193,42 @@ export default function ActivityView({
     const [acting, setActing] = useState<string | null>(null);
     const [doc, setDoc] = useState<{ entry: LogEntry; doc: SourceDoc } | null>(null);
 
+    // ---- Eva review-assistant side panel ----
+    const [chatMsgs, setChatMsgs] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
+        { role: 'assistant', text: "I'm Eva. Ask me about anything in your review queue — or hit “Ask Eva” on a flagged item and I'll explain my thinking." },
+    ]);
+    const [chatInput, setChatInput] = useState('');
+
+    function reviewAnswer(q: string): string {
+        const t = q.toLowerCase();
+        const flagged = entries.filter((e) => e.status === 'needs-review');
+        if (/attention|most|priorit|urgent|first|start/.test(t)) {
+            if (!flagged.length) return 'Nothing is flagged right now — you’re all caught up. 🎉';
+            const top = flagged.find((e) => e.confidence === 'low') ?? flagged[0];
+            return `You have ${flagged.length} item${flagged.length > 1 ? 's' : ''} flagged. I'd start with “${top.desc}” for ${clientName(top.client)} — it's ${top.confidence} confidence, so it most needs a human eye.`;
+        }
+        if (/summar|today|recap|do/.test(t)) {
+            const today = entries.filter((e) => e.daysAgo === 0);
+            return `Today I took ${today.length} actions: ${today.filter((e) => e.status === 'completed').length} auto-resolved and ${today.filter((e) => e.status === 'needs-review').length} flagged for your review.`;
+        }
+        if (/risk|wrong|fail|confiden/.test(t)) {
+            const low = flagged.filter((e) => e.confidence === 'low');
+            return low.length ? `The riskiest items are the low-confidence ones: ${low.map((e) => `“${e.desc}”`).join(', ')}. I held these rather than acting automatically.` : 'No low-confidence actions outstanding — nothing risky in the queue.';
+        }
+        return 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask Eva” on an item.';
+    }
+    function chatSend(text: string) {
+        const t = text.trim();
+        if (!t) return;
+        setChatMsgs((m) => [...m, { role: 'user', text: t }, { role: 'assistant', text: reviewAnswer(t) }]);
+        setChatInput('');
+    }
+    function askAbout(e: LogEntry) {
+        const userText = `Why did you flag “${e.desc}”?`;
+        const answer = `I flagged this for ${clientName(e.client)} because: ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${e.suggestions?.length ? ` My suggested next step is “${e.suggestions[0]}” — want me to go ahead?` : ''}`;
+        setChatMsgs((m) => [...m, { role: 'user', text: userText }, { role: 'assistant', text: answer }]);
+    }
+
     // Reflect the agreement chosen in the sidebar into the Client filter.
     useEffect(() => {
         setClient(scope === 'portfolio' ? 'all' : scope);
@@ -230,8 +266,9 @@ export default function ActivityView({
     const groups = BUCKET_ORDER.map((b) => ({ bucket: b, items: filtered.filter((e) => e.bucket === b) })).filter((g) => g.items.length > 0);
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="px-8 py-7 mx-auto" style={{ maxWidth: 1040 }}>
+        <div className="flex h-full">
+            <div className="flex-1 min-w-0 overflow-y-auto">
+            <div className="px-8 py-7 mx-auto" style={{ maxWidth: 880 }}>
                 {/* header */}
                 <div className="flex items-start justify-between gap-3 mb-1">
                     <div>
@@ -318,6 +355,7 @@ export default function ActivityView({
                                         onToggle={() => setExpanded(expanded === e.id ? null : e.id)}
                                         onResolve={(action) => resolve(e.id, action)}
                                         onOpenDoc={() => e.doc && setDoc({ entry: e, doc: e.doc })}
+                                        onAsk={() => askAbout(e)}
                                     />
                                 ))}
                             </div>
@@ -325,13 +363,16 @@ export default function ActivityView({
                     ))}
                 </div>
             </div>
+            </div>
+
+            <ReviewChat msgs={chatMsgs} input={chatInput} setInput={setChatInput} onSend={chatSend} />
 
             {doc && <DocModal entry={doc.entry} doc={doc.doc} onClose={() => setDoc(null)} />}
         </div>
     );
 }
 
-function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void }) {
+function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onAsk: () => void }) {
     const sk = SKILL_INFO[entry.skill];
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
@@ -356,6 +397,18 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc }: { entry
                         style={{ background: '#eef2ff', color: '#4456c7', cursor: 'pointer' }}
                     >
                         <Icon name={DOC_ICON[entry.doc.kind] as never} /> {entry.doc.ref}
+                    </span>
+                )}
+                {needsReview && (
+                    <span
+                        role="button"
+                        tabIndex={0}
+                        title="Ask Eva about this"
+                        onClick={(ev) => { ev.stopPropagation(); onAsk(); }}
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium shrink-0"
+                        style={{ background: '#f3f0fb', color: '#7c3aed', cursor: 'pointer' }}
+                    >
+                        <Icon name="ai-stars" /> Ask Eva
                     </span>
                 )}
                 <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: conf.bg, color: conf.fg }}>{conf.label}</span>
@@ -474,6 +527,71 @@ function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; on
                 </div>
             </div>
         </div>
+    );
+}
+
+// Eva review-assistant side panel (same pattern as Insights / Spaces).
+function ReviewChat({ msgs, input, setInput, onSend }: { msgs: { role: 'user' | 'assistant'; text: string }[]; input: string; setInput: (v: string) => void; onSend: (t: string) => void }) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }, [msgs]);
+    const chips = ['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?'];
+    const canSend = input.trim().length > 0;
+    return (
+        <aside className="shrink-0 bg-white flex flex-col h-full" style={{ width: 360, borderLeft: `1px solid ${COLORS.cardBorder}` }}>
+            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <Orb size={20} />
+                <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
+                <span className="text-xs" style={{ color: COLORS.textMuted }}>· review assistant</span>
+            </div>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+                {msgs.map((m, i) =>
+                    m.role === 'user' ? (
+                        <div key={i} className="flex justify-end">
+                            <div className="rounded-2xl px-3 py-2 text-sm" style={{ background: '#f1f1f3', color: COLORS.text, maxWidth: '88%' }}>{m.text}</div>
+                        </div>
+                    ) : (
+                        <div key={i} className="flex gap-2">
+                            <div className="shrink-0 mt-0.5"><Orb size={20} /></div>
+                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{m.text}</p>
+                        </div>
+                    )
+                )}
+            </div>
+
+            <div className="px-3 pb-3">
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                    {chips.map((c) => (
+                        <button key={c} onClick={() => onSend(c)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}>
+                            {c}
+                        </button>
+                    ))}
+                </div>
+                <div className="relative rounded-xl" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
+                    <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSend(input); } }}
+                        placeholder="Ask Eva about your review queue"
+                        className="w-full bg-transparent text-sm outline-none"
+                        style={{ color: COLORS.text, padding: '10px 76px 10px 12px' }}
+                    />
+                    <div className="absolute flex items-center gap-2" style={{ right: 8, top: '50%', transform: 'translateY(-50%)' }}>
+                        <button style={{ color: COLORS.textMuted }} title="Voice input"><MicIcon /></button>
+                        <button
+                            onClick={() => onSend(input)}
+                            disabled={!canSend}
+                            className="flex items-center justify-center rounded-lg"
+                            style={{ width: 28, height: 28, background: canSend ? '#4c6ef5' : '#e4e4e7', color: canSend ? '#fff' : '#b0b0b8', cursor: canSend ? 'pointer' : 'not-allowed' }}
+                        >
+                            <Icon name="arrow-up" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
     );
 }
 
