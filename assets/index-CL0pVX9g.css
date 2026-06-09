@@ -2775,6 +2775,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .bottom-10 {
   bottom: 2.5rem;
 }
+.bottom-2 {
+  bottom: 0.5rem;
+}
 .bottom-2\.5 {
   bottom: 0.625rem;
 }
@@ -2795,6 +2798,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .right-10 {
   right: 2.5rem;
+}
+.right-2\.5 {
+  right: 0.625rem;
 }
 .right-3 {
   right: 0.75rem;
@@ -4256,6 +4262,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .px-3 {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
+}
+.px-3\.5 {
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
 }
 .px-4 {
   padding-left: 1rem;
