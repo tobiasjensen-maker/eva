@@ -351,7 +351,7 @@ function getData(dataKey: string): { intro: string; head: string[]; rows: string
                 ['Receivables aging', 'Slower vs. Q3', 'Medium'],
                 ['VAT deadline', 'Due in 6 days', 'Medium'],
             ],
-            outro: 'Want me to open any of these in the Activity log?',
+            outro: 'Want me to open any of these in Review?',
         };
     }
     if (dataKey === 'benchmark') {
@@ -646,8 +646,8 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                         { label: 'Apply it and log the result', status: 'todo' },
                     ],
                     phase: 'awaiting',
-                    result: `Done — your ${noun} are updated. You can review the change in the Activity log.`,
-                    outcome: { title: `${dom.label} updated`, sub: 'Change added to your Activity log' },
+                    result: `Done — your ${noun} are updated. You can see the change in Review.`,
+                    outcome: { title: `${dom.label} updated`, sub: 'Added to your Review queue' },
                 };
             }
             return {
@@ -661,7 +661,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     { label: 'Prepare entries for your review', status: 'todo' },
                 ],
                 phase: 'awaiting',
-                result: 'Done — entries prepared and posted. You can review them in the Activity log.',
+                result: 'Done — entries prepared and posted. You can see them in Review.',
                 outcome: { title: 'Entries prepared', sub: 'Ready for you in the Review feed' },
             };
         }
@@ -1142,7 +1142,7 @@ function followUpsFor(msg: AssistantMsg): string[] {
             if (k === 'cashflow') return ['Forecast next quarter', 'What’s driving the outflows?', 'Any anomalies?'];
             if (k === 'margins') return ['What’s driving the change?', 'Compare to peers', 'Forecast next quarter'];
             if (k === 'forecast') return ['What are the assumptions?', 'Analyze cash flow', 'Any risks to this?'];
-            if (k === 'anomalies') return ['Open these in the Activity log', 'Why is this unusual?', 'Analyze cash flow'];
+            if (k === 'anomalies') return ['Open these in Review', 'Why is this unusual?', 'Analyze cash flow'];
             if (k === 'benchmark') return ['How do I close the gap?', 'Analyze margins', 'Forecast next quarter'];
             if (k === 'analysis') return ['Analyze cash flow', 'Forecast next quarter', 'Any anomalies?'];
             if (DOMAINS.some((d) => d.key === k)) return ['Export as a PDF', 'Filter the list', 'What changed this month?'];
@@ -1158,7 +1158,7 @@ function followUpsFor(msg: AssistantMsg): string[] {
             return ['Export this as a PDF report', 'Set up a weekly alert for this'];
         }
         case 'plan':
-            return ['Show me the result in the Activity log', 'Set this to run every month', 'Summarise what changed'];
+            return ['Show me the result in Review', 'Set this to run every month', 'Summarise what changed'];
         case 'spacecall':
             return ['Filter to last quarter', 'Add a forecast', 'Export as a PDF'];
         case 'upsell':
@@ -1422,7 +1422,7 @@ function AssistantBubble({
                                             <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{msg.outcome.sub}</p>
                                         </div>
                                         <span className="flex items-center gap-1 text-sm font-medium shrink-0" style={{ color: COLORS.text }}>
-                                            {toSpaces ? 'Open in Spaces' : 'View in Activity log'} <Icon name="chevron-right" />
+                                            {toSpaces ? 'Open in Spaces' : 'View in Review'} <Icon name="chevron-right" />
                                         </span>
                                     </button>
                                 </div>

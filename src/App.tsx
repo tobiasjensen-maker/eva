@@ -6,8 +6,8 @@ import {
     NodeMark,
     ProfileAvatar,
     ChatIcon,
+    ReviewIcon,
     InsightsIcon,
-    ActivityIcon,
     SkillsIcon,
     SpacesIcon,
     SidebarTooltip,
@@ -26,8 +26,8 @@ import { Onboarding } from './Onboarding';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
+    { id: 'activity', label: 'Review', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
-    { id: 'activity', label: 'Activity log', Icon: ActivityIcon },
     { id: 'skills', label: 'Skills', Icon: SkillsIcon },
     { id: 'spaces', label: 'Spaces', Icon: SpacesIcon },
 ];
