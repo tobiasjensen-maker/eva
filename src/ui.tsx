@@ -124,8 +124,8 @@ export interface PanelMsg {
     action?: { label: string; onClick: () => void };
 }
 
-// Reusable Eva assistant side panel — a self-contained floating, rounded container
-// (like the sidebar) used on Review, Insights and Spaces.
+// Reusable Eva assistant side panel — a full-height white panel that fills its
+// column, used on Review, Insights and Spaces.
 export function AssistantPanel({
     subtitle,
     messages,
@@ -134,7 +134,7 @@ export function AssistantPanel({
     onSend,
     chips = [],
     placeholder = 'Ask Eva',
-    width = 344,
+    width = 360,
 }: {
     subtitle?: string;
     messages: PanelMsg[];
@@ -151,11 +151,7 @@ export function AssistantPanel({
     }, [messages]);
     const canSend = input.trim().length > 0;
     return (
-        <div className="shrink-0 h-full" style={{ background: SHELL_GREY, padding: 10, paddingLeft: 8 }}>
-            <div
-                className="bg-white flex flex-col h-full rounded-2xl"
-                style={{ width, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)' }}
-            >
+        <aside className="shrink-0 bg-white flex flex-col h-full" style={{ width, borderLeft: `1px solid ${COLORS.cardBorder}` }}>
                 <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <Orb size={20} />
                     <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
@@ -216,8 +212,7 @@ export function AssistantPanel({
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+        </aside>
     );
 }
 

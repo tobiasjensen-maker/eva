@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, AssistantPanel, COLORS } from '../ui';
+import { Card, EmojiTile, Orb, AssistantPanel, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -413,12 +413,12 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
                         tabIndex={0}
                         title="Ask Eva about this"
                         onClick={(ev) => { ev.stopPropagation(); onAsk(); }}
-                        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shrink-0 text-white"
-                        style={{ background: 'linear-gradient(90deg, #ed9b2c 0%, #7c3aed 100%)', cursor: 'pointer', boxShadow: '0 1px 3px rgba(124,58,237,0.35)' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.07)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+                        className="flex items-center gap-1.5 rounded-full shrink-0 font-semibold"
+                        style={{ padding: '5px 12px 5px 8px', fontSize: 13, background: '#fff7ed', color: COLORS.text, border: '1px solid #efddc0', cursor: 'pointer' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#fdeed8')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}
                     >
-                        <Icon name="ai-stars" /> Ask Eva
+                        <Orb size={16} /> Ask Eva
                     </span>
                 )}
                 <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: conf.bg, color: conf.fg }}>{conf.label}</span>
