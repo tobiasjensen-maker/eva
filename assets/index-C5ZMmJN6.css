@@ -4529,6 +4529,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .leading-loose {
   line-height: 2;
 }
+.leading-none {
+  line-height: 1;
+}
 .leading-normal {
   line-height: 1.5;
 }
