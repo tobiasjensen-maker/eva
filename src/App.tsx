@@ -10,6 +10,7 @@ import {
     InsightsIcon,
     SkillsIcon,
     SpacesIcon,
+    SidebarTooltip,
 } from './ui';
 
 const SIDEBAR_BG = 'rgb(41, 40, 62)';
@@ -235,9 +236,9 @@ export default function App() {
                         </>
                     )}
 
+                    <SidebarTooltip label="Switch client" show={collapsed}>
                     <button
                         onClick={() => setScopeOpen((o) => !o)}
-                        title={collapsed ? scopeName : undefined}
                         className="flex items-center gap-2 w-full rounded-lg"
                         style={{
                             padding: collapsed ? 8 : '8px 10px',
@@ -259,6 +260,7 @@ export default function App() {
                             </>
                         )}
                     </button>
+                    </SidebarTooltip>
                 </div>
 
                 {/* Nav */}
@@ -266,11 +268,10 @@ export default function App() {
                     {RAIL.map(({ id, label, Icon: RIcon }) => {
                         const active = view === id;
                         return (
+                            <SidebarTooltip key={id} label={label} show={collapsed}>
                             <button
-                                key={id}
                                 onClick={() => setView(id)}
-                                title={collapsed ? label : undefined}
-                                className="flex items-center gap-3 rounded-lg text-sm text-left"
+                                className="flex items-center gap-3 rounded-lg text-sm text-left w-full"
                                 style={{
                                     padding: collapsed ? '9px 0' : '8px 12px',
                                     justifyContent: collapsed ? 'center' : 'flex-start',
@@ -292,6 +293,7 @@ export default function App() {
                                     <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{needsReview}</span>
                                 )}
                             </button>
+                            </SidebarTooltip>
                         );
                     })}
                 </nav>
@@ -351,9 +353,9 @@ export default function App() {
                         </>
                     )}
 
+                    <SidebarTooltip label="Account settings" show={collapsed}>
                     <button
                         onClick={() => setAccountOpen((o) => !o)}
-                        title={collapsed ? 'Tobias Holm Jensen' : undefined}
                         className="flex items-center gap-2 w-full rounded-lg"
                         style={{
                             padding: collapsed ? 4 : '6px 8px',
@@ -378,6 +380,7 @@ export default function App() {
                             </>
                         )}
                     </button>
+                    </SidebarTooltip>
                 </div>
             </aside>
 

@@ -56,6 +56,63 @@ export function Card({
     );
 }
 
+// Hover tooltip for collapsed sidebar items: appears to the right with a small
+// left-pointing arrow. Fades in over 150ms, disappears immediately on mouse-out,
+// and never intercepts clicks (pointer-events: none). Pass show={false} to disable.
+export function SidebarTooltip({ label, show = true, children }: { label: string; show?: boolean; children: ReactNode }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div
+            style={{ position: 'relative', width: '100%' }}
+            onMouseEnter={() => show && setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+        >
+            {children}
+            {show && (
+                <span
+                    role="tooltip"
+                    style={{
+                        position: 'absolute',
+                        left: 'calc(100% + 10px)',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: '#1e293b',
+                        color: '#ffffff',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        lineHeight: 1,
+                        padding: '7px 10px',
+                        borderRadius: 8,
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        opacity: open ? 1 : 0,
+                        visibility: open ? 'visible' : 'hidden',
+                        transition: open ? 'opacity 150ms ease' : 'none',
+                        boxShadow: '0 6px 18px rgba(0,0,0,0.28)',
+                        zIndex: 60,
+                    }}
+                >
+                    {/* left-pointing arrow back at the icon */}
+                    <span
+                        style={{
+                            position: 'absolute',
+                            right: '100%',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: 0,
+                            height: 0,
+                            borderTop: '5px solid transparent',
+                            borderBottom: '5px solid transparent',
+                            borderRight: '5px solid #1e293b',
+                        }}
+                    />
+                    {label}
+                </span>
+            )}
+        </div>
+    );
+}
+
 // ---- Eva: animated e-conomic mark (five orange circles that merge via a gooey filter) ----
 const EVA_ORANGE = '#ed9b2c';
 type Constellation = [number, number, number][]; // [cx, cy, r] × 5, in a 100×100 viewBox
