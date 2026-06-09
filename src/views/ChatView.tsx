@@ -1403,27 +1403,38 @@ function AssistantBubble({
                         {msg.phase === 'done' && msg.outcome && (() => {
                             const toSpaces = !!msg.createsSpace;
                             return (
-                                <button
-                                    onClick={() => onNavigate(toSpaces ? 'spaces' : 'review')}
-                                    className="mt-3 w-full flex items-center gap-3 rounded-xl p-3 text-left bg-white"
-                                    style={{ border: `1px solid ${COLORS.cardBorder}` }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-                                >
-                                    <span
-                                        className="flex items-center justify-center shrink-0 rounded-lg"
-                                        style={{ width: 34, height: 34, background: toSpaces ? '#f3f0fb' : '#ecfdf5', color: toSpaces ? '#8b46d6' : '#16a34a' }}
+                                <div className="mt-3">
+                                    <button
+                                        onClick={() => onNavigate(toSpaces ? 'spaces' : 'review')}
+                                        className="w-full flex items-center gap-3 rounded-xl p-3 text-left bg-white"
+                                        style={{ border: `1px solid ${COLORS.cardBorder}` }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
                                     >
-                                        <Icon name={toSpaces ? 'ai-stars' : 'circle-tick'} />
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{msg.outcome.title}</p>
-                                        <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{msg.outcome.sub}</p>
-                                    </div>
-                                    <span className="flex items-center gap-1 text-sm font-medium shrink-0" style={{ color: COLORS.text }}>
-                                        {toSpaces ? 'Open in Spaces' : 'View in Review'} <Icon name="chevron-right" />
-                                    </span>
-                                </button>
+                                        <span
+                                            className="flex items-center justify-center shrink-0 rounded-lg"
+                                            style={{ width: 34, height: 34, background: toSpaces ? '#f3f0fb' : '#ecfdf5', color: toSpaces ? '#8b46d6' : '#16a34a' }}
+                                        >
+                                            <Icon name={toSpaces ? 'ai-stars' : 'circle-tick'} />
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{msg.outcome.title}</p>
+                                            <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{msg.outcome.sub}</p>
+                                        </div>
+                                        <span className="flex items-center gap-1 text-sm font-medium shrink-0" style={{ color: COLORS.text }}>
+                                            {toSpaces ? 'Open in Spaces' : 'View in Review'} <Icon name="chevron-right" />
+                                        </span>
+                                    </button>
+                                    {!toSpaces && (
+                                        <button
+                                            onClick={() => onNavigate('activity')}
+                                            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium"
+                                            style={{ color: COLORS.textMuted }}
+                                        >
+                                            <Icon name="time" /> See this in the Activity log
+                                        </button>
+                                    )}
+                                </div>
                             );
                         })()}
                     </div>

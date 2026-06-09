@@ -8,6 +8,7 @@ import {
     ChatIcon,
     ReviewIcon,
     InsightsIcon,
+    ActivityIcon,
     SkillsIcon,
     SpacesIcon,
     SidebarTooltip,
@@ -20,6 +21,7 @@ import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
 import ReviewView, { REVIEW_ITEMS } from './views/ReviewView';
 import InsightsView, { INSIGHTS_PRICE } from './views/InsightsView';
+import ActivityView from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
 import { Onboarding } from './Onboarding';
@@ -28,11 +30,12 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'review', label: 'Review', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
+    { id: 'activity', label: 'Activity log', Icon: ActivityIcon },
     { id: 'skills', label: 'Skills', Icon: SkillsIcon },
     { id: 'spaces', label: 'Spaces', Icon: SpacesIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['chat', 'review', 'insights', 'skills', 'spaces'];
+const VIEW_IDS: ViewId[] = ['chat', 'review', 'insights', 'activity', 'skills', 'spaces'];
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -409,6 +412,7 @@ export default function App() {
                 )}
                 {view === 'review' && <ReviewView scope={scope} scopeName={scopeName} items={reviewItems} setItems={setReviewItems} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} pro={insightsPro} onUpgrade={upgradeInsights} />}
+                {view === 'activity' && <ActivityView onNavigate={setView} scope={scope} />}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} />}
             </main>

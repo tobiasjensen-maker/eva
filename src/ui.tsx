@@ -303,6 +303,15 @@ export function InsightsIcon({ active }: { active: boolean }) {
     );
 }
 
+export function ActivityIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 7.5V12l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
 export function SkillsIcon({ active }: { active: boolean }) {
     return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={railIconStyle(active)}>
