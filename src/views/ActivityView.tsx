@@ -1,14 +1,13 @@
-import { useState, type CSSProperties } from 'react';
-import { Icon } from '@economic/taco';
+import { useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { Button, Icon } from '@economic/taco';
 import { Card, EmojiTile, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
-import type { ViewId } from '../types';
 
 type Confidence = 'high' | 'medium' | 'low';
-type Status = 'completed' | 'needs-review' | 'failed';
+export type ActivityStatus = 'completed' | 'needs-review' | 'failed';
 type Bucket = 'today' | 'yesterday' | 'week' | 'older';
 
-interface LogEntry {
+export interface LogEntry {
     id: string;
     daysAgo: number;
     bucket: Bucket;
@@ -18,10 +17,11 @@ interface LogEntry {
     client: string; // agreement id or 'portfolio'
     desc: string;
     confidence: Confidence;
-    status: Status;
+    status: ActivityStatus;
     reasoning: string[];
     source?: string;
-    flagged?: boolean; // → link to Review; otherwise "View in e-conomic"
+    suggestions?: string[]; // AI-suggested next steps for needs-review items (first = recommended)
+    resolution?: string; // set once the user resolves it
 }
 
 const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
@@ -33,7 +33,7 @@ const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
     'close-books': { emoji: '📚', label: 'Period close' },
 };
 
-const ENTRIES: LogEntry[] = [
+export const ACTIVITY_ENTRIES: LogEntry[] = [
     // ---- Today ----
     { id: 'a1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:12', skill: 'reconciliation', client: 'nordic',
         desc: 'Booked transaction #4521 to Account 2100 — Creditors', confidence: 'high', status: 'completed',
@@ -50,7 +50,7 @@ const ENTRIES: LogEntry[] = [
     { id: 'a4', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '11:05', skill: 'anomalies', client: 'office',
         desc: 'Flagged a supplier charge of 14.900 DKK — 3× the monthly average', confidence: 'low', status: 'needs-review',
         reasoning: ['Charge is 3.1× the 6-month average for this supplier.', 'No matching purchase order or approval was found.', 'Low confidence — held for human review before booking.'],
-        source: 'Bill from Office Supplies Co · 26 Jan', flagged: true },
+        source: 'Bill from Office Supplies Co · 26 Jan', suggestions: ['Approve & book', 'Ask client to confirm'] },
     { id: 'a5', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '11:40', skill: 'documents', client: 'tech',
         desc: 'Requested 5 missing receipts from the client', confidence: 'medium', status: 'completed',
         reasoning: ['5 booked entries had no attached documentation.', 'Grouped them into a single request to avoid spamming the client.', 'Set a 3-day follow-up reminder.'],
@@ -58,7 +58,7 @@ const ENTRIES: LogEntry[] = [
     { id: 'a6', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '12:15', skill: 'monitor', client: 'portfolio',
         desc: 'Detected operating cash flow down 12% vs Q3 across 3 clients', confidence: 'medium', status: 'needs-review',
         reasoning: ['Aggregate operating cash flow fell 12% quarter-over-quarter.', 'Decline concentrated in 3 clients with slower receivable collection.', 'Surfaced for advisory follow-up rather than auto-action.'],
-        source: 'Portfolio cash-flow model', flagged: true },
+        source: 'Portfolio cash-flow model', suggestions: ['Draft a reminder cadence', 'Open detailed breakdown'] },
 
     // ---- Yesterday ----
     { id: 'a7', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '16:30', skill: 'reconciliation', client: 'bryg',
@@ -72,7 +72,7 @@ const ENTRIES: LogEntry[] = [
     { id: 'a9', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '14:18', skill: 'anomalies', client: 'tech',
         desc: 'Flagged a possible duplicate bill #TE-189', confidence: 'medium', status: 'needs-review',
         reasoning: ['Bill #TE-189 shares amount, date and supplier with #TE-188.', 'Could be a legitimate split delivery — needs a human check.'],
-        source: 'Bills #TE-188 and #TE-189 · 22.650 DKK', flagged: true },
+        source: 'Bills #TE-188 and #TE-189 · 22.650 DKK', suggestions: ['Mark as duplicate & void', 'Keep both — not a duplicate'] },
     { id: 'a10', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '11:23', skill: 'documents', client: 'cafe',
         desc: 'Collected a receipt for entry #8821 and attached it', confidence: 'high', status: 'completed',
         reasoning: ['Client uploaded the missing receipt via the request link.', 'OCR matched the receipt total to the booked amount.'],
@@ -84,7 +84,7 @@ const ENTRIES: LogEntry[] = [
     { id: 'a12', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '08:30', skill: 'reconciliation', client: 'lys',
         desc: 'Could not book transaction #4502 — no matching invoice found', confidence: 'low', status: 'failed',
         reasoning: ['Inbound payment had no reference and no amount match.', 'Searched open invoices ±5% — no candidate found.', 'Left unbooked and flagged for manual matching.'],
-        source: 'Unmatched payment · 9.800 DKK', flagged: true },
+        source: 'Unmatched payment · 9.800 DKK', suggestions: ['Match to an invoice manually', 'Book to a suspense account'] },
 
     // ---- Earlier this week ----
     { id: 'a13', daysAgo: 3, bucket: 'week', dateLabel: 'Mon', time: '14:40', skill: 'reminders', client: 'office',
@@ -94,7 +94,7 @@ const ENTRIES: LogEntry[] = [
     { id: 'a14', daysAgo: 3, bucket: 'week', dateLabel: 'Mon', time: '10:15', skill: 'monitor', client: 'dmp',
         desc: 'Noted revenue concentration risk — one client = 41% of revenue', confidence: 'medium', status: 'needs-review',
         reasoning: ['A single customer accounts for 41% of trailing revenue.', 'Above the 30% advisory threshold.', 'Raised as an advisory insight.'],
-        source: 'Revenue breakdown · last 12 months', flagged: true },
+        source: 'Revenue breakdown · last 12 months', suggestions: ['Add to advisory report', 'Acknowledge'] },
     { id: 'a15', daysAgo: 4, bucket: 'week', dateLabel: 'Tue', time: '13:05', skill: 'close-books', client: 'nordic',
         desc: 'Prepared the month-end close checklist (18 items)', confidence: 'high', status: 'completed',
         reasoning: ['Generated the standard close checklist for the period.', 'Pre-ticked 11 items already satisfied by the books.'],
@@ -112,7 +112,7 @@ const ENTRIES: LogEntry[] = [
     { id: 'a18', daysAgo: 14, bucket: 'older', dateLabel: '26 May', time: '11:11', skill: 'anomalies', client: 'cafe',
         desc: 'Flagged cash runway under 2 months', confidence: 'low', status: 'needs-review',
         reasoning: ['Projected runway fell below the 2-month threshold.', 'Driven by slower weekday footfall and a card-fee increase.', 'Held for advisory review.'],
-        source: 'Cash-flow model · runway 1.4 mo', flagged: true },
+        source: 'Cash-flow model · runway 1.4 mo', suggestions: ['Draft a check-in for the client', 'Acknowledge'] },
 ];
 
 const BUCKET_LABEL: Record<Bucket, string> = {
@@ -128,7 +128,7 @@ const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string }> 
     medium: { bg: '#fbf3e0', fg: '#92710f', label: 'Medium' },
     low: { bg: '#fdecec', fg: '#dc2626', label: 'Low' },
 };
-const STATUS_STYLE: Record<Status, { bg: string; fg: string; label: string; icon: string }> = {
+const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: string; icon: string }> = {
     completed: { bg: '#e9f7ef', fg: '#15803d', label: 'Completed', icon: 'circle-tick' },
     'needs-review': { bg: '#fbf3e0', fg: '#92710f', label: 'Needs review', icon: 'circle-warning' },
     failed: { bg: '#fdecec', fg: '#dc2626', label: 'Failed', icon: 'error' },
@@ -141,13 +141,24 @@ const DATE_RANGES = [
     { value: 'custom', label: 'Custom' },
 ];
 
+type StatusFilter = 'all' | 'completed' | 'needs-review';
+
 const clientName = (id: string) => (id === 'portfolio' ? 'Portfolio-wide' : AGREEMENTS.find((a) => a.id === id)?.name ?? id);
 
-export default function ActivityView({ onNavigate, scope = 'portfolio' }: { onNavigate: (v: ViewId) => void; scope?: string }) {
+export default function ActivityView({
+    entries, setEntries, status, onStatusChange, scope = 'portfolio',
+}: {
+    entries: LogEntry[];
+    setEntries: Dispatch<SetStateAction<LogEntry[]>>;
+    status: StatusFilter;
+    onStatusChange: (s: StatusFilter) => void;
+    scope?: string;
+}) {
     const [range, setRange] = useState('30');
     const [skill, setSkill] = useState('all');
     const [client, setClient] = useState(scope === 'portfolio' ? 'all' : scope);
     const [expanded, setExpanded] = useState<string | null>(null);
+    const [acting, setActing] = useState<string | null>(null);
 
     const inRange = (e: LogEntry) => {
         if (range === 'today') return e.daysAgo === 0;
@@ -155,12 +166,22 @@ export default function ActivityView({ onNavigate, scope = 'portfolio' }: { onNa
         if (range === '30') return e.daysAgo <= 30;
         return true; // custom → all (stub)
     };
-    const filtered = ENTRIES.filter((e) => inRange(e) && (skill === 'all' || e.skill === skill) && (client === 'all' || e.client === client));
+    // Period set (date + skill + client) drives the stat counts; status is an additional filter on top.
+    const periodSet = entries.filter((e) => inRange(e) && (skill === 'all' || e.skill === skill) && (client === 'all' || e.client === client));
+    const filtered = periodSet.filter((e) => status === 'all' || e.status === status);
 
-    const stats = [
-        { label: 'Actions taken', value: filtered.length, color: '#6366f1', icon: 'workflow' },
-        { label: 'Auto-resolved', value: filtered.filter((e) => e.status === 'completed').length, color: '#16a34a', icon: 'circle-tick' },
-        { label: 'Flagged for review', value: filtered.filter((e) => e.status === 'needs-review').length, color: '#b9842b', icon: 'circle-warning' },
+    function resolve(id: string, action: string) {
+        setActing(id);
+        setTimeout(() => {
+            setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'completed', confidence: 'high', resolution: action } : e)));
+            setActing(null);
+        }, 900);
+    }
+
+    const stats: { key: StatusFilter; label: string; value: number; color: string; icon: string }[] = [
+        { key: 'all', label: 'Actions taken', value: periodSet.length, color: '#6366f1', icon: 'workflow' },
+        { key: 'completed', label: 'Auto-resolved', value: periodSet.filter((e) => e.status === 'completed').length, color: '#16a34a', icon: 'circle-tick' },
+        { key: 'needs-review', label: 'Flagged for review', value: periodSet.filter((e) => e.status === 'needs-review').length, color: '#b9842b', icon: 'circle-warning' },
     ];
 
     const skillOptions = [{ value: 'all', label: 'All skills' }, ...Object.keys(SKILL_INFO).map((id) => ({ value: id, label: SKILL_INFO[id].label }))];
@@ -179,12 +200,11 @@ export default function ActivityView({ onNavigate, scope = 'portfolio' }: { onNa
                 <div className="flex items-start justify-between gap-3 mb-1">
                     <div>
                         <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>Activity log</h1>
-                        <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>Everything Eva has done autonomously — for your records and review.</p>
+                        <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>Everything Eva has done autonomously. Filter to just what needs your review.</p>
                     </div>
                     <Select value={range} onChange={setRange} options={DATE_RANGES} align="right" />
                 </div>
 
-                {/* custom date stub */}
                 {range === 'custom' && (
                     <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
@@ -199,39 +219,68 @@ export default function ActivityView({ onNavigate, scope = 'portfolio' }: { onNa
                     <Select value={client} onChange={setClient} options={clientOptions} leadingLabel="Client" />
                 </div>
 
-                {/* stats */}
+                {/* stats — double as status filters */}
                 <div className="grid grid-cols-3 gap-3 mt-5">
-                    {stats.map((s) => (
-                        <Card key={s.label} className="p-4 flex items-center gap-3">
-                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 38, height: 38, background: `${s.color}1a`, color: s.color }}>
-                                <Icon name={s.icon as never} />
-                            </span>
-                            <div>
-                                <p className="text-2xl font-semibold leading-none" style={{ color: COLORS.text }}>{s.value}</p>
-                                <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{s.label}</p>
-                            </div>
-                        </Card>
-                    ))}
+                    {stats.map((s) => {
+                        const active = status === s.key;
+                        return (
+                            <button
+                                key={s.key}
+                                onClick={() => onStatusChange(s.key)}
+                                className="rounded-xl p-4 flex items-center gap-3 text-left"
+                                style={{
+                                    background: active ? '#fff' : '#fff',
+                                    border: `1px solid ${active ? s.color : COLORS.cardBorder}`,
+                                    boxShadow: active ? `0 0 0 1px ${s.color}` : 'none',
+                                    transition: 'border-color .15s, box-shadow .15s',
+                                }}
+                            >
+                                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 38, height: 38, background: `${s.color}1a`, color: s.color }}>
+                                    <Icon name={s.icon as never} />
+                                </span>
+                                <div className="flex-1">
+                                    <p className="text-2xl font-semibold leading-none" style={{ color: COLORS.text }}>{s.value}</p>
+                                    <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{s.label}</p>
+                                </div>
+                                {active && <Icon name="tick" style={{ color: s.color }} />}
+                            </button>
+                        );
+                    })}
                 </div>
 
+                {status !== 'all' && (
+                    <div className="flex items-center gap-2 mt-3">
+                        <span className="text-xs" style={{ color: COLORS.textMuted }}>
+                            Showing {status === 'needs-review' ? 'items that need your review' : 'auto-resolved actions'}
+                        </span>
+                        <button onClick={() => onStatusChange('all')} className="text-xs font-medium" style={{ color: '#4c6ef5' }}>Clear filter</button>
+                    </div>
+                )}
+
                 {/* log */}
-                <div className="mt-6 pb-10">
+                <div className="mt-5 pb-10">
                     {groups.length === 0 && (
                         <Card className="p-10 text-center">
-                            <p className="text-sm" style={{ color: COLORS.textMuted }}>No activity matches these filters.</p>
+                            <p className="text-sm" style={{ color: COLORS.textMuted }}>
+                                {status === 'needs-review' ? 'Nothing needs your review here — Eva is all caught up. 🎉' : 'No activity matches these filters.'}
+                            </p>
                         </Card>
                     )}
                     {groups.map((g) => (
                         <div key={g.bucket}>
-                            <div
-                                className="sticky text-xs font-semibold uppercase tracking-wide py-2"
-                                style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}
-                            >
+                            <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}>
                                 {BUCKET_LABEL[g.bucket]} · {g.items.length}
                             </div>
                             <div className="flex flex-col gap-2">
                                 {g.items.map((e) => (
-                                    <LogRow key={e.id} entry={e} open={expanded === e.id} onToggle={() => setExpanded(expanded === e.id ? null : e.id)} onNavigate={onNavigate} />
+                                    <LogRow
+                                        key={e.id}
+                                        entry={e}
+                                        open={expanded === e.id}
+                                        acting={acting === e.id}
+                                        onToggle={() => setExpanded(expanded === e.id ? null : e.id)}
+                                        onResolve={(action) => resolve(e.id, action)}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -242,12 +291,13 @@ export default function ActivityView({ onNavigate, scope = 'portfolio' }: { onNa
     );
 }
 
-function LogRow({ entry, open, onToggle, onNavigate }: { entry: LogEntry; open: boolean; onToggle: () => void; onNavigate: (v: ViewId) => void }) {
+function LogRow({ entry, open, acting, onToggle, onResolve }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void }) {
     const sk = SKILL_INFO[entry.skill];
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
+    const needsReview = entry.status === 'needs-review';
     return (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden" style={needsReview ? { borderColor: '#f0e4c4' } : undefined}>
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: open ? '#fafafa' : '#fff' }}>
                 <EmojiTile emoji={sk.emoji} size={36} />
                 <div className="flex-1 min-w-0">
@@ -284,16 +334,30 @@ function LogRow({ entry, open, onToggle, onNavigate }: { entry: LogEntry; open: 
                         </div>
                     )}
 
-                    <div className="mt-3">
-                        {entry.flagged ? (
-                            <button
-                                onClick={() => onNavigate('review')}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5"
-                                style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
-                            >
-                                <Icon name="warning" /> View in Review <Icon name="chevron-right" />
-                            </button>
-                        ) : (
+                    {/* action area */}
+                    {entry.resolution ? (
+                        <div className="mt-3 rounded-lg px-3 py-2.5 text-sm flex items-start gap-2" style={{ background: '#ecfdf5', color: '#065f46' }}>
+                            <Icon name="circle-tick" /> <span>Resolved by you — “{entry.resolution}”. Logged to the audit trail.</span>
+                        </div>
+                    ) : acting ? (
+                        <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
+                            <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                            Carrying out your choice…
+                        </div>
+                    ) : needsReview && entry.suggestions ? (
+                        <div className="mt-3">
+                            <p className="text-xs flex items-center gap-1.5 mb-2" style={{ color: COLORS.textMuted }}>
+                                <Icon name="ai-stars" /> Suggested next step{entry.suggestions.length > 1 ? 's' : ''}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {entry.suggestions.map((s, i) => (
+                                    <Button key={s} appearance={i === 0 ? 'primary' : 'default'} onClick={() => onResolve(s)}>{s}</Button>
+                                ))}
+                                <button onClick={() => onResolve('Dismissed')} className="ml-auto text-sm" style={{ color: COLORS.textMuted }}>Dismiss</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-3">
                             <a
                                 href="#"
                                 onClick={(ev) => ev.preventDefault()}
@@ -302,8 +366,8 @@ function LogRow({ entry, open, onToggle, onNavigate }: { entry: LogEntry; open: 
                             >
                                 <Icon name="link-external" /> View in e-conomic
                             </a>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             )}
         </Card>

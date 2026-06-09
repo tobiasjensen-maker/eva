@@ -6,7 +6,6 @@ import {
     NodeMark,
     ProfileAvatar,
     ChatIcon,
-    ReviewIcon,
     InsightsIcon,
     ActivityIcon,
     SkillsIcon,
@@ -19,23 +18,21 @@ const SIDEBAR_BORDER = 'rgba(255,255,255,0.10)';
 import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
-import ReviewView, { REVIEW_ITEMS } from './views/ReviewView';
 import InsightsView, { INSIGHTS_PRICE } from './views/InsightsView';
-import ActivityView from './views/ActivityView';
+import ActivityView, { ACTIVITY_ENTRIES } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
 import { Onboarding } from './Onboarding';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
-    { id: 'review', label: 'Review', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
     { id: 'activity', label: 'Activity log', Icon: ActivityIcon },
     { id: 'skills', label: 'Skills', Icon: SkillsIcon },
     { id: 'spaces', label: 'Spaces', Icon: SpacesIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['chat', 'review', 'insights', 'activity', 'skills', 'spaces'];
+const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces'];
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -58,7 +55,8 @@ export default function App() {
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
-    const [reviewItems, setReviewItems] = useState(REVIEW_ITEMS);
+    const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
+    const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review'>('all');
     const [insightsPro, setInsightsPro] = useState(() => localStorage.getItem('va-insights-pro') === '1');
     useEffect(() => {
         localStorage.setItem('va-insights-pro', insightsPro ? '1' : '0');
@@ -97,7 +95,7 @@ export default function App() {
     }, [scope]);
     const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
-    const needsReview = reviewItems.filter((i) => (scope === 'portfolio' || i.agreement === scope) && i.status === 'unresolved').length;
+    const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review').length;
 
     function applyScope(s: string) {
         setScope(s);
@@ -287,12 +285,12 @@ export default function App() {
                             >
                                 <span className="relative flex items-center shrink-0">
                                     <RIcon active={active} />
-                                    {collapsed && id === 'review' && needsReview > 0 && (
+                                    {collapsed && id === 'activity' && needsReview > 0 && (
                                         <span className="absolute rounded-full" style={{ top: -4, right: -5, width: 8, height: 8, background: '#ed9b2c', border: `2px solid ${SIDEBAR_BG}` }} />
                                     )}
                                 </span>
                                 {!collapsed && <span className="flex-1">{label}</span>}
-                                {!collapsed && id === 'review' && needsReview > 0 && (
+                                {!collapsed && id === 'activity' && needsReview > 0 && (
                                     <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{needsReview}</span>
                                 )}
                             </button>
@@ -410,9 +408,10 @@ export default function App() {
                         onSelectClient={applyScope}
                     />
                 )}
-                {view === 'review' && <ReviewView scope={scope} scopeName={scopeName} items={reviewItems} setItems={setReviewItems} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} pro={insightsPro} onUpgrade={upgradeInsights} />}
-                {view === 'activity' && <ActivityView onNavigate={setView} scope={scope} />}
+                {view === 'activity' && (
+                    <ActivityView entries={activity} setEntries={setActivity} status={activityStatus} onStatusChange={setActivityStatus} scope={scope} />
+                )}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} />}
             </main>
