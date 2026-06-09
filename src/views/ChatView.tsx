@@ -1072,32 +1072,29 @@ function AssistantBubble({
     const body = (() => {
         if (msg.kind === 'getstarted') {
             const opts = [
-                { icon: 'list-search', title: 'Ask a question about your data', desc: 'e.g. “which invoices are overdue?” or your Q4 P&L', onClick: () => onFollowUp('Which invoices are overdue by more than 30 days?') },
-                { icon: 'ai-stars', title: 'Enable a new skill', desc: 'Automate reconciliation, reminders, payroll and more', onClick: () => onNavigate('skills') },
-                { icon: 'columns', title: 'Create a Space', desc: 'Build a dashboard, report or list you can reuse', onClick: () => onNavigate('spaces') },
-                { icon: 'more', title: 'Something else', desc: 'Tell me what you need and I’ll help', onClick: () => onFollowUp('What else can you help me with?') },
+                { emoji: '🔎', tint: '#eef2ff', title: 'Ask about your data', desc: 'Overdue invoices, your Q4 P&L, balances…', onClick: () => onFollowUp('Which invoices are overdue by more than 30 days?') },
+                { emoji: '⚡', tint: '#fff4e6', title: 'Enable a new skill', desc: 'Automate reconciliation, reminders & more', onClick: () => onNavigate('skills') },
+                { emoji: '🧩', tint: '#f3f0fb', title: 'Create a Space', desc: 'Build a dashboard, report or list', onClick: () => onNavigate('spaces') },
+                { emoji: '💡', tint: '#ecfdf5', title: 'Something else', desc: 'Tell me what you need and I’ll help', onClick: () => onFollowUp('What else can you help me with?') },
             ];
             return (
                 <div>
                     <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>
                         Hi, I'm Eva. Your books are imported and I'm ready to go. Here are a few ways to see what I can do:
                     </p>
-                    <div className="flex flex-col gap-2">
-                        {opts.map((o, i) => (
+                    <div className="grid grid-cols-2 gap-2.5">
+                        {opts.map((o) => (
                             <button
                                 key={o.title}
                                 onClick={o.onClick}
-                                className="flex items-center gap-3 text-left rounded-xl p-3 bg-white"
-                                style={{ border: `1px solid ${COLORS.cardBorder}` }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                                className="flex flex-col text-left rounded-2xl p-3.5 bg-white"
+                                style={{ border: `1px solid ${COLORS.cardBorder}`, transition: 'background .15s, border-color .15s, transform .15s' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; e.currentTarget.style.transform = 'none'; }}
                             >
-                                <span className="flex items-center justify-center shrink-0 rounded-lg text-sm font-semibold" style={{ width: 30, height: 30, background: '#f1f1f3', color: COLORS.textMuted }}>{i + 1}</span>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{o.title}</p>
-                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{o.desc}</p>
-                                </div>
-                                <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
+                                <span className="flex items-center justify-center rounded-xl" style={{ width: 38, height: 38, background: o.tint, fontSize: 20, lineHeight: 1 }}>{o.emoji}</span>
+                                <p className="text-sm font-semibold mt-2.5" style={{ color: COLORS.text }}>{o.title}</p>
+                                <p className="text-xs mt-1 leading-snug" style={{ color: COLORS.textMuted }}>{o.desc}</p>
                             </button>
                         ))}
                     </div>

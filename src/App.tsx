@@ -65,7 +65,18 @@ export default function App() {
         toast.success(`Financial Insights unlocked · ${INSIGHTS_PRICE} kr/month`);
     }
     const [accountOpen, setAccountOpen] = useState(false);
-    const [onboarding, setOnboarding] = useState(false);
+    // Lightweight hash routing so the onboarding flow has its own linkable URL (#/onboarding).
+    const [route, setRoute] = useState<string>(() => window.location.hash.replace(/^#\/?/, ''));
+    useEffect(() => {
+        const onHash = () => setRoute(window.location.hash.replace(/^#\/?/, ''));
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+    }, []);
+    function navigate(r: string) {
+        setRoute(r);
+        if (r) window.location.hash = `#/${r}`;
+        else history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     const [welcome, setWelcome] = useState(false);
     const [chatKey, setChatKey] = useState(0);
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('va-collapsed') === '1');
@@ -316,7 +327,7 @@ export default function App() {
                                 ))}
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
                                 <button
-                                    onClick={() => { setOnboarding(true); setAccountOpen(false); }}
+                                    onClick={() => { navigate('onboarding'); setAccountOpen(false); }}
                                     className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm"
                                     style={{ color: COLORS.text }}
                                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
@@ -419,10 +430,11 @@ export default function App() {
                 </div>
             )}
 
-            {onboarding && (
+            {/* Onboarding lives at its own linkable URL (#/onboarding), shown as a full-screen overlay. */}
+            {route === 'onboarding' && (
                 <Onboarding
-                    onClose={() => setOnboarding(false)}
-                    onComplete={() => { setOnboarding(false); setView('chat'); setWelcome(true); setChatKey((k) => k + 1); }}
+                    onClose={() => navigate('')}
+                    onComplete={() => { navigate(''); setView('chat'); setWelcome(true); setChatKey((k) => k + 1); }}
                 />
             )}
         </div>
