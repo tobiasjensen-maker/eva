@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, Orb, MicIcon, COLORS } from '../ui';
+import { Card, EmojiTile, AssistantPanel, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -365,7 +365,15 @@ export default function ActivityView({
             </div>
             </div>
 
-            <ReviewChat msgs={chatMsgs} input={chatInput} setInput={setChatInput} onSend={chatSend} />
+            <AssistantPanel
+                subtitle="review assistant"
+                messages={chatMsgs}
+                input={chatInput}
+                onInputChange={setChatInput}
+                onSend={chatSend}
+                chips={['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?']}
+                placeholder="Ask Eva about your review queue"
+            />
 
             {doc && <DocModal entry={doc.entry} doc={doc.doc} onClose={() => setDoc(null)} />}
         </div>
@@ -527,71 +535,6 @@ function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; on
                 </div>
             </div>
         </div>
-    );
-}
-
-// Eva review-assistant side panel (same pattern as Insights / Spaces).
-function ReviewChat({ msgs, input, setInput, onSend }: { msgs: { role: 'user' | 'assistant'; text: string }[]; input: string; setInput: (v: string) => void; onSend: (t: string) => void }) {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, [msgs]);
-    const chips = ['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?'];
-    const canSend = input.trim().length > 0;
-    return (
-        <aside className="shrink-0 bg-white flex flex-col h-full" style={{ width: 360, borderLeft: `1px solid ${COLORS.cardBorder}` }}>
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                <Orb size={20} />
-                <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>· review assistant</span>
-            </div>
-
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
-                {msgs.map((m, i) =>
-                    m.role === 'user' ? (
-                        <div key={i} className="flex justify-end">
-                            <div className="rounded-2xl px-3 py-2 text-sm" style={{ background: '#f1f1f3', color: COLORS.text, maxWidth: '88%' }}>{m.text}</div>
-                        </div>
-                    ) : (
-                        <div key={i} className="flex gap-2">
-                            <div className="shrink-0 mt-0.5"><Orb size={20} /></div>
-                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{m.text}</p>
-                        </div>
-                    )
-                )}
-            </div>
-
-            <div className="px-3 pb-3">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                    {chips.map((c) => (
-                        <button key={c} onClick={() => onSend(c)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}>
-                            {c}
-                        </button>
-                    ))}
-                </div>
-                <div className="relative rounded-xl" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                    <input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSend(input); } }}
-                        placeholder="Ask Eva about your review queue"
-                        className="w-full bg-transparent text-sm outline-none"
-                        style={{ color: COLORS.text, padding: '10px 76px 10px 12px' }}
-                    />
-                    <div className="absolute flex items-center gap-2" style={{ right: 8, top: '50%', transform: 'translateY(-50%)' }}>
-                        <button style={{ color: COLORS.textMuted }} title="Voice input"><MicIcon /></button>
-                        <button
-                            onClick={() => onSend(input)}
-                            disabled={!canSend}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{ width: 28, height: 28, background: canSend ? '#4c6ef5' : '#e4e4e7', color: canSend ? '#fff' : '#b0b0b8', cursor: canSend ? 'pointer' : 'not-allowed' }}
-                        >
-                            <Icon name="arrow-up" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </aside>
     );
 }
 

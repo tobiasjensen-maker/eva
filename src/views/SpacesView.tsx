@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, Orb, MicIcon, COLORS } from '../ui';
+import { Card, EmojiTile, AssistantPanel, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import type { Space } from '../types';
@@ -142,7 +142,6 @@ function SpaceChat({ space }: { space: Space }) {
     ]);
     const [input, setInput] = useState('');
     const chips = ['Add a forecast', 'Filter to last quarter', 'Export as PDF'];
-    const canSend = input.trim().length > 0;
 
     function send(text: string) {
         const t = text.trim();
@@ -152,69 +151,14 @@ function SpaceChat({ space }: { space: Space }) {
     }
 
     return (
-        <aside className="shrink-0 bg-white flex flex-col h-full" style={{ width: 360, borderLeft: `1px solid ${COLORS.cardBorder}` }}>
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                <Orb size={20} />
-                <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>· about this Space</span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
-                {msgs.map((m, i) =>
-                    m.role === 'user' ? (
-                        <div key={i} className="flex justify-end">
-                            <div className="rounded-2xl px-3 py-2 text-sm" style={{ background: '#f1f1f3', color: COLORS.text, maxWidth: '88%' }}>{m.text}</div>
-                        </div>
-                    ) : (
-                        <div key={i} className="flex gap-2">
-                            <div className="shrink-0 mt-0.5"><Orb size={20} /></div>
-                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{m.text}</p>
-                        </div>
-                    )
-                )}
-            </div>
-
-            <div className="px-3 pb-3">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                    {chips.map((c) => (
-                        <button
-                            key={c}
-                            onClick={() => send(c)}
-                            className="rounded-full px-2.5 py-1 text-xs"
-                            style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}
-                        >
-                            {c}
-                        </button>
-                    ))}
-                </div>
-                <div className="relative rounded-xl" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                    <input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(input); } }}
-                        placeholder="Ask Eva about this Space"
-                        className="w-full bg-transparent text-sm outline-none"
-                        style={{ color: COLORS.text, padding: '10px 76px 10px 12px' }}
-                    />
-                    <div className="absolute flex items-center gap-2" style={{ right: 8, top: '50%', transform: 'translateY(-50%)' }}>
-                        <button style={{ color: COLORS.textMuted }} title="Voice input"><MicIcon /></button>
-                        <button
-                            onClick={() => send(input)}
-                            disabled={!canSend}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{
-                                width: 28,
-                                height: 28,
-                                background: canSend ? '#4c6ef5' : '#e4e4e7',
-                                color: canSend ? '#fff' : '#b0b0b8',
-                                cursor: canSend ? 'pointer' : 'not-allowed',
-                            }}
-                        >
-                            <Icon name="arrow-up" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </aside>
+        <AssistantPanel
+            subtitle="about this Space"
+            messages={msgs}
+            input={input}
+            onInputChange={setInput}
+            onSend={send}
+            chips={chips}
+            placeholder="Ask Eva about this Space"
+        />
     );
 }

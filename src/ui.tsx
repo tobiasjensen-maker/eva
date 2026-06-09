@@ -1,4 +1,5 @@
-import { useState, useEffect, useId, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useId, type CSSProperties, type ReactNode } from 'react';
+import { Icon } from '@economic/taco';
 
 export const COLORS = {
     nav: '#0c0d13',
@@ -109,6 +110,113 @@ export function SidebarTooltip({ label, show = true, children }: { label: string
                     {label}
                 </span>
             )}
+        </div>
+    );
+}
+
+// Shell background — the grey the floating panels sit on.
+export const SHELL_GREY = '#ececee';
+
+// A message in the assistant panel. `action` renders a button under an assistant reply.
+export interface PanelMsg {
+    role: 'user' | 'assistant';
+    text: string;
+    action?: { label: string; onClick: () => void };
+}
+
+// Reusable Eva assistant side panel — a self-contained floating, rounded container
+// (like the sidebar) used on Review, Insights and Spaces.
+export function AssistantPanel({
+    subtitle,
+    messages,
+    input,
+    onInputChange,
+    onSend,
+    chips = [],
+    placeholder = 'Ask Eva',
+    width = 344,
+}: {
+    subtitle?: string;
+    messages: PanelMsg[];
+    input: string;
+    onInputChange: (v: string) => void;
+    onSend: (text: string) => void;
+    chips?: string[];
+    placeholder?: string;
+    width?: number;
+}) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }, [messages]);
+    const canSend = input.trim().length > 0;
+    return (
+        <div className="shrink-0 h-full" style={{ background: SHELL_GREY, padding: 10, paddingLeft: 8 }}>
+            <div
+                className="bg-white flex flex-col h-full rounded-2xl"
+                style={{ width, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)' }}
+            >
+                <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <Orb size={20} />
+                    <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
+                    {subtitle && <span className="text-xs" style={{ color: COLORS.textMuted }}>· {subtitle}</span>}
+                </div>
+
+                <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+                    {messages.map((m, i) =>
+                        m.role === 'user' ? (
+                            <div key={i} className="flex justify-end">
+                                <div className="rounded-2xl px-3 py-2 text-sm" style={{ background: '#f1f1f3', color: COLORS.text, maxWidth: '88%' }}>{m.text}</div>
+                            </div>
+                        ) : (
+                            <div key={i} className="flex gap-2">
+                                <div className="shrink-0 mt-0.5"><Orb size={20} /></div>
+                                <div className="min-w-0">
+                                    <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{m.text}</p>
+                                    {m.action && (
+                                        <button onClick={m.action.onClick} className="mt-2 rounded-lg px-3 py-1.5 text-sm font-semibold" style={{ background: '#4c6ef5', color: '#fff' }}>
+                                            {m.action.label}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    )}
+                </div>
+
+                <div className="px-3 pb-3">
+                    {chips.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                            {chips.map((c) => (
+                                <button key={c} onClick={() => onSend(c)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}>
+                                    {c}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="relative rounded-xl" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
+                        <input
+                            value={input}
+                            onChange={(e) => onInputChange(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSend(input); } }}
+                            placeholder={placeholder}
+                            className="w-full bg-transparent text-sm outline-none"
+                            style={{ color: COLORS.text, padding: '10px 76px 10px 12px' }}
+                        />
+                        <div className="absolute flex items-center gap-2" style={{ right: 8, top: '50%', transform: 'translateY(-50%)' }}>
+                            <button style={{ color: COLORS.textMuted }} title="Voice input"><MicIcon /></button>
+                            <button
+                                onClick={() => onSend(input)}
+                                disabled={!canSend}
+                                className="flex items-center justify-center rounded-lg"
+                                style={{ width: 28, height: 28, background: canSend ? '#4c6ef5' : '#e4e4e7', color: canSend ? '#fff' : '#b0b0b8', cursor: canSend ? 'pointer' : 'not-allowed' }}
+                            >
+                                <Icon name="arrow-up" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
