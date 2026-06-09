@@ -56,7 +56,7 @@ export default function App() {
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
     const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
-    const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review'>('all');
+    const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review'>('needs-review');
     const [insightsPro, setInsightsPro] = useState(() => localStorage.getItem('va-insights-pro') === '1');
     useEffect(() => {
         localStorage.setItem('va-insights-pro', insightsPro ? '1' : '0');
