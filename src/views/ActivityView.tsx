@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, Orb, AssistantPanel, COLORS } from '../ui';
+import { Card, EmojiTile, Orb, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -177,14 +177,35 @@ type StatusFilter = 'all' | 'completed' | 'needs-review';
 
 const clientName = (id: string) => (id === 'portfolio' ? 'Portfolio-wide' : AGREEMENTS.find((a) => a.id === id)?.name ?? id);
 
+// Answers for the shell chat panel's typed questions / chips on the Review screen.
+export function reviewAnswer(entries: LogEntry[], q: string): string {
+    const t = q.toLowerCase();
+    const flagged = entries.filter((e) => e.status === 'needs-review');
+    if (/attention|most|priorit|urgent|first|start/.test(t)) {
+        if (!flagged.length) return 'Nothing is flagged right now — you’re all caught up. 🎉';
+        const top = flagged.find((e) => e.confidence === 'low') ?? flagged[0];
+        return `You have ${flagged.length} item${flagged.length > 1 ? 's' : ''} flagged. I'd start with “${top.desc}” for ${clientName(top.client)} — it's ${top.confidence} confidence, so it most needs a human eye.`;
+    }
+    if (/summar|today|recap|do/.test(t)) {
+        const today = entries.filter((e) => e.daysAgo === 0);
+        return `Today I took ${today.length} actions: ${today.filter((e) => e.status === 'completed').length} auto-resolved and ${today.filter((e) => e.status === 'needs-review').length} flagged for your review.`;
+    }
+    if (/risk|wrong|fail|confiden/.test(t)) {
+        const low = flagged.filter((e) => e.confidence === 'low');
+        return low.length ? `The riskiest items are the low-confidence ones: ${low.map((e) => `“${e.desc}”`).join(', ')}. I held these rather than acting automatically.` : 'No low-confidence actions outstanding — nothing risky in the queue.';
+    }
+    return 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask Eva” on an item.';
+}
+
 export default function ActivityView({
-    entries, setEntries, status, onStatusChange, scope = 'portfolio',
+    entries, setEntries, status, onStatusChange, scope = 'portfolio', onAskEva,
 }: {
     entries: LogEntry[];
     setEntries: Dispatch<SetStateAction<LogEntry[]>>;
     status: StatusFilter;
     onStatusChange: (s: StatusFilter) => void;
     scope?: string;
+    onAskEva: (user: string, answer: string) => void;
 }) {
     const [range, setRange] = useState('30');
     const [skill, setSkill] = useState('all');
@@ -193,40 +214,11 @@ export default function ActivityView({
     const [acting, setActing] = useState<string | null>(null);
     const [doc, setDoc] = useState<{ entry: LogEntry; doc: SourceDoc } | null>(null);
 
-    // ---- Eva review-assistant side panel ----
-    const [chatMsgs, setChatMsgs] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
-        { role: 'assistant', text: "I'm Eva. Ask me about anything in your review queue — or hit “Ask Eva” on a flagged item and I'll explain my thinking." },
-    ]);
-    const [chatInput, setChatInput] = useState('');
-
-    function reviewAnswer(q: string): string {
-        const t = q.toLowerCase();
-        const flagged = entries.filter((e) => e.status === 'needs-review');
-        if (/attention|most|priorit|urgent|first|start/.test(t)) {
-            if (!flagged.length) return 'Nothing is flagged right now — you’re all caught up. 🎉';
-            const top = flagged.find((e) => e.confidence === 'low') ?? flagged[0];
-            return `You have ${flagged.length} item${flagged.length > 1 ? 's' : ''} flagged. I'd start with “${top.desc}” for ${clientName(top.client)} — it's ${top.confidence} confidence, so it most needs a human eye.`;
-        }
-        if (/summar|today|recap|do/.test(t)) {
-            const today = entries.filter((e) => e.daysAgo === 0);
-            return `Today I took ${today.length} actions: ${today.filter((e) => e.status === 'completed').length} auto-resolved and ${today.filter((e) => e.status === 'needs-review').length} flagged for your review.`;
-        }
-        if (/risk|wrong|fail|confiden/.test(t)) {
-            const low = flagged.filter((e) => e.confidence === 'low');
-            return low.length ? `The riskiest items are the low-confidence ones: ${low.map((e) => `“${e.desc}”`).join(', ')}. I held these rather than acting automatically.` : 'No low-confidence actions outstanding — nothing risky in the queue.';
-        }
-        return 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask Eva” on an item.';
-    }
-    function chatSend(text: string) {
-        const t = text.trim();
-        if (!t) return;
-        setChatMsgs((m) => [...m, { role: 'user', text: t }, { role: 'assistant', text: reviewAnswer(t) }]);
-        setChatInput('');
-    }
+    // "Ask Eva" on a flagged item — hand the question + explanation to the shell chat panel.
     function askAbout(e: LogEntry) {
         const userText = `Why did you flag “${e.desc}”?`;
         const answer = `I flagged this for ${clientName(e.client)} because: ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${e.suggestions?.length ? ` My suggested next step is “${e.suggestions[0]}” — want me to go ahead?` : ''}`;
-        setChatMsgs((m) => [...m, { role: 'user', text: userText }, { role: 'assistant', text: answer }]);
+        onAskEva(userText, answer);
     }
 
     // Reflect the agreement chosen in the sidebar into the Client filter.
@@ -266,9 +258,8 @@ export default function ActivityView({
     const groups = BUCKET_ORDER.map((b) => ({ bucket: b, items: filtered.filter((e) => e.bucket === b) })).filter((g) => g.items.length > 0);
 
     return (
-        <div className="flex h-full">
-            <div className="flex-1 min-w-0 overflow-y-auto">
-            <div className="px-8 py-7 mx-auto" style={{ maxWidth: 880 }}>
+        <div className="h-full overflow-y-auto">
+            <div className="px-8 py-7 mx-auto" style={{ maxWidth: 1040 }}>
                 {/* header */}
                 <div className="flex items-start justify-between gap-3 mb-1">
                     <div>
@@ -363,17 +354,6 @@ export default function ActivityView({
                     ))}
                 </div>
             </div>
-            </div>
-
-            <AssistantPanel
-                subtitle="review assistant"
-                messages={chatMsgs}
-                input={chatInput}
-                onInputChange={setChatInput}
-                onSend={chatSend}
-                chips={['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?']}
-                placeholder="Ask Eva about your review queue"
-            />
 
             {doc && <DocModal entry={doc.entry} doc={doc.doc} onClose={() => setDoc(null)} />}
         </div>

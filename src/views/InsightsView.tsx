@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
-import { Card, AssistantPanel, type PanelMsg, COLORS } from '../ui';
+import { Card, COLORS } from '../ui';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
@@ -316,8 +316,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
     const pd = getPeriodData(profile, period);
 
     return (
-        <div className="flex h-full">
-            <div className="flex-1 min-w-0 overflow-y-auto px-8 py-7">
+        <div className="h-full overflow-y-auto px-8 py-7">
                 <div className="mx-auto" style={{ maxWidth: 880 }}>
                     {/* header */}
                     <div className="flex items-center justify-between gap-3 mb-5">
@@ -427,15 +426,26 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                         )}
                     </div>
                 </div>
-            </div>
-
-            <InsightsChat key={(pro ? 'pro' : 'free') + scope} pro={pro} subjectLabel={subjectLabel} profile={profile} onUpgrade={onUpgrade} />
         </div>
     );
 }
 
-// ---- Eva analyst side panel ----
-interface AMsg { role: 'user' | 'assistant'; text: string; upsell?: boolean }
+// ---- Eva insights-analyst answers (consumed by the shell chat panel) ----
+export function insightsIntro(pro: boolean, subjectLabel: string): string {
+    return pro
+        ? `I've got full access to the numbers for ${subjectLabel}. Ask me to analyze a trend, explain a change, or forecast.`
+        : `I can show you the basics for ${subjectLabel}. Unlock Insights and I'll analyze cash flow, margins, anomalies and forecasts in depth.`;
+}
+export function insightsChips(pro: boolean): string[] {
+    return pro
+        ? ['Analyze cash flow', 'Why did margin change?', 'Forecast next quarter', 'Any anomalies?']
+        : ['Analyze cash flow', 'Forecast next quarter', 'What does Insights include?'];
+}
+export function insightsAnswer(scope: string, pro: boolean, subjectLabel: string, q: string): string {
+    if (!pro) return `That's a deep-analysis question. With Insights Pro I'd break this down for ${subjectLabel} — unlock it on this page to have me answer it here.`;
+    const profile = PROFILES[scope] ?? PROFILES.portfolio;
+    return proAnswer(profile, subjectLabel, q);
+}
 
 function proAnswer(profile: Profile, subjectLabel: string, q: string): string {
     const t = q.toLowerCase();
@@ -457,47 +467,3 @@ function proAnswer(profile: Profile, subjectLabel: string, q: string): string {
     return `Looking at ${subjectLabel}: revenue is trending ${profile.yoy} year-on-year, gross margin ${mpct(profile.margin)}, with ~${profile.runway} of runway. Ask me about cash flow, margins, expenses, anomalies or the forecast.`;
 }
 
-function InsightsChat({ pro, subjectLabel, profile, onUpgrade }: { pro: boolean; subjectLabel: string; profile: Profile; onUpgrade: () => void }) {
-    const intro = pro
-        ? `I've got full access to the numbers for ${subjectLabel}. Ask me to analyze a trend, explain a change, or forecast.`
-        : `I can show you the basics for ${subjectLabel}. Unlock Insights and I'll analyze cash flow, margins, anomalies and forecasts in depth — here and in chat.`;
-    const [msgs, setMsgs] = useState<AMsg[]>([{ role: 'assistant', text: intro }]);
-    const [input, setInput] = useState('');
-    const chips = pro
-        ? ['Analyze cash flow', 'Why did margin change?', 'Forecast next quarter', 'Any anomalies?']
-        : ['Analyze cash flow', 'Forecast next quarter', 'What does Insights include?'];
-    function answer(q: string): AMsg {
-        if (!pro) {
-            return {
-                role: 'assistant',
-                upsell: true,
-                text: `That's a deep-analysis question. With Insights Pro I'd break this down for ${subjectLabel} — and answer it right here. Want to unlock it?`,
-            };
-        }
-        return { role: 'assistant', text: proAnswer(profile, subjectLabel, q) };
-    }
-
-    function send(text: string) {
-        const t = text.trim();
-        if (!t) return;
-        setMsgs((m) => [...m, { role: 'user', text: t }, answer(t)]);
-        setInput('');
-    }
-
-    const messages: PanelMsg[] = msgs.map((m) => ({
-        role: m.role,
-        text: m.text,
-        action: m.upsell ? { label: `Unlock Insights · ${INSIGHTS_PRICE} kr/mo`, onClick: onUpgrade } : undefined,
-    }));
-    return (
-        <AssistantPanel
-            subtitle="insights analyst"
-            messages={messages}
-            input={input}
-            onInputChange={setInput}
-            onSend={send}
-            chips={chips}
-            placeholder="Ask Eva to analyze the numbers"
-        />
-    );
-}

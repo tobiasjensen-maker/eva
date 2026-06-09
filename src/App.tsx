@@ -18,10 +18,11 @@ const SIDEBAR_BORDER = 'rgba(255,255,255,0.10)';
 import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
-import InsightsView, { INSIGHTS_PRICE } from './views/InsightsView';
-import ActivityView, { ACTIVITY_ENTRIES } from './views/ActivityView';
+import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
+import ActivityView, { ACTIVITY_ENTRIES, reviewAnswer } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
+import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
@@ -57,6 +58,11 @@ export default function App() {
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
     const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
     const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review'>('needs-review');
+    const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
+    useEffect(() => {
+        localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
+    }, [chatCollapsed]);
+    const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null);
     const [insightsPro, setInsightsPro] = useState(() => localStorage.getItem('va-insights-pro') === '1');
     useEffect(() => {
         localStorage.setItem('va-insights-pro', insightsPro ? '1' : '0');
@@ -96,6 +102,25 @@ export default function App() {
     const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
     const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review').length;
+
+    // The contextual Eva chat panel (third shell block) — shown on Review and Insights.
+    const subjectLabel = scope === 'portfolio' ? 'your portfolio' : scopeName;
+    const chatPanel =
+        view === 'activity'
+            ? {
+                  subtitle: 'review assistant',
+                  intro: "I'm Eva. Ask me about your review queue — or hit “Ask Eva” on a flagged item and I'll explain my thinking.",
+                  chips: ['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?'],
+                  respond: (q: string) => reviewAnswer(activity, q),
+              }
+            : view === 'insights'
+            ? {
+                  subtitle: 'insights analyst',
+                  intro: insightsIntro(insightsPro, subjectLabel),
+                  chips: insightsChips(insightsPro),
+                  respond: (q: string) => insightsAnswer(scope, insightsPro, subjectLabel, q),
+              }
+            : null;
 
     function applyScope(s: string) {
         setScope(s);
@@ -410,11 +435,32 @@ export default function App() {
                 )}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} pro={insightsPro} onUpgrade={upgradeInsights} />}
                 {view === 'activity' && (
-                    <ActivityView entries={activity} setEntries={setActivity} status={activityStatus} onStatusChange={setActivityStatus} scope={scope} />
+                    <ActivityView
+                        entries={activity}
+                        setEntries={setActivity}
+                        status={activityStatus}
+                        onStatusChange={setActivityStatus}
+                        scope={scope}
+                        onAskEva={(user, answer) => setPendingAsk({ user, answer })}
+                    />
                 )}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} />}
             </main>
+
+            {chatPanel && (
+                <ChatPanel
+                    key={view}
+                    subtitle={chatPanel.subtitle}
+                    intro={chatPanel.intro}
+                    chips={chatPanel.chips}
+                    respond={chatPanel.respond}
+                    collapsed={chatCollapsed}
+                    onToggleCollapsed={() => setChatCollapsed((c) => !c)}
+                    pendingAsk={pendingAsk}
+                    onPendingConsumed={() => setPendingAsk(null)}
+                />
+            )}
 
             {pendingScope && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setPendingScope(null)}>
