@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, Orb, COLORS } from '../ui';
+import { Card, Orb, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -155,10 +155,10 @@ const BUCKET_LABEL: Record<Bucket, string> = {
 };
 const BUCKET_ORDER: Bucket[] = ['today', 'yesterday', 'week', 'older'];
 
-const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string }> = {
-    high: { bg: '#e9f7ef', fg: '#15803d', label: 'High' },
-    medium: { bg: '#fbf3e0', fg: '#92710f', label: 'Medium' },
-    low: { bg: '#fdecec', fg: '#dc2626', label: 'Low' },
+const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string; explain: string }> = {
+    high: { bg: '#e9f7ef', fg: '#15803d', label: 'High', explain: 'High confidence — Eva matched this cleanly and could complete it automatically.' },
+    medium: { bg: '#fbf3e0', fg: '#92710f', label: 'Medium', explain: 'Medium confidence — mostly clear, but worth a quick check.' },
+    low: { bg: '#fdecec', fg: '#dc2626', label: 'Low', explain: 'Low confidence — Eva wasn’t sure, so it held this for your review.' },
 };
 const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: string; icon: string }> = {
     completed: { bg: '#e9f7ef', fg: '#15803d', label: 'Completed', icon: 'circle-tick' },
@@ -368,25 +368,26 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
     return (
         <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: open ? '#fafafa' : '#fff' }}>
-                <EmojiTile emoji={sk.emoji} size={36} />
+                <span
+                    title={st.label}
+                    className="flex items-center justify-center shrink-0 rounded-lg"
+                    style={{ width: 36, height: 36, background: `${st.fg}1a`, color: st.fg }}
+                >
+                    <Icon name={st.icon as never} />
+                </span>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: COLORS.text }}>{entry.desc}</p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
                         {sk.label} · {clientName(entry.client)} · {entry.dateLabel} · {entry.time}
                     </p>
                 </div>
-                {entry.doc && (
-                    <span
-                        role="button"
-                        tabIndex={0}
-                        title={`View source ${entry.doc.kind.toLowerCase()} ${entry.doc.ref}`}
-                        onClick={(ev) => { ev.stopPropagation(); onOpenDoc(); }}
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs shrink-0"
-                        style={{ background: '#eef2ff', color: '#4456c7', cursor: 'pointer' }}
-                    >
-                        <Icon name={DOC_ICON[entry.doc.kind] as never} /> {entry.doc.ref}
-                    </span>
-                )}
+                <span
+                    title={conf.explain}
+                    className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0"
+                    style={{ background: conf.bg, color: conf.fg, cursor: 'help' }}
+                >
+                    {conf.label} confidence
+                </span>
                 {needsReview && (
                     <span
                         role="button"
@@ -401,10 +402,6 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
                         <Orb size={16} /> Ask Eva
                     </span>
                 )}
-                <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: conf.bg, color: conf.fg }}>{conf.label}</span>
-                <span className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: st.bg, color: st.fg }}>
-                    <Icon name={st.icon as never} /> {st.label}
-                </span>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
 
