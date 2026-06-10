@@ -169,6 +169,48 @@ export function SidebarTooltip({ label, show = true, children }: { label: string
     );
 }
 
+// Segmented tab control (the Insights period pattern) — reused for date ranges etc.
+export function SegmentedTabs({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+    return (
+        <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
+            {options.map((o) => {
+                const active = value === o.value;
+                return (
+                    <button
+                        key={o.value}
+                        onClick={() => onChange(o.value)}
+                        className="rounded-md text-xs font-medium whitespace-nowrap"
+                        style={{
+                            padding: '5px 10px',
+                            background: active ? '#fff' : 'transparent',
+                            color: active ? COLORS.text : COLORS.textMuted,
+                            boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                        }}
+                    >
+                        {o.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+// Eva-branded suggestion / action chip — the Eva mark + label in an outlined pill.
+export function EvaChip({ label, onClick }: { label: string; onClick: () => void }) {
+    return (
+        <button
+            onClick={onClick}
+            className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-left"
+            style={{ background: '#fff', border: '1px solid #efddc0', color: COLORS.text }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#fff7ed')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+        >
+            <span className="shrink-0"><Orb size={16} /></span>
+            <span>{label}</span>
+        </button>
+    );
+}
+
 // Sticky page header for a scrollable content container — keeps the page title
 // (and its primary controls) pinned as the page scrolls.
 export function PageHeader({

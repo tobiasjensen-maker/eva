@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
-import { Card, PageHeader, COLORS } from '../ui';
+import { Card, PageHeader, SegmentedTabs, COLORS } from '../ui';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
@@ -201,31 +201,6 @@ function StatLine({ label, value, accent }: { label: string; value: string; acce
     );
 }
 
-function PeriodSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    return (
-        <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
-            {PERIODS.map((p) => {
-                const active = value === p.key;
-                return (
-                    <button
-                        key={p.key}
-                        onClick={() => onChange(p.key)}
-                        className="rounded-md text-xs font-medium whitespace-nowrap"
-                        style={{
-                            padding: '5px 10px',
-                            background: active ? '#fff' : 'transparent',
-                            color: active ? COLORS.text : COLORS.textMuted,
-                            boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-                        }}
-                    >
-                        {p.label}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
-
 // ---- premium (locked) analyses, rendered from the active profile ----
 const PREMIUM_META = [
     { key: 'cashflow', title: 'Cash flow analysis', icon: 'transfer', desc: 'Operating inflow vs. outflow and net position over time.' },
@@ -317,7 +292,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader title="Insights" right={<PeriodSelector value={period} onChange={setPeriod} />} />
+                <PageHeader title="Insights" right={<SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: p.label }))} />} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* upgrade banner */}
                     {!pro && (

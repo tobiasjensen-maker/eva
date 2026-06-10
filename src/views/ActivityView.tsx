@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, Orb, PageHeader, COLORS } from '../ui';
+import { Card, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -258,16 +258,15 @@ export default function ActivityView({
     ];
 
     const skillOptions = [{ value: 'all', label: 'All skills' }, ...Object.keys(SKILL_INFO).map((id) => ({ value: id, label: SKILL_INFO[id].label }))];
-    const clientOptions = [{ value: 'all', label: 'All clients' }, ...AGREEMENTS.map((a) => ({ value: a.id, label: a.name }))];
 
     const groups = BUCKET_ORDER.map((b) => ({ bucket: b, items: filtered.filter((e) => e.bucket === b) })).filter((g) => g.items.length > 0);
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title="Review" right={<Select value={range} onChange={setRange} options={DATE_RANGES} align="right" />} />
+            <PageHeader title="Review" right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES} />} />
             <div className="px-8 pt-5 pb-7 mx-auto" style={{ maxWidth: 1040 }}>
                 {range === 'custom' && (
-                    <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
+                    <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
                         <span>to</span>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
@@ -275,9 +274,8 @@ export default function ActivityView({
                 )}
 
                 {/* filters */}
-                <div className="flex items-center gap-2 mt-4">
+                <div className="flex items-center gap-2">
                     <Select value={skill} onChange={setSkill} options={skillOptions} leadingLabel="Skill" />
-                    <Select value={client} onChange={setClient} options={clientOptions} leadingLabel="Client" />
                 </div>
 
                 {/* stats — double as status filters (flagged first) */}
@@ -309,15 +307,6 @@ export default function ActivityView({
                         );
                     })}
                 </div>
-
-                {status !== 'all' && (
-                    <div className="flex items-center gap-2 mt-3">
-                        <span className="text-xs" style={{ color: COLORS.textMuted }}>
-                            Showing {status === 'needs-review' ? 'items that need your review' : 'resolved actions'}
-                        </span>
-                        <button onClick={() => onStatusChange('all')} className="text-xs font-medium" style={{ color: '#4c6ef5' }}>Clear filter</button>
-                    </div>
-                )}
 
                 {/* log */}
                 <div className="mt-5 pb-10">

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Orb, MicIcon, EmojiTile, ScopeSwitcher, COLORS } from '../ui';
+import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { CHAT_SUGGESTIONS, AGREEMENTS } from '../data';
 import type { Skill, Space, ViewId } from '../types';
@@ -764,16 +764,9 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     <div className="w-full" style={{ maxWidth: 640 }}>
                         <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} className="mt-7" />
                         <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-wrap gap-2">
                             {suggestions.map((s) => (
-                                <button
-                                    key={s}
-                                    onClick={() => send(s)}
-                                    className="text-left text-sm rounded-xl px-4 py-3"
-                                    style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fbfbfc' }}
-                                >
-                                    {s}
-                                </button>
+                                <EvaChip key={s} label={s} onClick={() => send(s)} />
                             ))}
                         </div>
                         <p className="mt-4 text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
@@ -1156,16 +1149,7 @@ function FollowUps({ items, onPick }: { items: string[]; onPick: (t: string) => 
             </p>
             <div className="flex flex-wrap gap-2">
                 {items.map((t) => (
-                    <button
-                        key={t}
-                        onClick={() => onPick(t)}
-                        className="text-left text-sm rounded-full px-3 py-1.5"
-                        style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-                    >
-                        {t}
-                    </button>
+                    <EvaChip key={t} label={t} onClick={() => onPick(t)} />
                 ))}
             </div>
         </div>

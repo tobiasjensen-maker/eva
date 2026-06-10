@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Icon } from '@economic/taco';
-import { Orb, MicIcon, COLORS } from './ui';
+import { Orb, MicIcon, EvaChip, COLORS } from './ui';
 
 const PANEL_SHADOW = '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)';
 const SIDEBAR_BORDER = '#e9e9ec';
@@ -147,16 +147,7 @@ export function ChatPanel({
                 {chips.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {chips.map((c) => (
-                            <button
-                                key={c}
-                                onClick={() => send(c)}
-                                className="rounded-full px-2.5 py-1 text-xs"
-                                style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-                            >
-                                {c}
-                            </button>
+                            <EvaChip key={c} label={c} onClick={() => send(c)} />
                         ))}
                     </div>
                 )}
