@@ -316,8 +316,8 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
     const pd = getPeriodData(profile, period);
 
     return (
-        <div className="h-full overflow-y-auto px-8 py-7">
-                <div className="mx-auto" style={{ maxWidth: 880 }}>
+        <div className="h-full overflow-y-auto">
+                <div className="mx-auto px-8 py-7" style={{ maxWidth: 1040 }}>
                     {/* header */}
                     <div className="flex items-center justify-between gap-3 mb-5">
                         <div className="flex items-center gap-2.5 min-w-0">

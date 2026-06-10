@@ -56,6 +56,7 @@ export default function App() {
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
+    const [activeSpace, setActiveSpace] = useState<Space | null>(null);
     const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
     const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review'>('needs-review');
     const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
@@ -103,7 +104,23 @@ export default function App() {
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
     const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review').length;
 
-    // The contextual Eva chat panel (third shell block) — shown on Review and Insights.
+    function skillsAnswer(q: string): string {
+        const t = q.toLowerCase();
+        const active = skills.filter((s) => s.state === 'active').length;
+        if (/which|enable|recommend|should|next/.test(t)) return `You have ${active} skills active. Based on your books I'd enable “Collect missing documents” and “Close the books” next — they'd save the most manual work.`;
+        if (/reconcil|bank/.test(t)) return 'Bank reconciliation matches incoming and outgoing payments to invoices and bills, then books them to the right account — you only review anything low-confidence.';
+        if (/remind/.test(t)) return 'The reminders skill watches overdue invoices and sends the right template per client and language, logs a note, and follows up automatically.';
+        return 'Each skill automates one job — reconciliation, reminders, document collection, monitoring and more. Open a skill to set its trigger, autonomy and guardrails. What do you want to automate?';
+    }
+    function spacesAnswer(q: string): string {
+        const t = q.toLowerCase().replace(/[?.!]/g, '').trim();
+        if (activeSpace) return `On it — I'll ${t} for “${activeSpace.title}” and update it live.`;
+        if (/dashboard|revenue/.test(t)) return 'I can build a revenue dashboard with a monthly trend, period comparison and a forecast. Want me to create it now?';
+        if (/receivable|aged|report/.test(t)) return 'An aged receivables report buckets open invoices by 0–30 / 31–60 / 61–90 / 90+ days and flags the worst exposure. I can save it as a Space.';
+        return 'A Space is a reusable dashboard, report, list or form built from your data. Tell me what you want to see and I’ll create it.';
+    }
+
+    // The contextual Eva chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? 'your portfolio' : scopeName;
     const chatPanel =
         view === 'activity'
@@ -120,7 +137,27 @@ export default function App() {
                   chips: insightsChips(insightsPro),
                   respond: (q: string) => insightsAnswer(scope, insightsPro, subjectLabel, q),
               }
+            : view === 'skills'
+            ? {
+                  subtitle: 'skills assistant',
+                  intro: "I'm Eva. I can help you pick the right skills, explain what each automates, or set one up. What are you trying to automate?",
+                  chips: ['Which skills should I enable?', 'What does reconciliation automate?', 'Help me set up reminders'],
+                  respond: skillsAnswer,
+              }
+            : view === 'spaces'
+            ? {
+                  subtitle: activeSpace ? 'about this Space' : 'spaces assistant',
+                  intro: activeSpace
+                      ? `Ask me to refine “${activeSpace.title}” — add a forecast, filter it, or export it.`
+                      : "I'm Eva. Tell me what you want to track and I'll spin up a Space — a dashboard, report, list or form.",
+                  chips: activeSpace
+                      ? ['Add a forecast', 'Filter to last quarter', 'Export as PDF']
+                      : ['Build a revenue dashboard', 'Create an aged receivables report', 'What can a Space do?'],
+                  respond: spacesAnswer,
+              }
             : null;
+    // Remount the panel (fresh conversation) when the page — or the open Space — changes.
+    const panelKey = view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '');
 
     function applyScope(s: string) {
         setScope(s);
@@ -445,12 +482,12 @@ export default function App() {
                     />
                 )}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
-                {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} />}
+                {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>
 
             {chatPanel && (
                 <ChatPanel
-                    key={view}
+                    key={panelKey}
                     subtitle={chatPanel.subtitle}
                     intro={chatPanel.intro}
                     chips={chatPanel.chips}

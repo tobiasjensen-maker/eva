@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, AssistantPanel, COLORS } from '../ui';
+import { Card, EmojiTile, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import type { Space } from '../types';
@@ -8,6 +8,7 @@ import type { Space } from '../types';
 interface Props {
     spaces: Space[];
     onCreate: (title: string, description: string) => void;
+    onActiveSpaceChange?: (space: Space | null) => void;
 }
 
 const FREE_SPACE_LIMIT = 5;
@@ -30,9 +31,15 @@ const SPACE_TEMPLATES: Template[] = [
     { id: 'tpl-suppliers', title: 'Supplier Directory', description: 'All suppliers with open bills.', category: 'Lists', emoji: '🏢', features: ['Open bills per supplier', 'Due dates'] },
 ];
 
-export default function SpacesView({ spaces, onCreate }: Props) {
+export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Props) {
     const [gallery, setGallery] = useState(false);
     const [open, setOpen] = useState<Space | null>(null);
+
+    // Let the shell chat panel know which Space (if any) is open, so it can be contextual.
+    useEffect(() => {
+        onActiveSpaceChange?.(open);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
     if (open) return <SpaceDetail space={open} onBack={() => setOpen(null)} />;
 
@@ -100,65 +107,29 @@ export default function SpacesView({ spaces, onCreate }: Props) {
 
 function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
     return (
-        <div className="flex h-full">
-            <div className="flex-1 min-w-0 overflow-y-auto px-8 py-7">
-                <div className="mx-auto" style={{ maxWidth: 860 }}>
-                    <button
-                        onClick={onBack}
-                        className="flex items-center gap-1.5 text-sm mb-4"
-                        style={{ color: COLORS.textMuted }}
-                    >
-                        <Icon name="arrow-left" /> Spaces
-                    </button>
-                    <div className="flex items-start gap-3 mb-6">
-                        <EmojiTile emoji={space.emoji} size={44} />
-                        <div>
-                            <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>
-                                {space.title}
-                            </h1>
-                            <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>
-                                {space.description}
-                            </p>
-                        </div>
+        <div className="h-full overflow-y-auto">
+            <div className="mx-auto px-8 py-7" style={{ maxWidth: 1040 }}>
+                <button
+                    onClick={onBack}
+                    className="flex items-center gap-1.5 text-sm mb-4"
+                    style={{ color: COLORS.textMuted }}
+                >
+                    <Icon name="arrow-left" /> Spaces
+                </button>
+                <div className="flex items-start gap-3 mb-6">
+                    <EmojiTile emoji={space.emoji} size={44} />
+                    <div>
+                        <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>
+                            {space.title}
+                        </h1>
+                        <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>
+                            {space.description}
+                        </p>
                     </div>
-
-                    <ArtifactPreview space={space} />
                 </div>
+
+                <ArtifactPreview space={space} />
             </div>
-
-            <SpaceChat space={space} />
         </div>
-    );
-}
-
-interface SpaceMsg {
-    role: 'user' | 'assistant';
-    text: string;
-}
-
-function SpaceChat({ space }: { space: Space }) {
-    const [msgs, setMsgs] = useState<SpaceMsg[]>([
-        { role: 'assistant', text: `I'm Eva. Ask me to refine “${space.title}” — add a forecast, filter it, or export it.` },
-    ]);
-    const [input, setInput] = useState('');
-    const chips = ['Add a forecast', 'Filter to last quarter', 'Export as PDF'];
-
-    function send(text: string) {
-        const t = text.trim();
-        if (!t) return;
-        setMsgs((m) => [...m, { role: 'user', text: t }, { role: 'assistant', text: `On it — I'll ${t.toLowerCase()} for this Space and update it live.` }]);
-        setInput('');
-    }
-
-    return (
-        <AssistantPanel
-            subtitle="about this Space"
-            messages={msgs}
-            input={input}
-            onInputChange={setInput}
-            onSend={send}
-            chips={chips}
-            placeholder="Ask Eva about this Space"
-        />
     );
 }
