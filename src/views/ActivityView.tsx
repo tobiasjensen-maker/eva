@@ -266,8 +266,6 @@ export default function ActivityView({
         <div className="h-full overflow-y-auto">
             <PageHeader title="Review" right={<Select value={range} onChange={setRange} options={DATE_RANGES} align="right" />} />
             <div className="px-8 pt-5 pb-7 mx-auto" style={{ maxWidth: 1040 }}>
-                <p className="text-sm" style={{ color: COLORS.textMuted }}>Everything Eva has done autonomously — filter to just what needs your review.</p>
-
                 {range === 'custom' && (
                     <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
@@ -290,14 +288,15 @@ export default function ActivityView({
                             <button
                                 key={s.key}
                                 onClick={() => onStatusChange(s.key)}
-                                className="rounded-xl p-4 flex items-center gap-3 text-left"
+                                className="relative rounded-xl p-4 flex items-center gap-3 text-left overflow-hidden"
                                 style={{
-                                    background: '#fff',
-                                    border: `1px solid ${active ? s.color : COLORS.cardBorder}`,
-                                    boxShadow: active ? `0 0 0 1px ${s.color}` : 'none',
-                                    transition: 'border-color .15s, box-shadow .15s',
+                                    background: active ? `${s.color}12` : '#fff',
+                                    border: `1.5px solid ${active ? s.color : COLORS.cardBorder}`,
+                                    transition: 'border-color .15s, background .15s',
                                 }}
                             >
+                                {/* active marker: a colored bar down the left edge */}
+                                {active && <span className="absolute left-0 top-0 bottom-0" style={{ width: 4, background: s.color }} />}
                                 <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 38, height: 38, background: `${s.color}1a`, color: s.color }}>
                                     <Icon name={s.icon as never} />
                                 </span>
@@ -306,7 +305,6 @@ export default function ActivityView({
                                     <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{s.label}</p>
                                     {s.sub && <p className="text-xs" style={{ color: '#a8a8b0' }}>{s.sub}</p>}
                                 </div>
-                                {active && <Icon name="tick" style={{ color: s.color }} />}
                             </button>
                         );
                     })}
@@ -387,20 +385,6 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
                 >
                     {conf.label} confidence
                 </span>
-                {needsReview && (
-                    <span
-                        role="button"
-                        tabIndex={0}
-                        title="Ask Eva about this"
-                        onClick={(ev) => { ev.stopPropagation(); onAsk(); }}
-                        className="flex items-center gap-1.5 rounded-full shrink-0 font-semibold"
-                        style={{ padding: '5px 12px 5px 8px', fontSize: 13, background: '#fff7ed', color: COLORS.text, border: '1px solid #efddc0', cursor: 'pointer' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#fdeed8')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}
-                    >
-                        <Orb size={16} /> Ask Eva
-                    </span>
-                )}
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
 
@@ -431,29 +415,32 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
 
                         <div style={{ borderTop: `1px solid ${COLORS.cardBorder}`, margin: '14px -16px 0' }} />
 
-                        {/* footer: Ask Eva + decision */}
+                        {/* footer: every item is a suggestion — accept, dismiss, or ask Eva to do something else */}
                         <div className="flex items-center justify-between pt-3 gap-3">
-                            <button onClick={onAsk} className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#4c6ef5' }}>
+                            <button
+                                onClick={onAsk}
+                                title="Ask Eva to do something else"
+                                className="flex items-center gap-1.5 rounded-full font-semibold shrink-0"
+                                style={{ padding: '5px 12px 5px 8px', fontSize: 13, background: '#fff7ed', color: COLORS.text, border: '1px solid #efddc0', cursor: 'pointer' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fdeed8')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}
+                            >
                                 <Orb size={16} /> Ask Eva
                             </button>
                             {entry.resolution ? (
                                 <span className="flex items-center gap-1.5 text-sm" style={{ color: '#15803d' }}>
-                                    <Icon name="circle-tick" /> {entry.resolution === 'Dismissed' ? 'Dismissed' : `Accepted — “${entry.resolution}”`}
+                                    <Icon name="circle-tick" /> {entry.resolution === 'Dismissed' ? 'Dismissed' : entry.resolution === 'Confirmed' ? 'Accepted' : `Accepted — “${entry.resolution}”`}
                                 </span>
                             ) : acting ? (
                                 <span className="flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
                                     <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
                                     Working…
                                 </span>
-                            ) : entry.suggestions ? (
+                            ) : (
                                 <div className="flex items-center gap-2">
                                     <Button onClick={() => onResolve('Dismissed')}>Dismiss</Button>
-                                    <Button appearance="primary" onClick={() => onResolve(entry.suggestions![0])}>Accept</Button>
+                                    <Button appearance="primary" onClick={() => onResolve(entry.suggestions?.[0] ?? 'Confirmed')}>Accept</Button>
                                 </div>
-                            ) : (
-                                <a href="#" onClick={(ev) => ev.preventDefault()} className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: '#4c6ef5' }}>
-                                    <Icon name="link-external" /> View in e-conomic
-                                </a>
                             )}
                         </div>
                     </div>
