@@ -247,6 +247,10 @@ export default function ActivityView({
             setActing(null);
         }, 900);
     }
+    // Reverse a resolved action — re-open it as a pending suggestion.
+    function reverse(id: string) {
+        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'needs-review', resolution: undefined } : e)));
+    }
 
     const completed = periodSet.filter((e) => e.status === 'completed');
     const autoResolved = completed.filter((e) => !e.resolution).length;
@@ -325,6 +329,7 @@ export default function ActivityView({
                                         onResolve={(action) => resolve(e.id, action)}
                                         onOpenDoc={() => e.doc && setDoc({ entry: e, doc: e.doc })}
                                         onAsk={() => askAbout(e)}
+                                        onReverse={() => reverse(e.id)}
                                     />
                                 ))}
                             </div>
@@ -338,7 +343,7 @@ export default function ActivityView({
     );
 }
 
-function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onAsk: () => void }) {
+function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, onReverse }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onAsk: () => void; onReverse: () => void }) {
     const sk = SKILL_INFO[entry.skill];
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
@@ -408,15 +413,20 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
                             >
                                 <Orb size={16} /> Ask Eva
                             </button>
-                            {entry.resolution ? (
-                                <span className="flex items-center gap-1.5 text-sm" style={{ color: '#15803d' }}>
-                                    <Icon name="circle-tick" /> {entry.resolution === 'Dismissed' ? 'Dismissed' : entry.resolution === 'Confirmed' ? 'Accepted' : `Accepted — “${entry.resolution}”`}
-                                </span>
-                            ) : acting ? (
+                            {acting ? (
                                 <span className="flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
                                     <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
                                     Working…
                                 </span>
+                            ) : entry.status === 'completed' ? (
+                                // Resolved action — no longer a suggestion; reversible instead.
+                                <div className="flex items-center gap-3">
+                                    <span className="flex items-center gap-1.5 text-sm" style={{ color: entry.resolution === 'Dismissed' ? COLORS.textMuted : '#15803d' }}>
+                                        <Icon name={entry.resolution === 'Dismissed' ? 'circle-warning' : 'circle-tick'} />
+                                        {!entry.resolution ? 'Done automatically' : entry.resolution === 'Dismissed' ? 'Dismissed' : entry.resolution === 'Confirmed' ? 'Accepted' : `Accepted — “${entry.resolution}”`}
+                                    </span>
+                                    <Button onClick={onReverse}><Icon name="arrow-left" /> Undo</Button>
+                                </div>
                             ) : (
                                 <div className="flex items-center gap-2">
                                     <Button onClick={() => onResolve('Dismissed')}>Dismiss</Button>

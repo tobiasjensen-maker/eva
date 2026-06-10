@@ -761,10 +761,10 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                 <div className="flex-1 flex flex-col items-center justify-center px-6">
                     <Orb />
                     <h1 className="mt-6 text-2xl font-semibold" style={{ color: COLORS.text }}>What can I do for you?</h1>
-                    <div className="w-full" style={{ maxWidth: 640 }}>
+                    <div className="w-full" style={{ maxWidth: 720 }}>
                         <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} className="mt-7" />
                         <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-start gap-2">
                             {suggestions.map((s) => (
                                 <EvaChip key={s} label={s} onClick={() => send(s)} />
                             ))}
