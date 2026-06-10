@@ -110,7 +110,7 @@ export function ChatPanel({
             className="shrink-0 flex flex-col rounded-2xl overflow-hidden"
             style={{ width: 360, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
         >
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+            <div className="flex items-center gap-2 px-4 shrink-0" style={{ minHeight: 62, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <Orb size={22} />
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
                 <span className="text-xs" style={{ color: COLORS.textMuted }}>· {subtitle}</span>
