@@ -2790,6 +2790,12 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .left-0 {
   left: 0px;
 }
+.left-3 {
+  left: 0.75rem;
+}
+.left-3\.5 {
+  left: 0.875rem;
+}
 .left-\[4px\] {
   left: 4px;
 }
@@ -4894,8 +4900,8 @@ h1, h2, h3, h4, h5, h6, p {
     animation: animIn 0.28s ease-out both;
 }
 @keyframes evaSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from { transform: translate(50px, 50px) rotate(0deg)   translate(-50px, -50px); }
+    to   { transform: translate(50px, 50px) rotate(360deg) translate(-50px, -50px); }
 }
 @keyframes animSlide {
     from { transform: translateX(100%); }
