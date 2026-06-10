@@ -90,7 +90,7 @@ export function ChatPanel({
         return (
             <aside
                 className="shrink-0 flex flex-col items-center rounded-2xl"
-                style={{ width: 52, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW, paddingTop: 12, paddingBottom: 12, gap: 10 }}
+                style={{ width: 52, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW, paddingTop: 12, paddingBottom: 12 }}
             >
                 <button
                     onClick={onToggleCollapsed}
@@ -100,16 +100,6 @@ export function ChatPanel({
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                     <Orb size={24} />
-                </button>
-                <button
-                    onClick={onToggleCollapsed}
-                    title="Open Eva"
-                    className="rounded-lg p-1.5"
-                    style={{ color: COLORS.textMuted }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                    <Icon name="chevron-left-double" />
                 </button>
             </aside>
         );

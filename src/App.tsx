@@ -478,7 +478,7 @@ export default function App() {
                         status={activityStatus}
                         onStatusChange={setActivityStatus}
                         scope={scope}
-                        onAskEva={(user, answer) => setPendingAsk({ user, answer })}
+                        onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }}
                     />
                 )}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
