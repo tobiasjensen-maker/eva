@@ -27,8 +27,8 @@ h1, h2, h3, h4, h5, h6, p {
 }
 
 @keyframes evaSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from { transform: translate(50px, 50px) rotate(0deg)   translate(-50px, -50px); }
+    to   { transform: translate(50px, 50px) rotate(360deg) translate(-50px, -50px); }
 }
 
 @keyframes animSlide {

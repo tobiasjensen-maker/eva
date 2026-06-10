@@ -730,6 +730,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
     }
 
     const empty = messages.length === 0;
+    const pending = messages.some((m) => m.role === 'assistant' && m.kind === 'thinking');
     const suggestions = scope === 'portfolio' ? PORTFOLIO_SUGGESTIONS : CHAT_SUGGESTIONS;
 
     return (
@@ -762,7 +763,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     <Orb />
                     <h1 className="mt-6 text-2xl font-semibold" style={{ color: COLORS.text }}>What can I do for you?</h1>
                     <div className="w-full" style={{ maxWidth: 720 }}>
-                        <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} className="mt-7" />
+                        <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} thinking={pending} className="mt-7" />
                         <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
                         <div className="flex flex-wrap items-start gap-2">
                             {suggestions.map((s) => (
@@ -786,8 +787,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                                         </div>
                                     </div>
                                 ) : (
-                                    <div key={m.id} className="flex gap-3">
-                                        <div className="shrink-0 mt-0.5"><Orb size={26} thinking={m.kind === 'thinking'} /></div>
+                                    <div key={m.id} className="flex">
                                         <div className="flex-1 min-w-0">
                                             <AssistantBubble
                                                 msg={m}
@@ -810,7 +810,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     </div>
                     <div className="px-6 pb-5">
                         <div className="mx-auto" style={{ maxWidth: 720 }}>
-                            <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} autoFocus />
+                            <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} thinking={pending} autoFocus />
                         </div>
                     </div>
                 </>
@@ -1003,9 +1003,9 @@ function UserText({ text }: { text: string }) {
 }
 
 function Composer({
-    value, onChange, onSend, spaces, className = '', autoFocus = false,
+    value, onChange, onSend, spaces, className = '', autoFocus = false, thinking = false,
 }: {
-    value: string; onChange: (v: string) => void; onSend: () => void; spaces: Space[]; className?: string; autoFocus?: boolean;
+    value: string; onChange: (v: string) => void; onSend: () => void; spaces: Space[]; className?: string; autoFocus?: boolean; thinking?: boolean;
 }) {
     const taRef = useRef<HTMLTextAreaElement>(null);
     const atIdx = value.lastIndexOf('@');
@@ -1053,6 +1053,9 @@ function Composer({
                 </div>
             )}
             <div className="relative rounded-2xl" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
+                <div className="absolute left-3.5 flex items-center" style={{ top: 0, bottom: 0, pointerEvents: 'none' }}>
+                    <Orb size={24} thinking={thinking} />
+                </div>
                 <textarea
                     ref={taRef}
                     autoFocus={autoFocus}
@@ -1067,8 +1070,8 @@ function Composer({
                     }}
                     placeholder="Ask your virtual assistant anything"
                     rows={2}
-                    className="w-full resize-none bg-transparent px-4 py-3 text-sm outline-none"
-                    style={{ color: COLORS.text }}
+                    className="w-full resize-none bg-transparent py-3 text-sm outline-none"
+                    style={{ color: COLORS.text, paddingLeft: 46, paddingRight: 16 }}
                 />
                 <div className="absolute bottom-2.5 right-3 flex items-center gap-2">
                     <button style={{ color: COLORS.textMuted }} title="Voice input"><MicIcon /></button>

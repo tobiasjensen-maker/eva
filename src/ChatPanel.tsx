@@ -55,6 +55,7 @@ export function ChatPanel({
 }) {
     const [msgs, setMsgs] = useState<Msg[]>(() => [{ id: 0, role: 'assistant', text: intro, instant: true }]);
     const [input, setInput] = useState('');
+    const pending = msgs.some((m) => m.role === 'assistant' && m.thinking);
     const scrollRef = useRef<HTMLDivElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -133,8 +134,7 @@ export function ChatPanel({
                             <div className="rounded-2xl px-3.5 py-2 text-sm" style={{ background: '#f1f1f3', color: COLORS.text, maxWidth: '85%' }}>{m.text}</div>
                         </div>
                     ) : (
-                        <div key={m.id} className="flex gap-2.5">
-                            <div className="shrink-0 mt-0.5"><Orb size={22} thinking={m.thinking} /></div>
+                        <div key={m.id} className="flex">
                             <div className="flex-1 min-w-0 text-sm leading-relaxed" style={{ color: COLORS.text }}>
                                 {m.thinking ? <Thinking /> : m.instant ? m.text : <Stream text={m.text} onTick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })} />}
                             </div>
@@ -152,6 +152,9 @@ export function ChatPanel({
                     </div>
                 )}
                 <div className="relative rounded-2xl" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
+                    <div className="absolute left-3 flex items-center" style={{ top: 0, bottom: 0, pointerEvents: 'none' }}>
+                        <Orb size={22} thinking={pending} />
+                    </div>
                     <textarea
                         ref={taRef}
                         value={input}
@@ -159,8 +162,8 @@ export function ChatPanel({
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
                         placeholder="Ask Eva anything"
                         rows={2}
-                        className="w-full resize-none bg-transparent px-3.5 py-2.5 text-sm outline-none"
-                        style={{ color: COLORS.text }}
+                        className="w-full resize-none bg-transparent py-2.5 text-sm outline-none"
+                        style={{ color: COLORS.text, paddingLeft: 42, paddingRight: 14 }}
                     />
                     <div className="absolute bottom-2 right-2.5 flex items-center gap-2">
                         <button style={{ color: COLORS.textMuted }} title="Voice input"><MicIcon /></button>
