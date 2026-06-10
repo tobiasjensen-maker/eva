@@ -64,7 +64,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'MobilePay settlement · 18.430 DKK',
         doc: { kind: 'Transaction', ref: 'MobilePay batch', detail: '42 transactions · 18.430 DKK · fully reconciled' } },
     { id: 'a4', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '11:05', skill: 'anomalies', client: 'office',
-        desc: 'Flagged a supplier charge of 14.900 DKK — 3× the monthly average', confidence: 'low', status: 'needs-review',
+        desc: 'Book a 14.900 DKK supplier charge — 3× the monthly average', confidence: 'low', status: 'needs-review',
         reasoning: ['Charge is 3.1× the 6-month average for this supplier.', 'No matching purchase order or approval was found.', 'Low confidence — held for human review before booking.'],
         source: 'Bill from Office Supplies Co · 26 Jan',
         doc: { kind: 'Invoice', ref: '#OS-2291', detail: 'Office Supplies Co · 14.900 DKK · no matching purchase order' },
@@ -75,7 +75,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'Entries #8801–#8805',
         doc: { kind: 'Entry', ref: '#8801–#8805', detail: '5 entries awaiting documentation' } },
     { id: 'a6', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '12:15', skill: 'monitor', client: 'portfolio',
-        desc: 'Detected operating cash flow down 12% vs Q3 across 3 clients', confidence: 'medium', status: 'needs-review',
+        desc: 'Draft a reminder cadence for 3 clients — cash flow down 12% vs Q3', confidence: 'medium', status: 'needs-review',
         reasoning: ['Aggregate operating cash flow fell 12% quarter-over-quarter.', 'Decline concentrated in 3 clients with slower receivable collection.', 'Surfaced for advisory follow-up rather than auto-action.'],
         source: 'Portfolio cash-flow model',
         suggestions: ['Draft a reminder cadence', 'Open detailed breakdown'] },
@@ -92,7 +92,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'Invoice #NB-228',
         doc: { kind: 'Invoice', ref: '#NB-228', detail: 'Nordic Build ApS · 34.200 DKK · 38 days overdue' } },
     { id: 'a9', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '14:18', skill: 'anomalies', client: 'tech',
-        desc: 'Flagged a possible duplicate bill #TE-189', confidence: 'medium', status: 'needs-review',
+        desc: 'Void a possible duplicate bill #TE-189', confidence: 'medium', status: 'needs-review',
         reasoning: ['Bill #TE-189 shares amount, date and supplier with #TE-188.', 'Could be a legitimate split delivery — needs a human check.'],
         source: 'Bills #TE-188 and #TE-189 · 22.650 DKK',
         doc: { kind: 'Invoice', ref: '#TE-189', detail: 'Tech Equipment AS · 22.650 DKK · suspected duplicate of #TE-188' },
@@ -121,7 +121,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'Invoice #OS-077',
         doc: { kind: 'Invoice', ref: '#OS-077', detail: 'Office Supplies Co · 24.900 DKK · 2nd reminder' } },
     { id: 'a14', daysAgo: 3, bucket: 'week', dateLabel: 'Mon', time: '10:15', skill: 'monitor', client: 'dmp',
-        desc: 'Noted revenue concentration risk — one client = 41% of revenue', confidence: 'medium', status: 'needs-review',
+        desc: 'Add revenue concentration risk to the advisory report — one client = 41%', confidence: 'medium', status: 'needs-review',
         reasoning: ['A single customer accounts for 41% of trailing revenue.', 'Above the 30% advisory threshold.', 'Raised as an advisory insight.'],
         source: 'Revenue breakdown · last 12 months',
         suggestions: ['Add to advisory report', 'Acknowledge'] },
@@ -141,7 +141,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'Bank import · 142.600 DKK',
         doc: { kind: 'Transaction', ref: 'Bank import', detail: '12 transactions · 142.600 DKK · booked to Account 5000' } },
     { id: 'a18', daysAgo: 14, bucket: 'older', dateLabel: '26 May', time: '11:11', skill: 'anomalies', client: 'cafe',
-        desc: 'Flagged cash runway under 2 months', confidence: 'low', status: 'needs-review',
+        desc: 'Draft a cash-runway check-in for Café Solsikke — runway under 2 months', confidence: 'low', status: 'needs-review',
         reasoning: ['Projected runway fell below the 2-month threshold.', 'Driven by slower weekday footfall and a card-fee increase.', 'Held for advisory review.'],
         source: 'Cash-flow model · runway 1.4 mo',
         suggestions: ['Draft a check-in for the client', 'Acknowledge'] },
@@ -220,8 +220,10 @@ export default function ActivityView({
 
     // "Ask Eva" on a flagged item — hand the question + explanation to the shell chat panel.
     function askAbout(e: LogEntry) {
-        const userText = `Why did you flag “${e.desc}”?`;
-        const answer = `I flagged this for ${clientName(e.client)} because: ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${e.suggestions?.length ? ` My suggested next step is “${e.suggestions[0]}” — want me to go ahead?` : ''}`;
+        const suggestion = e.status === 'needs-review';
+        const userText = suggestion ? `Why are you suggesting this for ${clientName(e.client)}?` : `Why did you do this for ${clientName(e.client)}?`;
+        const lead = suggestion ? "I'm suggesting this because:" : 'I did this because:';
+        const answer = `${lead} ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${suggestion && e.suggestions?.length ? ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?` : ''}`;
         onAskEva(userText, answer);
     }
 
@@ -359,7 +361,9 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                     <Icon name={st.icon as never} />
                 </span>
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{entry.desc}</p>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>
+                        {needsReview && <span style={{ color: '#b9842b' }}>Eva suggests: </span>}{entry.desc}
+                    </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
                         {sk.label} · {clientName(entry.client)} · {entry.dateLabel} · {entry.time}
                     </p>
@@ -379,7 +383,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                     <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fcfcfd' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
-                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Why did Eva do this?</span>
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{needsReview ? 'Why Eva suggests this' : 'Why did Eva do this?'}</span>
                         </div>
 
                         <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.join(' ')}</p>
