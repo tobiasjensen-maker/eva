@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useId, useMemo, createContext, useContext, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useId, createContext, useContext, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
 import { AGREEMENTS } from './data';
 
@@ -355,11 +355,11 @@ export function AssistantPanel({
 }
 
 // ---- Eva: animated e-conomic mark (five orange circles that merge via a gooey filter) ----
-const EVA_ORANGE = '#e89539';
+const EVA_ORANGE = '#ed9b2c';
 type Constellation = [number, number, number][]; // [cx, cy, r] × 5, in a 100×100 viewBox
 
-// The reference constellations. Index 0 is the resting pentagon; 1–11 are the
-// asymmetric shapes Eva blooms into / steps through. (Index 1–11 is the pool.)
+// The 13 reference constellations. Index 0 is the resting pentagon; 1–12 are the
+// asymmetric shapes Eva steps through while thinking.
 const EVA_CONFIGS: Constellation[] = [
     [[50, 14, 11], [84, 39, 11], [71, 79, 11], [29, 79, 11], [16, 39, 11]], // 0 — pentagon (rest)
     [[30, 30, 16], [45, 48, 11], [60, 66, 8], [75, 22, 10], [14, 80, 8]],   // 1
@@ -373,204 +373,83 @@ const EVA_CONFIGS: Constellation[] = [
     [[35, 25, 16], [55, 22, 10], [45, 42, 8], [75, 65, 11], [22, 75, 8]],   // 9
     [[18, 28, 9], [55, 18, 11], [60, 50, 10], [78, 60, 14], [28, 80, 7]],   // 10
     [[40, 22, 14], [25, 40, 11], [40, 58, 10], [70, 50, 8], [85, 75, 8]],   // 11
+    [[22, 18, 10], [78, 22, 17], [63, 81, 14], [41, 47, 11], [14, 65, 8]],  // 12
 ];
 const EVA_PENTAGON = EVA_CONFIGS[0];
-const EVA_POOL_LEN = 11; // pickable asymmetric shapes are indices 1..11
-
-// Per-circle wrapper translation that brings each pentagon circle onto the
-// pentagon centre (50,50) so the gooey filter fuses them into one circle.
-const EVA_COLLAPSE: [number, number][] = [
-    [0, 36], [-34, 11], [-21, -29], [21, -29], [34, 11],
-];
-const EVA_ZERO: [number, number][] = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]];
+// Transient collapse: all five clustered tightly so the gooey filter fuses them into one blob.
+const EVA_BLOB: Constellation = [[47, 50, 16], [53, 50, 16], [50, 46, 16], [50, 54, 16], [50, 50, 17]];
 
 // Choreography (ms unless noted) from the reference.
 const EVA_TIMING = {
-    spinSeconds: 60,    // idle pentagon rotation
-    holdMin: 4000,      // idle: hold the resting pentagon (random 4000–6000)
-    holdMax: 6000,
-    collapse: 1000,     // idle: pentagon → single merged circle
-    bloom: 1000,        // idle: merged circle → asymmetric shape
-    asymHold: 1200,     // idle: hold the asymmetric shape
-    settle: 1000,       // idle: asymmetric → pentagon
-    resolve: 950,       // thinking → pentagon on exit
-    thinkMin: 450,      // thinking: morph step (random 450–750)
-    thinkMax: 750,
-    wrapReset: 200,     // thinking entry: ease any mid-collapse wrappers back to 0
+    spinSeconds: 60,        // idle pentagon rotation
+    collapse: 1000,         // pentagon → blob
+    asymHold: 1200,         // hold an asymmetric shape
+    step: 600,              // transition between asymmetric shapes
+    resolve: 950,           // morph back to the pentagon
 };
-const EVA_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
-const evaRand = (min: number, max: number) => min + Math.random() * (max - min);
+// The 7 thinking steps, spread across the set for visual variety.
+const EVA_STEP_IDX = [1, 5, 9, 3, 7, 11, 2];
 
 export function Orb({ size = 70, thinking = false }: { size?: number; thinking?: boolean }) {
     const gooId = 'eva-goo-' + useId().replace(/:/g, '');
-    const reduced = useMemo(
-        () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-        []
+    const [{ config, trans }, setState] = useState<{ config: Constellation; trans: number }>(
+        () => ({ config: EVA_PENTAGON, trans: EVA_TIMING.resolve })
     );
-    const circleRefs = useRef<(SVGCircleElement | null)[]>([]);
-    const wrapperRefs = useRef<(SVGGElement | null)[]>([]);
-    const stageRef = useRef<SVGGElement | null>(null);
-    const ctrlRef = useRef<{ setThinking: (t: boolean) => void; destroy: () => void } | null>(null);
 
-    // Mount the animation controller once. It owns its own idle/thinking loops,
-    // continuity (no snap on interrupt), and cleanup — independent per instance.
     useEffect(() => {
-        if (reduced) return; // static resting pentagon, no spin, no loops
-        const circles = circleRefs.current;
-        const wrappers = wrapperRefs.current;
-        const stage = stageRef.current;
-
+        if (!thinking) {
+            // Resolve back to the resting pentagon.
+            setState({ config: EVA_PENTAGON, trans: EVA_TIMING.resolve });
+            return;
+        }
         let alive = true;
-        let runId = 0; // bumps on every mode switch; loops bail when stale
-        const timers = new Set<ReturnType<typeof setTimeout>>();
-        let circleAnims: Animation[] = [];
-        let wrapperAnims: Animation[] = [];
-        const recent = new Set<number>();
-
-        const pick = (): number => {
-            let idx: number;
-            do {
-                idx = 1 + Math.floor(Math.random() * EVA_POOL_LEN);
-            } while (recent.has(idx));
-            recent.add(idx);
-            if (recent.size >= EVA_POOL_LEN - 3) recent.clear();
-            return idx;
+        let timer: ReturnType<typeof setTimeout>;
+        // One burst = collapse to a blob, then step through the 7 asymmetric shapes; then loop.
+        const seq: { config: Constellation; trans: number; hold: number }[] = [
+            { config: EVA_BLOB, trans: EVA_TIMING.collapse, hold: 200 },
+            ...EVA_STEP_IDX.map((idx, k) => ({
+                config: EVA_CONFIGS[idx],
+                trans: EVA_TIMING.step,
+                hold: k === EVA_STEP_IDX.length - 1 ? EVA_TIMING.asymHold : 120,
+            })),
+        ];
+        let i = 0;
+        const run = () => {
+            if (!alive) return;
+            const s = seq[i % seq.length];
+            setState({ config: s.config, trans: s.trans });
+            i++;
+            timer = setTimeout(run, s.trans + s.hold);
         };
-
-        const wait = (ms: number) =>
-            new Promise<void>((res) => {
-                const t = setTimeout(() => {
-                    timers.delete(t);
-                    res();
-                }, ms);
-                timers.add(t);
-            });
-
-        // Morph circle geometry to a config, reading the current animated value as
-        // the start keyframe (no snap), then cancelling the superseded animations.
-        const morph = (config: Constellation, duration: number) => {
-            const next = circles
-                .map((el, i) => {
-                    if (!el) return null;
-                    const cs = getComputedStyle(el);
-                    const [cx, cy, r] = config[i];
-                    return el.animate(
-                        [
-                            { cx: cs.cx, cy: cs.cy, r: cs.r },
-                            { cx: `${cx}px`, cy: `${cy}px`, r: `${r}px` },
-                        ],
-                        { duration, easing: EVA_EASE, fill: 'forwards' }
-                    );
-                })
-                .filter(Boolean) as Animation[];
-            circleAnims.forEach((a) => a.cancel());
-            circleAnims = next;
-            return Promise.all(next.map((a) => a.finished.catch(() => {})));
-        };
-
-        const moveWrappers = (deltas: [number, number][], duration: number) => {
-            const next = wrappers
-                .map((el, i) => {
-                    if (!el) return null;
-                    const cs = getComputedStyle(el);
-                    const from = cs.transform && cs.transform !== 'none' ? cs.transform : 'translate(0px, 0px)';
-                    const [dx, dy] = deltas[i];
-                    return el.animate(
-                        [{ transform: from }, { transform: `translate(${dx}px, ${dy}px)` }],
-                        { duration, easing: EVA_EASE, fill: 'forwards' }
-                    );
-                })
-                .filter(Boolean) as Animation[];
-            wrapperAnims.forEach((a) => a.cancel());
-            wrapperAnims = next;
-            return Promise.all(next.map((a) => a.finished.catch(() => {})));
-        };
-
-        const idleLoop = async (myRun: number) => {
-            // Resolve to the resting pentagon (continuity from any prior state).
-            await morph(EVA_PENTAGON, EVA_TIMING.resolve);
-            if (!alive || myRun !== runId) return;
-            while (alive && myRun === runId) {
-                await wait(evaRand(EVA_TIMING.holdMin, EVA_TIMING.holdMax)); // A — hold
-                if (!alive || myRun !== runId) return;
-                await moveWrappers(EVA_COLLAPSE, EVA_TIMING.collapse); // B — collapse to one circle
-                if (!alive || myRun !== runId) return;
-                await Promise.all([
-                    // C — bloom: wrappers home + circles straight into the asymmetric shape
-                    moveWrappers(EVA_ZERO, EVA_TIMING.bloom),
-                    morph(EVA_CONFIGS[pick()], EVA_TIMING.bloom),
-                ]);
-                if (!alive || myRun !== runId) return;
-                await wait(EVA_TIMING.asymHold); // D — hold
-                if (!alive || myRun !== runId) return;
-                await morph(EVA_PENTAGON, EVA_TIMING.settle); // E — back to pentagon
-            }
-        };
-
-        const thinkLoop = async (myRun: number) => {
-            // Ease any in-flight collapse back home before morphing freely.
-            await moveWrappers(EVA_ZERO, EVA_TIMING.wrapReset);
-            if (!alive || myRun !== runId) return;
-            while (alive && myRun === runId) {
-                await morph(EVA_CONFIGS[pick()], evaRand(EVA_TIMING.thinkMin, EVA_TIMING.thinkMax));
-            }
-        };
-
-        ctrlRef.current = {
-            setThinking(t: boolean) {
-                runId += 1;
-                const myRun = runId;
-                // Pause/resume the spin in place — never detach the animation.
-                if (stage) stage.style.animationPlayState = t ? 'paused' : 'running';
-                if (t) void thinkLoop(myRun);
-                else void idleLoop(myRun);
-            },
-            destroy() {
-                alive = false;
-                timers.forEach(clearTimeout);
-                timers.clear();
-                circleAnims.forEach((a) => a.cancel());
-                wrapperAnims.forEach((a) => a.cancel());
-            },
-        };
-
+        run();
         return () => {
-            ctrlRef.current?.destroy();
-            ctrlRef.current = null;
+            alive = false;
+            clearTimeout(timer);
         };
-    }, [reduced]);
-
-    // Drive the controller from the public `thinking` prop.
-    useEffect(() => {
-        ctrlRef.current?.setThinking(thinking);
     }, [thinking]);
+
+    const ease = 'cubic-bezier(.4,0,.2,1)';
+    const tr = `cx ${trans}ms ${ease}, cy ${trans}ms ${ease}, r ${trans}ms ${ease}`;
 
     return (
         <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block', overflow: 'visible' }}>
             <defs>
-                {/* Gooey/metaball merge — blur then threshold the alpha (sharpness 29, bias −11),
-                    then lay the crisp source back on top so circles stay sharp while necks stay organic. */}
+                {/* Gooey/metaball merge — blur then threshold the alpha (sharpness 29, bias −11). */}
                 <filter id={gooId} x="-30%" y="-30%" width="160%" height="160%">
                     <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-                    <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 29 -11" result="goo" />
-                    <feBlend in="SourceGraphic" in2="goo" />
+                    <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 29 -11" />
                 </filter>
             </defs>
             <g
-                ref={stageRef}
-                filter={`url(#${gooId})`}
-                style={{ animation: reduced ? undefined : `evaSpin ${EVA_TIMING.spinSeconds}s linear infinite` }}
+                filter={thinking ? `url(#${gooId})` : undefined}
+                style={{
+                    transformBox: 'fill-box',
+                    transformOrigin: 'center',
+                    animation: thinking ? undefined : `evaSpin ${EVA_TIMING.spinSeconds}s linear infinite`,
+                }}
             >
-                {EVA_PENTAGON.map((c, idx) => (
-                    <g key={idx} ref={(el) => { wrapperRefs.current[idx] = el; }}>
-                        <circle
-                            ref={(el) => { circleRefs.current[idx] = el; }}
-                            cx={c[0]}
-                            cy={c[1]}
-                            r={c[2]}
-                            fill={EVA_ORANGE}
-                        />
-                    </g>
+                {config.map((c, idx) => (
+                    <circle key={idx} cx={c[0]} cy={c[1]} r={c[2]} fill={EVA_ORANGE} style={{ transition: tr }} />
                 ))}
             </g>
         </svg>
