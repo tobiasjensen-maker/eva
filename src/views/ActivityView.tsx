@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
@@ -213,7 +213,6 @@ export default function ActivityView({
     onAskEva: (user: string, answer: string) => void;
 }) {
     const [range, setRange] = useState('30');
-    const [skill, setSkill] = useState('all');
     const [client, setClient] = useState(scope === 'portfolio' ? 'all' : scope);
     const [expanded, setExpanded] = useState<string | null>(null);
     const [acting, setActing] = useState<string | null>(null);
@@ -238,7 +237,7 @@ export default function ActivityView({
         return true; // custom → all (stub)
     };
     // Period set (date + skill + client) drives the stat counts; status is an additional filter on top.
-    const periodSet = entries.filter((e) => inRange(e) && (skill === 'all' || e.skill === skill) && (client === 'all' || e.client === client));
+    const periodSet = entries.filter((e) => inRange(e) && (client === 'all' || e.client === client));
     const filtered = periodSet.filter((e) => status === 'all' || e.status === status);
 
     function resolve(id: string, action: string) {
@@ -257,8 +256,6 @@ export default function ActivityView({
         { key: 'all', label: 'Actions taken', value: periodSet.length, color: '#6366f1', icon: 'workflow' },
     ];
 
-    const skillOptions = [{ value: 'all', label: 'All skills' }, ...Object.keys(SKILL_INFO).map((id) => ({ value: id, label: SKILL_INFO[id].label }))];
-
     const groups = BUCKET_ORDER.map((b) => ({ bucket: b, items: filtered.filter((e) => e.bucket === b) })).filter((g) => g.items.length > 0);
 
     return (
@@ -273,13 +270,8 @@ export default function ActivityView({
                     </div>
                 )}
 
-                {/* filters */}
-                <div className="flex items-center gap-2">
-                    <Select value={skill} onChange={setSkill} options={skillOptions} leadingLabel="Skill" />
-                </div>
-
                 {/* stats — double as status filters (flagged first) */}
-                <div className="grid grid-cols-3 gap-3 mt-5">
+                <div className="grid grid-cols-3 gap-3">
                     {stats.map((s) => {
                         const active = status === s.key;
                         return (
@@ -476,62 +468,6 @@ function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; on
                     </a>
                 </div>
             </div>
-        </div>
-    );
-}
-
-// Lightweight dropdown used for the date range and the Skill / Client filters.
-function Select({
-    value, onChange, options, leadingLabel, align = 'left',
-}: {
-    value: string;
-    onChange: (v: string) => void;
-    options: { value: string; label: string }[];
-    leadingLabel?: string;
-    align?: 'left' | 'right';
-}) {
-    const [open, setOpen] = useState(false);
-    const current = options.find((o) => o.value === value)?.label ?? '';
-    const menuStyle: CSSProperties = {
-        top: 'calc(100% + 6px)',
-        minWidth: 200,
-        maxHeight: 280,
-        overflowY: 'auto',
-        border: `1px solid ${COLORS.cardBorder}`,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.16)',
-        ...(align === 'right' ? { right: 0 } : { left: 0 }),
-    };
-    return (
-        <div className="relative">
-            <button
-                onClick={() => setOpen((o) => !o)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
-                style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}
-            >
-                {leadingLabel && <span style={{ color: COLORS.textMuted }}>{leadingLabel}:</span>}
-                <span className="font-medium">{current}</span>
-                <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
-            </button>
-            {open && (
-                <>
-                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-                    <div className="absolute z-40 rounded-xl bg-white overflow-hidden anim-in" style={menuStyle}>
-                        {options.map((o) => (
-                            <button
-                                key={o.value}
-                                onClick={() => { onChange(o.value); setOpen(false); }}
-                                className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm"
-                                style={{ color: COLORS.text, background: o.value === value ? '#f4f4f5' : '#fff' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = o.value === value ? '#f4f4f5' : '#fff')}
-                            >
-                                <span className="flex-1">{o.label}</span>
-                                {o.value === value && <Icon name="tick" style={{ color: '#16a34a' }} />}
-                            </button>
-                        ))}
-                    </div>
-                </>
-            )}
         </div>
     );
 }
