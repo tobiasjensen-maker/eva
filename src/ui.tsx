@@ -114,6 +114,46 @@ export function SidebarTooltip({ label, show = true, children }: { label: string
     );
 }
 
+// Sticky page header for a scrollable content container — keeps the page title
+// (and its primary controls) pinned as the page scrolls.
+export function PageHeader({
+    title,
+    badge,
+    right,
+    onBack,
+    backLabel,
+    maxWidth = 1040,
+}: {
+    title: string;
+    badge?: ReactNode;
+    right?: ReactNode;
+    onBack?: () => void;
+    backLabel?: string;
+    maxWidth?: number;
+}) {
+    return (
+        <div className="sticky top-0 z-20" style={{ background: '#fff', borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+            <div className="mx-auto flex items-center gap-2.5 px-8" style={{ maxWidth, minHeight: 62 }}>
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        title={backLabel ? `Back to ${backLabel}` : 'Back'}
+                        className="flex items-center justify-center rounded-md shrink-0"
+                        style={{ width: 30, height: 30, marginLeft: -6, color: COLORS.textMuted }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                        <Icon name="arrow-left" />
+                    </button>
+                )}
+                <h1 className="text-xl font-semibold truncate" style={{ color: COLORS.text }}>{title}</h1>
+                {badge}
+                {right && <div className="ml-auto flex items-center gap-2 shrink-0">{right}</div>}
+            </div>
+        </div>
+    );
+}
+
 // Shell background — the grey the floating panels sit on.
 export const SHELL_GREY = '#ececee';
 

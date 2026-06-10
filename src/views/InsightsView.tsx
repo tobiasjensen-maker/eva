@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
-import { Card, COLORS } from '../ui';
+import { Card, PageHeader, COLORS } from '../ui';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
@@ -317,20 +317,16 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <div className="mx-auto px-8 py-7" style={{ maxWidth: 1040 }}>
-                    {/* header */}
-                    <div className="flex items-center justify-between gap-3 mb-5">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>Insights</h1>
-                            <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>
-                                <Icon name={scope === 'portfolio' ? 'contacts' : 'person'} /> {scope === 'portfolio' ? `Portfolio · all agreements` : scopeName}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2.5 shrink-0">
-                            <PeriodSelector value={period} onChange={setPeriod} />
-                        </div>
-                    </div>
-
+                <PageHeader
+                    title="Insights"
+                    badge={
+                        <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>
+                            <Icon name={scope === 'portfolio' ? 'contacts' : 'person'} /> {scope === 'portfolio' ? `Portfolio · all agreements` : scopeName}
+                        </span>
+                    }
+                    right={<PeriodSelector value={period} onChange={setPeriod} />}
+                />
+                <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* upgrade banner */}
                     {!pro && (
                         <div className="rounded-2xl p-5 mb-6 flex items-center gap-4" style={{ background: 'linear-gradient(110deg, #2b283e 0%, #4a3d6b 100%)' }}>

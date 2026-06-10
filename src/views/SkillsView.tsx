@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { Card, Dot, EmojiTile, COLORS } from '../ui';
+import { Card, Dot, EmojiTile, PageHeader, COLORS } from '../ui';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import type { Skill } from '../types';
@@ -49,15 +49,9 @@ export default function SkillsView({ skills, onEnable }: Props) {
     const enabled = skills.filter((s) => s.state !== 'locked');
 
     return (
-        <div className="h-full overflow-y-auto px-8 py-7">
-            <div className="mx-auto" style={{ maxWidth: 1040 }}>
-                <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>Skills</h1>
-                    <Button appearance="primary" onClick={() => setGallery(true)}>
-                        <Icon name="circle-plus" /> Add new skill
-                    </Button>
-                </div>
-
+        <div className="h-full overflow-y-auto">
+            <PageHeader title="Skills" right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> Add new skill</Button>} />
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 {enabled.length === 0 ? (
                     <Card className="p-10 text-center">
                         <p className="text-sm" style={{ color: COLORS.textMuted }}>
@@ -210,25 +204,23 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
     const [testOpen, setTestOpen] = useState(false);
 
     return (
-        <div className="h-full overflow-y-auto px-8 py-7">
-            <div className="mx-auto" style={{ maxWidth: 1040 }}>
-                <button onClick={onBack} className="flex items-center gap-1.5 text-sm mb-4" style={{ color: COLORS.textMuted }}>
-                    <Icon name="arrow-left" /> Skills
-                </button>
-
-                {/* header */}
+        <div className="h-full overflow-y-auto">
+            <PageHeader
+                title={skill.title}
+                onBack={onBack}
+                backLabel="Skills"
+                right={!locked ? (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{active ? 'Active' : 'Paused'}</span>
+                        <Switch checked={active} onChange={setActive} />
+                    </div>
+                ) : undefined}
+            />
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+                {/* intro */}
                 <div className="flex items-start gap-3 mb-6">
                     <EmojiTile emoji={skill.emoji} size={44} />
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-xl font-semibold" style={{ color: COLORS.text }}>{skill.title}</h1>
-                        <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>{skill.description}</p>
-                    </div>
-                    {!locked && (
-                        <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-sm" style={{ color: COLORS.textMuted }}>{active ? 'Active' : 'Paused'}</span>
-                            <Switch checked={active} onChange={setActive} />
-                        </div>
-                    )}
+                    <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>{skill.description}</p>
                 </div>
 
                 {locked && (

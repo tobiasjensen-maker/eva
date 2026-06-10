@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, COLORS } from '../ui';
+import { Card, EmojiTile, PageHeader, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import type { Space } from '../types';
@@ -44,23 +44,14 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
     if (open) return <SpaceDetail space={open} onBack={() => setOpen(null)} />;
 
     return (
-        <div className="h-full overflow-y-auto px-8 py-7">
-            <div className="mx-auto" style={{ maxWidth: 1040 }}>
-                <div className="flex items-start justify-between mb-6">
-                    <div>
-                        <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>
-                            Spaces
-                        </h1>
-                        <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>
-                            {spaces.length < FREE_SPACE_LIMIT
-                                ? `${spaces.length} of ${FREE_SPACE_LIMIT} free Spaces used`
-                                : `${FREE_SPACE_LIMIT} free Spaces used · extra Spaces are ${SPACE_PRICE} kr each`}
-                        </p>
-                    </div>
-                    <Button appearance="primary" onClick={() => setGallery(true)}>
-                        <Icon name="circle-plus" /> New Space
-                    </Button>
-                </div>
+        <div className="h-full overflow-y-auto">
+            <PageHeader title="Spaces" right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> New Space</Button>} />
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+                <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
+                    {spaces.length < FREE_SPACE_LIMIT
+                        ? `${spaces.length} of ${FREE_SPACE_LIMIT} free Spaces used`
+                        : `${FREE_SPACE_LIMIT} free Spaces used · extra Spaces are ${SPACE_PRICE} kr each`}
+                </p>
 
                 <div className="grid grid-cols-3 gap-4 pb-10">
                     {spaces.map((s) => (
@@ -108,24 +99,13 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
 function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
     return (
         <div className="h-full overflow-y-auto">
-            <div className="mx-auto px-8 py-7" style={{ maxWidth: 1040 }}>
-                <button
-                    onClick={onBack}
-                    className="flex items-center gap-1.5 text-sm mb-4"
-                    style={{ color: COLORS.textMuted }}
-                >
-                    <Icon name="arrow-left" /> Spaces
-                </button>
+            <PageHeader title={space.title} onBack={onBack} backLabel="Spaces" />
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 <div className="flex items-start gap-3 mb-6">
                     <EmojiTile emoji={space.emoji} size={44} />
-                    <div>
-                        <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>
-                            {space.title}
-                        </h1>
-                        <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>
-                            {space.description}
-                        </p>
-                    </div>
+                    <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>
+                        {space.description}
+                    </p>
                 </div>
 
                 <ArtifactPreview space={space} />

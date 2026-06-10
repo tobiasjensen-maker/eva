@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, Orb, COLORS } from '../ui';
+import { Card, Orb, PageHeader, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -264,15 +264,9 @@ export default function ActivityView({
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="px-8 py-7 mx-auto" style={{ maxWidth: 1040 }}>
-                {/* header */}
-                <div className="flex items-start justify-between gap-3 mb-1">
-                    <div>
-                        <h1 className="text-2xl font-semibold" style={{ color: COLORS.text }}>Review</h1>
-                        <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>Everything Eva has done autonomously — filter to just what needs your review.</p>
-                    </div>
-                    <Select value={range} onChange={setRange} options={DATE_RANGES} align="right" />
-                </div>
+            <PageHeader title="Review" right={<Select value={range} onChange={setRange} options={DATE_RANGES} align="right" />} />
+            <div className="px-8 pt-5 pb-7 mx-auto" style={{ maxWidth: 1040 }}>
+                <p className="text-sm" style={{ color: COLORS.textMuted }}>Everything Eva has done autonomously — filter to just what needs your review.</p>
 
                 {range === 'custom' && (
                     <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
