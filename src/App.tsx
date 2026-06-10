@@ -11,6 +11,7 @@ import {
     SkillsIcon,
     SpacesIcon,
     SidebarTooltip,
+    ScopeContext,
 } from './ui';
 
 const SIDEBAR_BG = 'rgb(41, 40, 62)';
@@ -115,7 +116,6 @@ export default function App() {
     }, [collapsed]);
 
     const [scope, setScope] = useState<string>(() => localStorage.getItem('va-scope') || 'portfolio');
-    const [scopeOpen, setScopeOpen] = useState(false);
     const [pendingScope, setPendingScope] = useState<string | null>(null);
     const [chatActive, setChatActive] = useState(false);
     useEffect(() => {
@@ -183,18 +183,13 @@ export default function App() {
     function applyScope(s: string) {
         setScope(s);
         setChatKey((k) => k + 1); // reset the chat — context changed
-        setScopeOpen(false);
         setPendingScope(null);
     }
     function chooseScope(s: string) {
-        if (s === scope) {
-            setScopeOpen(false);
-            return;
-        }
+        if (s === scope) return;
         // Warn only if there's a live conversation to lose
         if (view === 'chat' && chatActive) {
             setPendingScope(s);
-            setScopeOpen(false);
         } else {
             applyScope(s);
         }
@@ -229,6 +224,7 @@ export default function App() {
     const panelShadow = '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)';
 
     return (
+        <ScopeContext.Provider value={{ scope, onChoose: chooseScope }}>
         <div className="flex" style={{ height: '100vh', background: '#ececee', padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
@@ -273,82 +269,8 @@ export default function App() {
                     )}
                 </div>
 
-                {/* Agreement scope switcher */}
-                <div className="relative" style={{ padding: collapsed ? '4px 10px 8px' : '4px 12px 10px' }}>
-                    {scopeOpen && (
-                        <>
-                            <div className="fixed inset-0 z-30" onClick={() => setScopeOpen(false)} />
-                            <div
-                                className="absolute z-40 rounded-xl bg-white overflow-hidden anim-in"
-                                style={
-                                    collapsed
-                                        ? { left: 'calc(100% - 2px)', top: 4, width: 248, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }
-                                        : { left: 12, right: 12, top: 'calc(100% - 4px)', border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }
-                                }
-                            >
-                                <p className="text-xs font-medium px-3 pt-2.5 pb-1" style={{ color: COLORS.textMuted }}>Work across</p>
-                                <button
-                                    onClick={() => chooseScope('portfolio')}
-                                    className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm"
-                                    style={{ color: COLORS.text }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                                >
-                                    <Icon name="contacts" style={{ color: COLORS.textMuted }} />
-                                    <span className="flex-1">Portfolio<span style={{ color: COLORS.textMuted }}> · {AGREEMENTS.length} agreements</span></span>
-                                    {scope === 'portfolio' && <Icon name="tick" style={{ color: '#16a34a' }} />}
-                                </button>
-                                <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
-                                <p className="text-xs font-medium px-3 pt-2.5 pb-1" style={{ color: COLORS.textMuted }}>A specific agreement</p>
-                                <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                                    {AGREEMENTS.map((a) => (
-                                        <button
-                                            key={a.id}
-                                            onClick={() => chooseScope(a.id)}
-                                            className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm"
-                                            style={{ color: COLORS.text }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                                        >
-                                            <Icon name="person" style={{ color: COLORS.textMuted }} />
-                                            <span className="flex-1 truncate">{a.name}</span>
-                                            {scope === a.id && <Icon name="tick" style={{ color: '#16a34a' }} />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    <SidebarTooltip label="Switch client" show={collapsed}>
-                    <button
-                        onClick={() => setScopeOpen((o) => !o)}
-                        className="flex items-center gap-2 w-full rounded-lg"
-                        style={{
-                            padding: collapsed ? 8 : '8px 10px',
-                            justifyContent: collapsed ? 'center' : 'flex-start',
-                            background: 'rgba(255,255,255,0.06)',
-                            border: `1px solid rgba(255,255,255,0.10)`,
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                    >
-                        <Icon name={scope === 'portfolio' ? 'contacts' : 'person'} style={{ color: 'rgba(255,255,255,0.85)' }} />
-                        {!collapsed && (
-                            <>
-                                <span className="flex-1 min-w-0 text-left">
-                                    <span className="block text-[10px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.45)' }}>Working across</span>
-                                    <span className="block text-sm font-medium truncate" style={{ color: '#fff' }}>{scopeName}</span>
-                                </span>
-                                <Icon name="chevron-down" style={{ color: 'rgba(255,255,255,0.6)' }} />
-                            </>
-                        )}
-                    </button>
-                    </SidebarTooltip>
-                </div>
-
                 {/* Nav */}
-                <nav className="flex flex-col gap-1 mt-1" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
+                <nav className="flex flex-col gap-1 mt-3" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
                     {RAIL.map(({ id, label, Icon: RIcon }) => {
                         const active = view === id;
                         return (
@@ -487,7 +409,6 @@ export default function App() {
                         scopeName={scopeName}
                         onActiveChange={setChatActive}
                         analyticsUnlocked={insightsPro}
-                        onOpenScopeSwitcher={() => setScopeOpen(true)}
                         onSelectClient={applyScope}
                     />
                 )}
@@ -550,5 +471,6 @@ export default function App() {
                 />
             )}
         </div>
+        </ScopeContext.Provider>
     );
 }

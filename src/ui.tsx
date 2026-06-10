@@ -1,5 +1,60 @@
-import { useState, useEffect, useRef, useId, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useId, createContext, useContext, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
+import { AGREEMENTS } from './data';
+
+// Global "which client am I working on" context, surfaced as a header pill.
+export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void }>({ scope: 'portfolio', onChoose: () => {} });
+
+// The "Working on: …" pill + agreement dropdown, shown in each page header.
+export function ScopeSwitcher() {
+    const { scope, onChoose } = useContext(ScopeContext);
+    const [open, setOpen] = useState(false);
+    const portfolio = scope === 'portfolio';
+    const label = portfolio ? 'All clients' : AGREEMENTS.find((a) => a.id === scope)?.name ?? scope;
+    const pick = (id: string) => { setOpen(false); onChoose(id); };
+    const onIn = (e: { currentTarget: HTMLElement }) => (e.currentTarget.style.background = '#f7f7f8');
+    const onOut = (e: { currentTarget: HTMLElement }) => (e.currentTarget.style.background = 'transparent');
+    return (
+        <div className="relative shrink-0">
+            <button
+                onClick={() => setOpen((o) => !o)}
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
+                style={{ background: '#f1f1f3', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#ececee')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#f1f1f3')}
+            >
+                <Icon name={portfolio ? 'contacts' : 'person'} style={{ color: COLORS.textMuted }} />
+                <span style={{ color: COLORS.textMuted }}>Working on:</span>
+                <span className="font-medium">{label}</span>
+                <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
+            </button>
+            {open && (
+                <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+                    <div className="absolute z-40 rounded-xl bg-white overflow-hidden anim-in" style={{ top: 'calc(100% + 6px)', left: 0, width: 268, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                        <p className="text-xs font-medium px-3 pt-2.5 pb-1" style={{ color: COLORS.textMuted }}>Work across</p>
+                        <button onClick={() => pick('portfolio')} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
+                            <Icon name="contacts" style={{ color: COLORS.textMuted }} />
+                            <span className="flex-1">Portfolio<span style={{ color: COLORS.textMuted }}> · {AGREEMENTS.length} agreements</span></span>
+                            {portfolio && <Icon name="tick" style={{ color: '#16a34a' }} />}
+                        </button>
+                        <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
+                        <p className="text-xs font-medium px-3 pt-2.5 pb-1" style={{ color: COLORS.textMuted }}>A specific agreement</p>
+                        <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                            {AGREEMENTS.map((a) => (
+                                <button key={a.id} onClick={() => pick(a.id)} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
+                                    <Icon name="person" style={{ color: COLORS.textMuted }} />
+                                    <span className="flex-1 truncate">{a.name}</span>
+                                    {scope === a.id && <Icon name="tick" style={{ color: '#16a34a' }} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
 
 export const COLORS = {
     nav: '#0c0d13',
@@ -147,6 +202,7 @@ export function PageHeader({
                     </button>
                 )}
                 <h1 className="text-xl font-semibold truncate" style={{ color: COLORS.text }}>{title}</h1>
+                <ScopeSwitcher />
                 {badge}
                 {right && <div className="ml-auto flex items-center gap-2 shrink-0">{right}</div>}
             </div>

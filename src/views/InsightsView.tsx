@@ -317,15 +317,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader
-                    title="Insights"
-                    badge={
-                        <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>
-                            <Icon name={scope === 'portfolio' ? 'contacts' : 'person'} /> {scope === 'portfolio' ? `Portfolio · all agreements` : scopeName}
-                        </span>
-                    }
-                    right={<PeriodSelector value={period} onChange={setPeriod} />}
-                />
+                <PageHeader title="Insights" right={<PeriodSelector value={period} onChange={setPeriod} />} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* upgrade banner */}
                     {!pro && (

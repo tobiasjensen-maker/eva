@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Orb, MicIcon, EmojiTile, COLORS } from '../ui';
+import { Orb, MicIcon, EmojiTile, ScopeSwitcher, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { CHAT_SUGGESTIONS, AGREEMENTS } from '../data';
 import type { Skill, Space, ViewId } from '../types';
@@ -45,7 +45,6 @@ interface Props {
     scopeName?: string;
     onActiveChange?: (active: boolean) => void;
     analyticsUnlocked?: boolean;
-    onOpenScopeSwitcher?: () => void;
     onSelectClient?: (id: string) => void;
 }
 
@@ -472,7 +471,7 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onOpenScopeSwitcher, onSelectClient }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient }: Props) {
     // Seed Eva's getting-started message right after onboarding (lazy init → StrictMode-safe)
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : []));
     const [input, setInput] = useState('');
@@ -732,15 +731,12 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
 
     const empty = messages.length === 0;
     const suggestions = scope === 'portfolio' ? PORTFOLIO_SUGGESTIONS : CHAT_SUGGESTIONS;
-    const scopePill = <ScopePill scope={scope} scopeName={scopeName} count={AGREEMENTS.length} onClick={() => onOpenScopeSwitcher?.()} />;
 
     return (
         <div className="flex h-full">
             <div className="flex flex-col flex-1 min-w-0 h-full">
             <div className="flex items-center justify-between gap-2 px-6 py-3">
-                <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>
-                    <Icon name={scope === 'portfolio' ? 'contacts' : 'person'} /> {scopeName}
-                </span>
+                <ScopeSwitcher />
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setHistoryOpen(true)}
@@ -767,7 +763,6 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     <h1 className="mt-6 text-2xl font-semibold" style={{ color: COLORS.text }}>What can I do for you?</h1>
                     <div className="w-full" style={{ maxWidth: 640 }}>
                         <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} className="mt-7" />
-                        <div className="mt-2.5 flex justify-center">{scopePill}</div>
                         <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
                         <div className="grid grid-cols-2 gap-3">
                             {suggestions.map((s) => (
@@ -823,7 +818,6 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     <div className="px-6 pb-5">
                         <div className="mx-auto" style={{ maxWidth: 720 }}>
                             <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} autoFocus />
-                            <div className="mt-2 flex justify-center">{scopePill}</div>
                         </div>
                     </div>
                 </>
@@ -997,25 +991,6 @@ function ThinkingBubble({ statuses }: { statuses: string[] }) {
         <div className="flex items-center py-1.5">
             <span className="text-sm" style={{ color: COLORS.textMuted }}>{statuses[i]}</span>
         </div>
-    );
-}
-
-// Context indicator under the chat input — shows what the chat is scoped to;
-// clicking it opens the client switcher.
-function ScopePill({ scope, scopeName, count, onClick }: { scope: string; scopeName: string; count: number; onClick: () => void }) {
-    const portfolio = scope === 'portfolio';
-    return (
-        <button
-            onClick={onClick}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
-            style={{ color: COLORS.textMuted, background: '#f4f4f5', border: `1px solid ${COLORS.cardBorder}` }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#ececee')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#f4f4f5')}
-        >
-            <Icon name={portfolio ? 'contacts' : 'person'} />
-            {portfolio ? `Asking across all clients · ${count} agreements` : `Asking about: ${scopeName}`}
-            <Icon name="chevron-down" />
-        </button>
     );
 }
 
