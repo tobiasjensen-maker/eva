@@ -35,6 +35,10 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
 
 const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces'];
 
+// Friendly URL slugs for each page (the Review page's internal id is 'activity').
+const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'skills', spaces: 'spaces' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', skills: 'skills', spaces: 'spaces' };
+
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
     { icon: 'circle-questionmark', label: 'Help & support' },
@@ -47,6 +51,8 @@ let spaceSeq = 100;
 export default function App() {
     const toast = useToast();
     const [view, setView] = useState<ViewId>(() => {
+        const h = window.location.hash.replace(/^#\/?/, '');
+        if (SLUG_VIEW[h]) return SLUG_VIEW[h];
         const saved = localStorage.getItem('va-view') as ViewId | null;
         return saved && VIEW_IDS.includes(saved) ? saved : 'chat';
     });
@@ -74,17 +80,32 @@ export default function App() {
         toast.success(`Financial Insights unlocked · ${INSIGHTS_PRICE} kr/month`);
     }
     const [accountOpen, setAccountOpen] = useState(false);
-    // Lightweight hash routing so the onboarding flow has its own linkable URL (#/onboarding).
+    // Hash routing — every page has its own URL (#/chat, #/review, …, plus #/onboarding).
     const [route, setRoute] = useState<string>(() => window.location.hash.replace(/^#\/?/, ''));
     useEffect(() => {
-        const onHash = () => setRoute(window.location.hash.replace(/^#\/?/, ''));
+        const onHash = () => {
+            const h = window.location.hash.replace(/^#\/?/, '');
+            setRoute(h);
+            if (SLUG_VIEW[h]) setView(SLUG_VIEW[h]);
+        };
         window.addEventListener('hashchange', onHash);
         return () => window.removeEventListener('hashchange', onHash);
     }, []);
-    function navigate(r: string) {
-        setRoute(r);
-        if (r) window.location.hash = `#/${r}`;
-        else history.replaceState(null, '', window.location.pathname + window.location.search);
+    // On first load, make sure the URL reflects the current page so it's directly linkable.
+    useEffect(() => {
+        const h = window.location.hash.replace(/^#\/?/, '');
+        if (!SLUG_VIEW[h] && h !== 'onboarding') {
+            history.replaceState(null, '', `#/${VIEW_SLUG[view]}`);
+            setRoute(VIEW_SLUG[view]);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    function navigate(slug: string) {
+        window.location.hash = `#/${slug}`;
+    }
+    function goView(v: ViewId) {
+        setView(v);
+        navigate(VIEW_SLUG[v]);
     }
     const [welcome, setWelcome] = useState(false);
     const [chatKey, setChatKey] = useState(0);
@@ -333,7 +354,7 @@ export default function App() {
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
                             <button
-                                onClick={() => setView(id)}
+                                onClick={() => goView(id)}
                                 className="flex items-center gap-3 rounded-lg text-sm text-left w-full"
                                 style={{
                                     padding: collapsed ? '9px 0' : '8px 12px',
@@ -458,7 +479,7 @@ export default function App() {
                         skills={skills}
                         spaces={spaces}
                         onEnableSkill={enableSkill}
-                        onNavigate={setView}
+                        onNavigate={goView}
                         onCreateSpace={(title) => addSpace(title, 'Generated from a chat conversation.')}
                         seedWelcome={welcome}
                         onWelcomeConsumed={() => setWelcome(false)}
@@ -524,8 +545,8 @@ export default function App() {
             {/* Onboarding lives at its own linkable URL (#/onboarding), shown as a full-screen overlay. */}
             {route === 'onboarding' && (
                 <Onboarding
-                    onClose={() => navigate('')}
-                    onComplete={() => { navigate(''); setView('chat'); setWelcome(true); setChatKey((k) => k + 1); }}
+                    onClose={() => navigate(VIEW_SLUG[view])}
+                    onComplete={() => { setWelcome(true); setChatKey((k) => k + 1); goView('chat'); }}
                 />
             )}
         </div>
