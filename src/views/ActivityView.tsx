@@ -160,6 +160,11 @@ const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string; ex
     medium: { bg: '#fbf3e0', fg: '#92710f', label: 'Medium', explain: 'Medium confidence — mostly clear, but worth a quick check.' },
     low: { bg: '#fdecec', fg: '#dc2626', label: 'Low', explain: 'Low confidence — Eva wasn’t sure, so it held this for your review.' },
 };
+// Illustrative metrics shown in the "Why did Eva do this?" panel.
+const CONF_PCT: Record<Confidence, string> = { high: '99%', medium: '86%', low: '62%' };
+const SKILL_TIME: Record<string, string> = {
+    reconciliation: '~1 min', reminders: '~2 min', documents: '~3 min', monitor: '~10 min', anomalies: '~5 min', 'close-books': '~30 min',
+};
 const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: string; icon: string }> = {
     completed: { bg: '#e9f7ef', fg: '#15803d', label: 'Completed', icon: 'circle-tick' },
     'needs-review': { bg: '#fbf3e0', fg: '#92710f', label: 'Needs review', icon: 'circle-warning' },
@@ -406,70 +411,58 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk }: 
             </button>
 
             {open && (
-                <div className="px-4 pb-4 anim-in" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide mt-4 mb-2 flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                        <Icon name="ai-stars" /> Why did Eva do this?
-                    </p>
-                    <ol className="flex flex-col gap-2">
-                        {entry.reasoning.map((r, i) => (
-                            <li key={i} className="flex items-start gap-2.5 text-sm" style={{ color: COLORS.text }}>
-                                <span className="flex items-center justify-center shrink-0 rounded-full text-xs font-medium" style={{ width: 20, height: 20, background: '#f1f1f3', color: COLORS.textMuted }}>{i + 1}</span>
-                                <span className="leading-relaxed">{r}</span>
-                            </li>
-                        ))}
-                    </ol>
+                <div className="px-4 pb-4 anim-in">
+                    <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fcfcfd' }}>
+                        <div className="flex items-center gap-2">
+                            <Orb size={18} />
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Why did Eva do this?</span>
+                        </div>
 
-                    {entry.source && (
-                        <button
-                            onClick={entry.doc ? onOpenDoc : undefined}
-                            className="flex items-center gap-2 rounded-lg px-3 py-2.5 mt-3 text-sm w-full text-left"
-                            style={{ background: '#f7f7f8', color: COLORS.text, cursor: entry.doc ? 'pointer' : 'default' }}
-                        >
-                            <Icon name="document" style={{ color: COLORS.textMuted }} />
-                            <span className="flex-1">Source: {entry.source}</span>
-                            {entry.doc && <span className="flex items-center gap-1 text-xs font-medium" style={{ color: '#4456c7' }}>View {entry.doc.kind.toLowerCase()} <Icon name="chevron-right" /></span>}
-                        </button>
-                    )}
+                        <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.join(' ')}</p>
 
-                    {/* action area */}
-                    {entry.resolution ? (
-                        <div className="mt-3 rounded-lg px-3 py-2.5" style={{ background: '#ecfdf5' }}>
-                            <p className="text-sm flex items-start gap-2" style={{ color: '#065f46' }}>
-                                <Icon name="circle-tick" /> <span>Resolved by you — “{entry.resolution}”. The change has been posted in e-conomic.</span>
-                            </p>
-                            <a href="#" onClick={(ev) => ev.preventDefault()} className="inline-flex items-center gap-1.5 text-sm font-medium mt-2" style={{ color: '#047857' }}>
-                                <Icon name="link-external" /> View the change in e-conomic
-                            </a>
+                        {/* metrics: confidence · time saved · source */}
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
+                            <span className="flex items-center gap-1.5" title={conf.explain}>
+                                <Icon name="circle-tick" /> {CONF_PCT[entry.confidence]} confidence
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <Icon name="time" /> {SKILL_TIME[entry.skill] ?? '~2 min'} saved
+                            </span>
+                            {entry.doc && (
+                                <button onClick={onOpenDoc} className="flex items-center gap-1.5 font-medium" style={{ color: '#4456c7' }}>
+                                    <Icon name={DOC_ICON[entry.doc.kind] as never} /> View {entry.doc.kind.toLowerCase()} {entry.doc.ref}
+                                </button>
+                            )}
                         </div>
-                    ) : acting ? (
-                        <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
-                            <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                            Carrying out your choice…
+
+                        <div style={{ borderTop: `1px solid ${COLORS.cardBorder}`, margin: '14px -16px 0' }} />
+
+                        {/* footer: Ask Eva + decision */}
+                        <div className="flex items-center justify-between pt-3 gap-3">
+                            <button onClick={onAsk} className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#4c6ef5' }}>
+                                <Orb size={16} /> Ask Eva
+                            </button>
+                            {entry.resolution ? (
+                                <span className="flex items-center gap-1.5 text-sm" style={{ color: '#15803d' }}>
+                                    <Icon name="circle-tick" /> {entry.resolution === 'Dismissed' ? 'Dismissed' : `Accepted — “${entry.resolution}”`}
+                                </span>
+                            ) : acting ? (
+                                <span className="flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
+                                    <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                                    Working…
+                                </span>
+                            ) : entry.suggestions ? (
+                                <div className="flex items-center gap-2">
+                                    <Button onClick={() => onResolve('Dismissed')}>Dismiss</Button>
+                                    <Button appearance="primary" onClick={() => onResolve(entry.suggestions![0])}>Accept</Button>
+                                </div>
+                            ) : (
+                                <a href="#" onClick={(ev) => ev.preventDefault()} className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: '#4c6ef5' }}>
+                                    <Icon name="link-external" /> View in e-conomic
+                                </a>
+                            )}
                         </div>
-                    ) : needsReview && entry.suggestions ? (
-                        <div className="mt-3">
-                            <p className="text-xs flex items-center gap-1.5 mb-2" style={{ color: COLORS.textMuted }}>
-                                <Icon name="ai-stars" /> Suggested next step{entry.suggestions.length > 1 ? 's' : ''}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {entry.suggestions.map((s, i) => (
-                                    <Button key={s} appearance={i === 0 ? 'primary' : 'default'} onClick={() => onResolve(s)}>{s}</Button>
-                                ))}
-                                <button onClick={() => onResolve('Dismissed')} className="ml-auto text-sm" style={{ color: COLORS.textMuted }}>Dismiss</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mt-3">
-                            <a
-                                href="#"
-                                onClick={(ev) => ev.preventDefault()}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium rounded-lg px-3 py-1.5"
-                                style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
-                            >
-                                <Icon name="link-external" /> View in e-conomic
-                            </a>
-                        </div>
-                    )}
+                    </div>
                 </div>
             )}
         </Card>
