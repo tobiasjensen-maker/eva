@@ -362,7 +362,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                 </span>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: COLORS.text }}>
-                        {needsReview && <span style={{ color: '#b9842b' }}>Eva suggests: </span>}{entry.desc}
+                        {entry.desc}
                     </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
                         {sk.label} · {clientName(entry.client)} · {entry.dateLabel} · {entry.time}
