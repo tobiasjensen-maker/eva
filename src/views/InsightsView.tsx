@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
 import { Card, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { useLang } from '../i18n';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
@@ -285,6 +286,7 @@ function renderPremium(key: string, p: Profile): JSX.Element {
 }
 
 export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', pro, onUpgrade }: Props) {
+    const { t } = useLang();
     const subjectLabel = scope === 'portfolio' ? 'your portfolio' : scopeName;
     const profile = PROFILES[scope] ?? PROFILES.portfolio;
     const [period, setPeriod] = useState('6m');
@@ -292,7 +294,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader title="Insights" right={<SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: p.label }))} />} />
+                <PageHeader title={t('Insights')} right={<SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} />} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* upgrade banner */}
                     {!pro && (

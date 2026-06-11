@@ -25,20 +25,22 @@ import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
+import { LangContext, translate, type Lang } from './i18n';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Review', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
     { id: 'skills', label: 'Skills', Icon: SkillsIcon },
-    { id: 'spaces', label: 'Spaces', Icon: SpacesIcon },
+    { id: 'spaces', label: 'Artifacts', Icon: SpacesIcon },
 ];
 
 const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces'];
 
-// Friendly URL slugs for each page (the Review page's internal id is 'activity').
-const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'skills', spaces: 'spaces' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', skills: 'skills', spaces: 'spaces' };
+// Friendly URL slugs for each page (the Review page's internal id is 'activity';
+// Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
+const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'skills', spaces: 'artifacts' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', skills: 'skills', artifacts: 'spaces', spaces: 'spaces' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -81,6 +83,11 @@ export default function App() {
         toast.success(`Financial Insights unlocked · ${INSIGHTS_PRICE} kr/month`);
     }
     const [accountOpen, setAccountOpen] = useState(false);
+    const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('va-lang') === 'da' ? 'da' : 'en'));
+    useEffect(() => {
+        localStorage.setItem('va-lang', lang);
+    }, [lang]);
+    const t = (s: string) => translate(lang, s);
     // Hash routing — every page has its own URL (#/chat, #/review, …, plus #/onboarding).
     const [route, setRoute] = useState<string>(() => window.location.hash.replace(/^#\/?/, ''));
     useEffect(() => {
@@ -137,8 +144,8 @@ export default function App() {
         const t = q.toLowerCase().replace(/[?.!]/g, '').trim();
         if (activeSpace) return `On it — I'll ${t} for “${activeSpace.title}” and update it live.`;
         if (/dashboard|revenue/.test(t)) return 'I can build a revenue dashboard with a monthly trend, period comparison and a forecast. Want me to create it now?';
-        if (/receivable|aged|report/.test(t)) return 'An aged receivables report buckets open invoices by 0–30 / 31–60 / 61–90 / 90+ days and flags the worst exposure. I can save it as a Space.';
-        return 'A Space is a reusable dashboard, report, list or form built from your data. Tell me what you want to see and I’ll create it.';
+        if (/receivable|aged|report/.test(t)) return 'An aged receivables report buckets open invoices by 0–30 / 31–60 / 61–90 / 90+ days and flags the worst exposure. I can save it as an artifact.';
+        return 'An artifact is a reusable dashboard, report, list or form built from your data. Tell me what you want to see and I’ll create it.';
     }
 
     // The contextual Eva chat panel (third shell block) — present on every content page.
@@ -167,18 +174,18 @@ export default function App() {
               }
             : view === 'spaces'
             ? {
-                  subtitle: activeSpace ? 'about this Space' : 'spaces assistant',
+                  subtitle: activeSpace ? 'about this artifact' : 'artifacts assistant',
                   intro: activeSpace
                       ? `Ask me to refine “${activeSpace.title}” — add a forecast, filter it, or export it.`
-                      : "I'm Eva. Tell me what you want to track and I'll spin up a Space — a dashboard, report, list or form.",
+                      : "I'm Eva. Tell me what you want to track and I'll spin up an artifact — a dashboard, report, list or form.",
                   chips: activeSpace
                       ? ['Add a forecast', 'Filter to last quarter', 'Export as PDF']
-                      : ['Build a revenue dashboard', 'Create an aged receivables report', 'What can a Space do?'],
+                      : ['Build a revenue dashboard', 'Create an aged receivables report', 'What can an artifact do?'],
                   respond: spacesAnswer,
               }
             : null;
-    // Remount the panel (fresh conversation) when the page — or the open Space — changes.
-    const panelKey = view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '');
+    // Remount the panel (fresh conversation) when the page, the open artifact, or the language changes.
+    const panelKey = view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '') + lang;
 
     function applyScope(s: string) {
         setScope(s);
@@ -218,12 +225,13 @@ export default function App() {
             : '🗂️';
         const space: Space = { id: `sp-${spaceSeq++}`, title, description, updated: 'Jun 4, 2026', messages: 1, emoji };
         setSpaces((prev) => [space, ...prev]);
-        toast.success(`Created Space “${title}”`);
+        toast.success(`Created artifact “${title}”`);
     }
 
     const panelShadow = '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)';
 
     return (
+        <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope }}>
         <div className="flex" style={{ height: '100vh', background: '#ececee', padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
@@ -271,8 +279,9 @@ export default function App() {
 
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 mt-3" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
-                    {RAIL.map(({ id, label, Icon: RIcon }) => {
+                    {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
                         const active = view === id;
+                        const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
                             <button
@@ -322,17 +331,40 @@ export default function App() {
                                 {ACCOUNT_ITEMS.map((it) => (
                                     <button
                                         key={it.label}
-                                        onClick={() => { toast.information(it.label); setAccountOpen(false); }}
+                                        onClick={() => { toast.information(t(it.label)); setAccountOpen(false); }}
                                         className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm"
                                         style={{ color: COLORS.text }}
                                         onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
                                         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                     >
                                         <Icon name={it.icon as never} style={{ color: COLORS.textMuted }} />
-                                        <span className="flex-1">{it.label}</span>
+                                        <span className="flex-1">{t(it.label)}</span>
                                         {it.badge && <span className="rounded-full" style={{ width: 7, height: 7, background: '#ef4444' }} />}
                                     </button>
                                 ))}
+                                <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
+                                {/* Language — for demoing in Danish */}
+                                <div className="flex items-center gap-3 px-3 py-2.5">
+                                    <Icon name="website" style={{ color: COLORS.textMuted }} />
+                                    <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t('Language')}</span>
+                                    <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
+                                        {(['en', 'da'] as Lang[]).map((l) => (
+                                            <button
+                                                key={l}
+                                                onClick={() => setLang(l)}
+                                                className="rounded-md text-xs font-semibold"
+                                                style={{
+                                                    padding: '3px 9px',
+                                                    background: lang === l ? '#fff' : 'transparent',
+                                                    color: lang === l ? COLORS.text : COLORS.textMuted,
+                                                    boxShadow: lang === l ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                                                }}
+                                            >
+                                                {l === 'en' ? 'EN' : 'DA'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
                                 <button
                                     onClick={() => { navigate('onboarding'); setAccountOpen(false); }}
@@ -342,7 +374,7 @@ export default function App() {
                                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <Icon name="play" style={{ color: COLORS.textMuted }} />
-                                    <span className="flex-1">Replay onboarding</span>
+                                    <span className="flex-1">{t('Replay onboarding')}</span>
                                 </button>
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
                                 <button
@@ -353,13 +385,13 @@ export default function App() {
                                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <Icon name="log-out" style={{ color: COLORS.textMuted }} />
-                                    <span className="flex-1">Log out</span>
+                                    <span className="flex-1">{t('Log out')}</span>
                                 </button>
                             </div>
                         </>
                     )}
 
-                    <SidebarTooltip label="Account settings" show={collapsed}>
+                    <SidebarTooltip label={t('Account settings')} show={collapsed}>
                     <button
                         onClick={() => setAccountOpen((o) => !o)}
                         className="flex items-center gap-2 w-full rounded-lg"
@@ -472,5 +504,6 @@ export default function App() {
             )}
         </div>
         </ScopeContext.Provider>
+        </LangContext.Provider>
     );
 }

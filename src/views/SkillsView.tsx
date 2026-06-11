@@ -3,6 +3,8 @@ import { Button, Icon, Switch } from '@economic/taco';
 import { Card, Dot, EmojiTile, PageHeader, StickyFooter, COLORS } from '../ui';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
+import { AGREEMENTS } from '../data';
+import { useLang } from '../i18n';
 import type { Skill } from '../types';
 
 interface Props {
@@ -25,6 +27,7 @@ const SKILL_META: Record<string, { category: string; features: string[] }> = {
 };
 
 export default function SkillsView({ skills, onEnable }: Props) {
+    const { t } = useLang();
     const [openId, setOpenId] = useState<string | null>(null);
     const [gallery, setGallery] = useState(false);
 
@@ -50,12 +53,13 @@ export default function SkillsView({ skills, onEnable }: Props) {
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title="Skills" right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> Add new skill</Button>} />
+            {/* Skills are bought for the practice, not per client — no scope pill here. */}
+            <PageHeader title={t('Skills')} showScope={false} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('Add new skill')}</Button>} />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 {enabled.length === 0 ? (
                     <Card className="p-10 text-center">
                         <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                            No skills enabled yet. Browse the library to add one.
+                            {t('No skills enabled yet. Browse the library to add one.')}
                         </p>
                     </Card>
                 ) : (
@@ -81,27 +85,28 @@ export default function SkillsView({ skills, onEnable }: Props) {
 }
 
 function SkillCard({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
+    const { t } = useLang();
     const locked = skill.state === 'locked';
     return (
         <Card className="p-5 flex flex-col" hover onClick={onOpen} style={{ minHeight: 168 }}>
             <div className="flex items-start gap-3">
                 <EmojiTile emoji={skill.emoji} size={30} />
-                <p className="text-sm font-semibold leading-snug flex-1" style={{ color: COLORS.text }}>{skill.title}</p>
+                <p className="text-sm font-semibold leading-snug flex-1" style={{ color: COLORS.text }}>{t(skill.title)}</p>
                 {locked && <Icon name="lock" style={{ color: '#a8a8b0' }} />}
             </div>
-            <p className="text-sm mt-3 leading-relaxed" style={{ color: COLORS.textMuted }}>{skill.description}</p>
+            <p className="text-sm mt-3 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(skill.description)}</p>
             <div className="flex items-center justify-between mt-auto pt-4">
                 {locked ? (
                     <>
-                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{`From ${skill.price} DKK/month`}</span>
-                        <span className="flex items-center gap-1 text-sm font-medium" style={{ color: COLORS.text }}>Set up <Icon name="chevron-right" /></span>
+                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{`${t('From')} ${skill.price} DKK/${t('month')}`}</span>
+                        <span className="flex items-center gap-1 text-sm font-medium" style={{ color: COLORS.text }}>{t('Set up')} <Icon name="chevron-right" /></span>
                     </>
                 ) : (
                     <>
-                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{skill.stat}</span>
+                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{t(skill.stat ?? '')}</span>
                         <span className="flex items-center gap-1.5 text-sm" style={{ color: COLORS.text }}>
                             <Dot color={skill.state === 'active' ? '#16a34a' : '#a8a8b0'} />
-                            {skill.state === 'active' ? 'Active' : 'Idle'}
+                            {skill.state === 'active' ? t('Active') : t('Idle')}
                         </span>
                     </>
                 )}
@@ -285,16 +290,17 @@ function buildEvents(skill: Skill): SkillEvent[] {
     return events;
 }
 
-// Day-count → friendly date label.
-function dayLabel(daysAgo: number): string {
+// Day-count → friendly date label ('Today'/'Yesterday' translated by the caller via t()).
+function dayLabel(daysAgo: number, locale = 'en-GB'): string {
     if (daysAgo === 0) return 'Today';
     if (daysAgo === 1) return 'Yesterday';
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => void; onEnable: () => void }) {
+    const { t, lang } = useLang();
     const locked = skill.state === 'locked';
     const actions = SKILL_META[skill.id]?.features ?? [];
     const cfg = SKILL_CONFIG[skill.id] ?? DEFAULT_CONFIG;
@@ -308,18 +314,31 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
     const [notify, setNotify] = useState(cfg.notify);
     const [guardrail, setGuardrail] = useState(cfg.guardrail);
     const [threshold, setThreshold] = useState(cfg.threshold ?? '10.000');
+    // The skill is bought once for the practice; it can run on all clients or a subset.
+    const [clientMode, setClientMode] = useState<'all' | 'selected'>('all');
+    const [clientSel, setClientSel] = useState<Set<string>>(() => new Set(AGREEMENTS.slice(0, 3).map((a) => a.id)));
     const [testOpen, setTestOpen] = useState(false);
+
+    function toggleClient(id: string) {
+        setClientSel((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
 
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
             <PageHeader
-                title={skill.title}
+                title={t(skill.title)}
                 onBack={onBack}
-                backLabel="Skills"
+                backLabel={t('Skills')}
+                showScope={false}
                 right={!locked ? (
                     <div className="flex items-center gap-2">
-                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{active ? 'Active' : 'Paused'}</span>
+                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{active ? t('Active') : t('Paused')}</span>
                         <Switch checked={active} onChange={setActive} />
                     </div>
                 ) : undefined}
@@ -328,14 +347,16 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                 {/* intro */}
                 <div className="flex items-start gap-3 mb-6">
                     <EmojiTile emoji={skill.emoji} size={44} />
-                    <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>{skill.description}</p>
+                    <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>{t(skill.description)}</p>
                 </div>
 
                 {locked && (
                     <div className="rounded-xl p-4 mb-6 flex items-center gap-3" style={{ border: '1px solid #e6dcfb', background: '#faf6ff' }}>
                         <Icon name="lock" style={{ color: '#8b46d6' }} />
                         <p className="text-sm flex-1" style={{ color: COLORS.text }}>
-                            This skill isn’t enabled yet. Configure it below, then enable it for <b>{skill.price} DKK/month</b>.
+                            {lang === 'da'
+                                ? <>Denne skill er ikke aktiveret endnu. Konfigurér den nedenfor, og aktivér den for hele din praksis for <b>{skill.price} DKK/md.</b></>
+                                : <>This skill isn’t enabled yet. Configure it below, then enable it for your whole practice for <b>{skill.price} DKK/month</b>.</>}
                         </p>
                     </div>
                 )}
@@ -345,19 +366,19 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                     {([
                         { k: 'config', label: 'Configuration', count: undefined as number | undefined },
                         { k: 'activity', label: 'Activity', count: locked ? undefined : statCount(skill) },
-                    ] as const).map((t) => {
-                        const on = tab === t.k;
+                    ] as const).map((tb) => {
+                        const on = tab === tb.k;
                         return (
                             <button
-                                key={t.k}
-                                onClick={() => setTab(t.k)}
+                                key={tb.k}
+                                onClick={() => setTab(tb.k)}
                                 className="relative flex items-center gap-2"
                                 style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}
                             >
-                                {t.label}
-                                {t.count !== undefined && (
+                                {t(tb.label)}
+                                {tb.count !== undefined && (
                                     <span className="rounded-full px-1.5 text-xs font-semibold" style={{ background: on ? '#ececed' : '#f4f4f5', color: COLORS.textMuted, lineHeight: '18px' }}>
-                                        {t.count.toLocaleString('en-US')}
+                                        {tb.count.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US')}
                                     </span>
                                 )}
                                 {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
@@ -372,44 +393,74 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                 <>
                 {/* What's done with this skill */}
                 {actions.length > 0 && (
-                    <Section title="What's done with this skill" sub="These steps run automatically each time the skill takes effect.">
+                    <Section title={t("What's done with this skill")} sub={t('These steps run automatically each time the skill takes effect.')}>
                         <div className="rounded-xl p-4 flex flex-col gap-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
                             {actions.map((a, i) => (
                                 <div key={a} className="flex items-start gap-3">
                                     <span className="flex items-center justify-center shrink-0 rounded-full text-xs font-semibold" style={{ width: 22, height: 22, background: '#ececed', color: COLORS.text }}>{i + 1}</span>
-                                    <span className="text-sm" style={{ color: COLORS.text }}>{a}</span>
+                                    <span className="text-sm" style={{ color: COLORS.text }}>{t(a)}</span>
                                 </div>
                             ))}
                         </div>
                     </Section>
                 )}
 
-                {/* Trigger */}
-                <Section title="Trigger" sub="Decide what kicks this skill off.">
+                {/* Applies to — the skill is practice-level; choose where it runs */}
+                <Section title={t('Applies to')} sub={t('This skill is enabled for your whole practice — choose which clients it runs on.')}>
                     <div className="grid grid-cols-2 gap-3">
-                        {TRIGGERS.map((t) => (
-                            <OptionCard key={t.key} selected={trigger === t.key} icon={t.icon} title={t.title} desc={t.desc} onClick={() => setTrigger(t.key)} />
+                        <OptionCard selected={clientMode === 'all'} icon="contacts" title={t('All clients')} desc={t('Runs across every client agreement, including new ones.')} onClick={() => setClientMode('all')} />
+                        <OptionCard selected={clientMode === 'selected'} icon="person" title={t('Selected clients')} desc={t('Pick the agreements this skill should work on.')} onClick={() => setClientMode('selected')} />
+                    </div>
+                    {clientMode === 'selected' && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                            {AGREEMENTS.map((a) => {
+                                const on = clientSel.has(a.id);
+                                return (
+                                    <button
+                                        key={a.id}
+                                        onClick={() => toggleClient(a.id)}
+                                        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm"
+                                        style={{
+                                            border: `1px solid ${on ? COLORS.text : COLORS.cardBorder}`,
+                                            background: on ? COLORS.text : '#fff',
+                                            color: on ? '#fff' : COLORS.text,
+                                        }}
+                                    >
+                                        {on && <Icon name="tick" />}
+                                        {a.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </Section>
+
+                {/* Trigger */}
+                <Section title={t('Trigger')} sub={t('Decide what kicks this skill off.')}>
+                    <div className="grid grid-cols-2 gap-3">
+                        {TRIGGERS.map((tr) => (
+                            <OptionCard key={tr.key} selected={trigger === tr.key} icon={tr.icon} title={t(tr.title)} desc={t(tr.desc)} onClick={() => setTrigger(tr.key)} />
                         ))}
                     </div>
 
                     {trigger === 'event' && (
-                        <Field label="Run when…">
+                        <Field label={t('Run when…')}>
                             <select value={event} onChange={(e) => setEvent(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
-                                {EVENTS.map((ev) => <option key={ev}>{ev}</option>)}
+                                {EVENTS.map((ev) => <option key={ev} value={ev}>{t(ev)}</option>)}
                             </select>
                         </Field>
                     )}
 
                     {trigger === 'schedule' && (
                         <div className="flex flex-wrap items-end gap-4">
-                            <Field label="Frequency">
+                            <Field label={t('Frequency')}>
                                 <div className="flex gap-2">
                                     {['Daily', 'Weekly', 'Monthly'].map((f) => (
-                                        <button key={f} onClick={() => setFrequency(f)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${frequency === f ? COLORS.text : COLORS.cardBorder}`, background: frequency === f ? COLORS.text : '#fff', color: frequency === f ? '#fff' : COLORS.text }}>{f}</button>
+                                        <button key={f} onClick={() => setFrequency(f)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${frequency === f ? COLORS.text : COLORS.cardBorder}`, background: frequency === f ? COLORS.text : '#fff', color: frequency === f ? '#fff' : COLORS.text }}>{t(f)}</button>
                                     ))}
                                 </div>
                             </Field>
-                            <Field label="At">
+                            <Field label={t('At')}>
                                 <input value={time} onChange={(e) => setTime(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 100 }} />
                             </Field>
                         </div>
@@ -417,32 +468,32 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                 </Section>
 
                 {/* Autonomy */}
-                <Section title="Level of autonomy" sub="Decide how much the skill can do on its own.">
+                <Section title={t('Level of autonomy')} sub={t('Decide how much the skill can do on its own.')}>
                     <div className="flex flex-col gap-3">
                         {AUTONOMY.map((a) => (
-                            <OptionCard key={a.key} selected={autonomy === a.key} icon={a.icon} title={a.title} desc={a.desc} onClick={() => setAutonomy(a.key)} wide />
+                            <OptionCard key={a.key} selected={autonomy === a.key} icon={a.icon} title={t(a.title)} desc={t(a.desc)} onClick={() => setAutonomy(a.key)} wide />
                         ))}
                     </div>
                 </Section>
 
                 {/* Guardrails */}
-                <Section title="Guardrails & notifications" sub="Keep control over the riskier actions.">
+                <Section title={t('Guardrails & notifications')} sub={t('Keep control over the riskier actions.')}>
                     <div className="flex flex-col gap-3">
                         <ToggleRow
                             checked={guardrail}
                             onChange={setGuardrail}
-                            title="Require my approval above an amount"
-                            desc="Anything below the threshold can be handled automatically."
+                            title={t('Require my approval above an amount')}
+                            desc={t('Anything below the threshold can be handled automatically.')}
                         >
                             {guardrail && (
                                 <div className="flex items-center gap-2 mt-3">
-                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>Threshold</span>
+                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>{t('Threshold')}</span>
                                     <input value={threshold} onChange={(e) => setThreshold(e.target.value)} className="rounded-lg px-3 py-1.5 text-sm bg-white text-right" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 110 }} />
                                     <span className="text-sm" style={{ color: COLORS.textMuted }}>DKK</span>
                                 </div>
                             )}
                         </ToggleRow>
-                        <ToggleRow checked={notify} onChange={setNotify} title="Notify me when this skill acts" desc="Get a notification and a Review entry each time it runs." />
+                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this skill acts')} desc={t('Get a notification and a Review entry each time it runs.')} />
                     </div>
                 </Section>
 
@@ -454,13 +505,13 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
             {tab === 'config' && (
                 <StickyFooter>
                     <div className="flex gap-2">
-                        <Button onClick={onBack}>Cancel</Button>
-                        <Button onClick={() => setTestOpen(true)}><Icon name="play" /> Test run</Button>
+                        <Button onClick={onBack}>{t('Cancel')}</Button>
+                        <Button onClick={() => setTestOpen(true)}><Icon name="play" /> {t('Test run')}</Button>
                     </div>
                     {locked ? (
-                        <Button appearance="primary" onClick={onEnable}>{`Enable for ${skill.price} DKK/month`}</Button>
+                        <Button appearance="primary" onClick={onEnable}>{lang === 'da' ? `Aktivér for ${skill.price} DKK/md.` : `Enable for ${skill.price} DKK/month`}</Button>
                     ) : (
-                        <Button appearance="primary" onClick={onBack}>Save changes</Button>
+                        <Button appearance="primary" onClick={onBack}>{t('Save changes')}</Button>
                     )}
                 </StickyFooter>
             )}
@@ -544,6 +595,7 @@ const ACTIVITY_RANGES = [
 const RENDER_LIMIT = 50;
 
 function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
+    const { t, lang } = useLang();
     const all = useMemo(() => (locked ? [] : buildEvents(skill)), [skill, locked]);
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'done' | 'flagged'>('all');
@@ -554,7 +606,7 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
         return (
             <Card className="p-10 text-center mb-10">
                 <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                    {locked ? 'No activity yet — enable this skill to let Eva start working.' : 'No activity recorded for this skill yet.'}
+                    {locked ? t('No activity yet — enable this skill to let Eva start working.') : t('No activity recorded for this skill yet.')}
                 </p>
             </Card>
         );
@@ -571,16 +623,17 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
         return true;
     });
     const shown = filtered.slice(0, RENDER_LIMIT);
-    const noun = STAT_NOUN[skill.id] ?? 'actions taken';
+    const noun = t(STAT_NOUN[skill.id] ?? 'actions taken');
     const filtersActive = q !== '' || statusFilter !== 'all' || clientFilter !== 'all' || range !== 'all';
     const selStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text } as const;
+    const locale = lang === 'da' ? 'da-DK' : 'en-US';
 
     return (
         <div className="mb-10">
             {/* headline — matches the number on the skill card */}
             <div className="flex items-baseline gap-2.5 mb-4">
-                <span className="text-3xl font-semibold leading-none" style={{ color: COLORS.text }}>{all.length.toLocaleString('en-US')}</span>
-                <span className="text-sm" style={{ color: COLORS.textMuted }}>{noun}{totalFlagged > 0 ? ` · ${totalFlagged.toLocaleString('en-US')} flagged for review` : ''}</span>
+                <span className="text-3xl font-semibold leading-none" style={{ color: COLORS.text }}>{all.length.toLocaleString(locale)}</span>
+                <span className="text-sm" style={{ color: COLORS.textMuted }}>{noun}{totalFlagged > 0 ? ` · ${totalFlagged.toLocaleString(locale)} ${t('flagged for review')}` : ''}</span>
             </div>
 
             {/* advanced filters */}
@@ -590,38 +643,40 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search actions or clients…"
+                        placeholder={t('Search actions or clients…')}
                         className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white"
                         style={selStyle}
                     />
                 </div>
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'done' | 'flagged')} className="rounded-lg px-3 py-2 text-sm bg-white" style={selStyle}>
-                    <option value="all">All statuses</option>
-                    <option value="done">Completed</option>
-                    <option value="flagged">Flagged for review</option>
+                    <option value="all">{t('All statuses')}</option>
+                    <option value="done">{t('Completed')}</option>
+                    <option value="flagged">{t('Flagged for review')}</option>
                 </select>
                 <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selStyle}>
-                    <option value="all">All clients</option>
+                    <option value="all">{t('All clients')}</option>
                     {clients.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <select value={range} onChange={(e) => setRange(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selStyle}>
-                    {ACTIVITY_RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    {ACTIVITY_RANGES.map((r) => <option key={r.value} value={r.value}>{t(r.label)}</option>)}
                 </select>
                 {filtersActive && (
                     <button onClick={() => { setQuery(''); setStatusFilter('all'); setClientFilter('all'); setRange('all'); }} className="text-sm font-medium px-2 py-2" style={{ color: '#4456c7' }}>
-                        Clear
+                        {t('Clear')}
                     </button>
                 )}
             </div>
 
             <p className="text-xs mb-3" style={{ color: COLORS.textMuted }}>
-                {filtered.length === all.length ? `Showing all ${all.length.toLocaleString('en-US')} actions` : `${filtered.length.toLocaleString('en-US')} of ${all.length.toLocaleString('en-US')} actions match`}
-                {filtered.length > RENDER_LIMIT ? ` · showing the first ${RENDER_LIMIT}` : ''}
+                {filtered.length === all.length
+                    ? (lang === 'da' ? `Viser alle ${all.length.toLocaleString(locale)} handlinger` : `Showing all ${all.length.toLocaleString(locale)} actions`)
+                    : (lang === 'da' ? `${filtered.length.toLocaleString(locale)} af ${all.length.toLocaleString(locale)} handlinger matcher` : `${filtered.length.toLocaleString(locale)} of ${all.length.toLocaleString(locale)} actions match`)}
+                {filtered.length > RENDER_LIMIT ? (lang === 'da' ? ` · viser de første ${RENDER_LIMIT}` : ` · showing the first ${RENDER_LIMIT}`) : ''}
             </p>
 
             {filtered.length === 0 ? (
                 <Card className="p-10 text-center">
-                    <p className="text-sm" style={{ color: COLORS.textMuted }}>No actions match these filters.</p>
+                    <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No actions match these filters.')}</p>
                 </Card>
             ) : (
                 <div className="flex flex-col gap-2">
@@ -631,19 +686,19 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
                         return (
                             <Card key={i} className="p-4 flex items-center gap-3">
                                 <span
-                                    title={done ? 'Completed' : 'Flagged for review'}
+                                    title={done ? t('Completed') : t('Flagged for review')}
                                     className="flex items-center justify-center shrink-0 rounded-lg"
                                     style={{ width: 34, height: 34, background: `${fg}1a`, color: fg }}
                                 >
                                     <Icon name={done ? 'circle-tick' : 'circle-warning'} />
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{e.desc}</p>
-                                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{e.client} · {dayLabel(e.daysAgo)} · {e.time}</p>
+                                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(e.desc)}</p>
+                                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{e.client} · {t(dayLabel(e.daysAgo, locale))} · {e.time}</p>
                                 </div>
                                 {!done && (
                                     <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#fbf3e0', color: '#92710f' }}>
-                                        Needs review
+                                        {t('Needs review')}
                                     </span>
                                 )}
                             </Card>
@@ -651,7 +706,9 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
                     })}
                     {filtered.length > RENDER_LIMIT && (
                         <p className="text-xs text-center mt-2" style={{ color: COLORS.textMuted }}>
-                            + {(filtered.length - RENDER_LIMIT).toLocaleString('en-US')} more — narrow the filters to find a specific action.
+                            {lang === 'da'
+                                ? `+ ${(filtered.length - RENDER_LIMIT).toLocaleString(locale)} flere — indsnævr filtrene for at finde en bestemt handling.`
+                                : `+ ${(filtered.length - RENDER_LIMIT).toLocaleString(locale)} more — narrow the filters to find a specific action.`}
                         </p>
                     )}
                 </div>

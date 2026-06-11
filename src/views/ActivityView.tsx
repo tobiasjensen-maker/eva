@@ -2,6 +2,7 @@ import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
+import { useLang } from '../i18n';
 
 type Confidence = 'high' | 'medium' | 'low';
 export type ActivityStatus = 'completed' | 'needs-review' | 'failed';
@@ -212,6 +213,7 @@ export default function ActivityView({
     scope?: string;
     onAskEva: (user: string, answer: string) => void;
 }) {
+    const { t } = useLang();
     const [range, setRange] = useState('30');
     const [client, setClient] = useState(scope === 'portfolio' ? 'all' : scope);
     const [expanded, setExpanded] = useState<string | null>(null);
@@ -272,7 +274,7 @@ export default function ActivityView({
     const autoResolved = completed.filter((e) => !e.resolution).length;
     const stats: { key: StatusFilter; label: string; value: number; sub?: string; color: string; icon: string }[] = [
         { key: 'needs-review', label: 'Flagged for review', value: periodSet.filter((e) => e.status === 'needs-review').length, color: '#b9842b', icon: 'circle-warning' },
-        { key: 'completed', label: 'Resolved', value: completed.length, sub: `${autoResolved} auto-resolved`, color: '#16a34a', icon: 'circle-tick' },
+        { key: 'completed', label: 'Resolved', value: completed.length, sub: `${autoResolved} ${t('auto-resolved')}`, color: '#16a34a', icon: 'circle-tick' },
         { key: 'all', label: 'Actions taken', value: periodSet.length, color: '#6366f1', icon: 'workflow' },
     ];
 
@@ -280,12 +282,12 @@ export default function ActivityView({
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title="Review" right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES} />} />
+            <PageHeader title={t('Review')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
             <div className="px-8 pt-5 pb-7 mx-auto" style={{ maxWidth: 1040 }}>
                 {range === 'custom' && (
                     <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
-                        <span>to</span>
+                        <span>{t('to')}</span>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
                     </div>
                 )}
@@ -312,7 +314,7 @@ export default function ActivityView({
                                 </span>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-2xl font-semibold leading-none" style={{ color: COLORS.text }}>{s.value}</p>
-                                    <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{s.label}</p>
+                                    <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{t(s.label)}</p>
                                     {s.sub && <p className="text-xs" style={{ color: '#a8a8b0' }}>{s.sub}</p>}
                                 </div>
                             </button>
@@ -325,14 +327,14 @@ export default function ActivityView({
                     {groups.length === 0 && (
                         <Card className="p-10 text-center">
                             <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                                {status === 'needs-review' ? 'Nothing needs your review here — Eva is all caught up. 🎉' : 'No activity matches these filters.'}
+                                {status === 'needs-review' ? t('Nothing needs your review here — Eva is all caught up. 🎉') : t('No activity matches these filters.')}
                             </p>
                         </Card>
                     )}
                     {groups.map((g) => (
                         <div key={g.bucket}>
                             <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}>
-                                {BUCKET_LABEL[g.bucket]} · {g.items.length}
+                                {t(BUCKET_LABEL[g.bucket])} · {g.items.length}
                             </div>
                             <div className="flex flex-col gap-2">
                                 {g.items.map((e) => (
@@ -360,6 +362,7 @@ export default function ActivityView({
 }
 
 function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, onReverse }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onAsk: () => void; onReverse: () => void }) {
+    const { t, lang } = useLang();
     const sk = SKILL_INFO[entry.skill];
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
@@ -371,7 +374,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
         <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: open ? '#fafafa' : '#fff' }}>
                 <span
-                    title={st.label}
+                    title={t(st.label)}
                     className="flex items-center justify-center shrink-0 rounded-lg"
                     style={{ width: 36, height: 36, background: `${st.fg}1a`, color: st.fg }}
                 >
@@ -379,18 +382,18 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                 </span>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: COLORS.text }}>
-                        {entry.desc}
+                        {t(entry.desc)}
                     </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
-                        {sk.label} · {clientName(entry.client)} · {entry.dateLabel} · {entry.time}
+                        {t(sk.label)} · {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}
                     </p>
                 </div>
                 <span
-                    title={conf.explain}
+                    title={t(conf.explain)}
                     className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0"
                     style={{ background: conf.bg, color: conf.fg, cursor: 'help' }}
                 >
-                    {conf.label} confidence
+                    {t(conf.label)} {t('confidence')}
                 </span>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
@@ -400,22 +403,22 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                     <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fcfcfd' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
-                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? 'What Eva wants you to check' : needsReview ? 'Why Eva suggests this' : 'Why did Eva do this?'}</span>
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? t('What Eva wants you to check') : needsReview ? t('Why Eva suggests this') : t('Why did Eva do this?')}</span>
                         </div>
 
-                        <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.join(' ')}</p>
+                        <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.map((r) => t(r)).join(' ')}</p>
 
                         {/* metrics: confidence · time saved · source */}
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
-                            <span className="flex items-center gap-1.5" title={conf.explain}>
-                                <Icon name="circle-tick" /> {CONF_PCT[entry.confidence]} confidence
+                            <span className="flex items-center gap-1.5" title={t(conf.explain)}>
+                                <Icon name="circle-tick" /> {CONF_PCT[entry.confidence]} {t('confidence')}
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <Icon name="time" /> {SKILL_TIME[entry.skill] ?? '~2 min'} saved
+                                <Icon name="time" /> {SKILL_TIME[entry.skill] ?? '~2 min'} {t('saved')}
                             </span>
                             {entry.doc && (
                                 <button onClick={onOpenDoc} className="flex items-center gap-1.5 font-medium" style={{ color: '#4456c7' }}>
-                                    <Icon name={DOC_ICON[entry.doc.kind] as never} /> View {entry.doc.kind.toLowerCase()} {entry.doc.ref}
+                                    <Icon name={DOC_ICON[entry.doc.kind] as never} /> {t(`View ${entry.doc.kind.toLowerCase()}`)} {entry.doc.ref}
                                 </button>
                             )}
                         </div>
@@ -432,32 +435,32 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                                 onMouseEnter={(e) => (e.currentTarget.style.background = '#fdeed8')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}
                             >
-                                <Orb size={16} /> Ask Eva
+                                <Orb size={16} /> {t('Ask Eva')}
                             </button>
                             {acting ? (
                                 <span className="flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
                                     <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                                    Working…
+                                    {t('Working…')}
                                 </span>
                             ) : entry.status === 'completed' ? (
                                 // Resolved action — no longer a suggestion; reversible instead.
                                 <div className="flex items-center gap-3">
                                     <span className="flex items-center gap-1.5 text-sm" style={{ color: entry.resolution === 'Dismissed' ? COLORS.textMuted : '#15803d' }}>
                                         <Icon name={entry.resolution === 'Dismissed' ? 'circle-warning' : 'circle-tick'} />
-                                        {!entry.resolution ? 'Done automatically' : entry.resolution === 'Dismissed' ? 'Dismissed' : entry.resolution === 'Reviewed' ? 'Reviewed' : entry.resolution === 'Confirmed' ? 'Accepted' : `Accepted — “${entry.resolution}”`}
+                                        {!entry.resolution ? t('Done automatically') : entry.resolution === 'Dismissed' ? t('Dismissed') : entry.resolution === 'Reviewed' ? t('Reviewed') : entry.resolution === 'Confirmed' ? t('Accepted') : `${t('Accepted')} — “${lang === 'da' ? t(entry.resolution) : entry.resolution}”`}
                                     </span>
-                                    <Button onClick={onReverse}><Icon name="arrow-left" /> Undo</Button>
+                                    <Button onClick={onReverse}><Icon name="arrow-left" /> {t('Undo')}</Button>
                                 </div>
                             ) : consider ? (
                                 // AO-judgement item — Eva can't action it; the accountant checks it off.
                                 <div className="flex items-center gap-2">
-                                    <Button onClick={() => onResolve('Dismissed')}>Not relevant</Button>
-                                    <Button appearance="primary" onClick={() => onResolve('Reviewed')}><Icon name="circle-tick" /> Mark as reviewed</Button>
+                                    <Button onClick={() => onResolve('Dismissed')}>{t('Not relevant')}</Button>
+                                    <Button appearance="primary" onClick={() => onResolve('Reviewed')}><Icon name="circle-tick" /> {t('Mark as reviewed')}</Button>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <Button onClick={() => onResolve('Dismissed')}>Dismiss</Button>
-                                    <Button appearance="primary" onClick={() => onResolve(entry.suggestions?.[0] ?? 'Confirmed')}>Accept</Button>
+                                    <Button onClick={() => onResolve('Dismissed')}>{t('Dismiss')}</Button>
+                                    <Button appearance="primary" onClick={() => onResolve(entry.suggestions?.[0] ?? 'Confirmed')}>{t('Accept')}</Button>
                                 </div>
                             )}
                         </div>
@@ -470,6 +473,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
 
 // Source-of-truth document viewer.
 function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; onClose: () => void }) {
+    const { t } = useLang();
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in" style={{ maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
@@ -480,28 +484,28 @@ function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; on
                         </span>
                         <div>
                             <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{doc.kind} {doc.ref}</p>
-                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{clientName(entry.client)}</p>
+                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(clientName(entry.client))}</p>
                         </div>
                     </div>
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </div>
                 <div className="px-5 py-4">
-                    <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>Source of truth</p>
+                    <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Source of truth')}</p>
                     <div className="rounded-lg p-4 text-sm" style={{ background: '#fafafa', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
                         <p className="font-medium">{doc.kind} {doc.ref}</p>
                         <p className="mt-1" style={{ color: COLORS.textMuted }}>{doc.detail}</p>
                     </div>
-                    <p className="text-xs mt-3" style={{ color: COLORS.textMuted }}>This is the record Eva acted on. Open it in e-conomic to see the full document and audit history.</p>
+                    <p className="text-xs mt-3" style={{ color: COLORS.textMuted }}>{t('This is the record Eva acted on. Open it in e-conomic to see the full document and audit history.')}</p>
                 </div>
                 <div className="px-5 py-4 flex justify-end gap-2" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                    <Button onClick={onClose}>Close</Button>
+                    <Button onClick={onClose}>{t('Close')}</Button>
                     <a
                         href="#"
                         onClick={(ev) => { ev.preventDefault(); }}
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold"
                         style={{ background: '#4c6ef5', color: '#fff' }}
                     >
-                        <Icon name="link-external" /> Open in e-conomic
+                        <Icon name="link-external" /> {t('Open in e-conomic')}
                     </a>
                 </div>
             </div>

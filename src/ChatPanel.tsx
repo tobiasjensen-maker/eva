@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Icon } from '@economic/taco';
 import { Orb, MicIcon, EvaChip, COLORS } from './ui';
+import { useLang } from './i18n';
 
 const PANEL_SHADOW = '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)';
 const SIDEBAR_BORDER = '#e9e9ec';
@@ -29,7 +30,8 @@ function Stream({ text, onTick }: { text: string; onTick: () => void }) {
 }
 
 function Thinking() {
-    const phrases = ['Thinking…', 'Looking at your data…', 'Putting it together…'];
+    const { t } = useLang();
+    const phrases = [t('Thinking…'), t('Looking at your data…'), t('Putting it together…')];
     const [i, setI] = useState(0);
     useEffect(() => {
         const id = setInterval(() => setI((x) => (x < phrases.length - 1 ? x + 1 : x)), 700);
@@ -53,7 +55,8 @@ export function ChatPanel({
     pendingAsk: PendingAsk | null;
     onPendingConsumed: () => void;
 }) {
-    const [msgs, setMsgs] = useState<Msg[]>(() => [{ id: 0, role: 'assistant', text: intro, instant: true }]);
+    const { t } = useLang();
+    const [msgs, setMsgs] = useState<Msg[]>(() => [{ id: 0, role: 'assistant', text: t(intro), instant: true }]);
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);
@@ -113,7 +116,7 @@ export function ChatPanel({
             <div className="flex items-center gap-2 px-4 shrink-0" style={{ minHeight: 62, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <Orb size={22} />
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>· {subtitle}</span>
+                <span className="text-xs" style={{ color: COLORS.textMuted }}>· {t(subtitle)}</span>
                 <button
                     onClick={onToggleCollapsed}
                     title="Collapse"
@@ -147,7 +150,8 @@ export function ChatPanel({
                 {chips.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {chips.map((c) => (
-                            <EvaChip key={c} label={c} onClick={() => send(c)} />
+                            // Display the translated chip, but match the canned answer on the English key.
+                            <EvaChip key={c} label={t(c)} onClick={() => deliver(t(c), respond(c))} />
                         ))}
                     </div>
                 )}
@@ -157,7 +161,7 @@ export function ChatPanel({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                        placeholder="Ask Eva anything"
+                        placeholder={t('Ask Eva anything')}
                         rows={2}
                         className="w-full resize-none bg-transparent px-3.5 py-2.5 text-sm outline-none"
                         style={{ color: COLORS.text }}

@@ -3,6 +3,7 @@ import { Button, Icon } from '@economic/taco';
 import { Card, EmojiTile, PageHeader, StickyFooter, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { TemplateGallery, type Template } from '../TemplateGallery';
+import { useLang } from '../i18n';
 import type { Space } from '../types';
 
 interface Props {
@@ -32,6 +33,7 @@ const SPACE_TEMPLATES: Template[] = [
 ];
 
 export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Props) {
+    const { t, lang } = useLang();
     const [gallery, setGallery] = useState(false);
     const [open, setOpen] = useState<Space | null>(null);
 
@@ -45,12 +47,12 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title="Spaces" right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> New Space</Button>} />
+            <PageHeader title={t('Artifacts')} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New artifact')}</Button>} />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
                     {spaces.length < FREE_SPACE_LIMIT
-                        ? `${spaces.length} of ${FREE_SPACE_LIMIT} free Spaces used`
-                        : `${FREE_SPACE_LIMIT} free Spaces used · extra Spaces are ${SPACE_PRICE} kr each`}
+                        ? (lang === 'da' ? `${spaces.length} af ${FREE_SPACE_LIMIT} gratis artefakter brugt` : `${spaces.length} of ${FREE_SPACE_LIMIT} free artifacts used`)
+                        : (lang === 'da' ? `${FREE_SPACE_LIMIT} gratis artefakter brugt · ekstra artefakter koster ${SPACE_PRICE} kr pr. stk.` : `${FREE_SPACE_LIMIT} free artifacts used · extra artifacts are ${SPACE_PRICE} kr each`)}
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 pb-10">
@@ -67,13 +69,13 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
                             </p>
                             <div className="flex items-center justify-between mt-auto pt-5">
                                 <span className="flex items-center gap-1.5 text-xs" style={{ color: COLORS.textMuted }}>
-                                    <Icon name="calendar" /> Updated {s.updated}
+                                    <Icon name="calendar" /> {t('Updated')} {s.updated}
                                 </span>
                                 <span
                                     className="rounded-md px-2 py-0.5 text-xs"
                                     style={{ background: '#f1f1f3', color: COLORS.textMuted }}
                                 >
-                                    {s.messages} messages
+                                    {s.messages} {t('messages')}
                                 </span>
                             </div>
                         </Card>
@@ -97,10 +99,11 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
 }
 
 function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
+    const { t } = useLang();
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-                <PageHeader title={space.title} onBack={onBack} backLabel="Spaces" />
+                <PageHeader title={space.title} onBack={onBack} backLabel={t('Artifacts')} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     <div className="flex items-start gap-3 mb-6">
                         <EmojiTile emoji={space.emoji} size={44} />
@@ -114,10 +117,10 @@ function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
             </div>
 
             <StickyFooter>
-                <Button onClick={onBack}>Cancel</Button>
+                <Button onClick={onBack}>{t('Cancel')}</Button>
                 <div className="flex gap-2">
-                    <Button><Icon name="export" /> Export</Button>
-                    <Button appearance="primary" onClick={onBack}>Save changes</Button>
+                    <Button><Icon name="export" /> {t('Export')}</Button>
+                    <Button appearance="primary" onClick={onBack}>{t('Save changes')}</Button>
                 </div>
             </StickyFooter>
         </div>

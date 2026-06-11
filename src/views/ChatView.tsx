@@ -3,6 +3,7 @@ import { Button, Icon } from '@economic/taco';
 import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { CHAT_SUGGESTIONS, AGREEMENTS } from '../data';
+import { useLang } from '../i18n';
 import type { Skill, Space, ViewId } from '../types';
 
 type PlanStep = { label: string; status: 'todo' | 'running' | 'done' };
@@ -397,7 +398,7 @@ function statusesFor(reply: AssistantMsg): string[] {
         case 'plan':
             return ['Understanding the request…', 'Gathering transactions…', 'Checking your chart of accounts…', 'Preparing a plan…'];
         case 'spacecall':
-            return ['Finding the Space…', 'Loading the latest data…'];
+            return ['Finding the artifact…', 'Loading the latest data…'];
         case 'skill':
             return ['Checking what I can do…', 'Looking up available skills…'];
         case 'upsell':
@@ -472,6 +473,7 @@ const SEED_HISTORY: HistoryItem[] = [
 ];
 
 export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient }: Props) {
+    const { t, lang } = useLang();
     // Seed Eva's getting-started message right after onboarding (lazy init → StrictMode-safe)
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : []));
     const [input, setInput] = useState('');
@@ -523,7 +525,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                 role: 'assistant',
                 kind: 'spacecall',
                 spaceId: mentioned.id,
-                note: `Here's your “${mentioned.title}” Space${ctx}. I pulled it in live — ask me to filter, extend, or export it.`,
+                note: `Here's your “${mentioned.title}” artifact${ctx}. I pulled it in live — ask me to filter, extend, or export it.`,
             };
         }
 
@@ -601,17 +603,17 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     id: nextId(),
                     role: 'assistant',
                     kind: 'plan',
-                    intro: "Here's my plan to build the aged receivables report. I'll save it as a Space when done so you can reuse it.",
+                    intro: "Here's my plan to build the aged receivables report. I'll save it as an artifact when done so you can reuse it.",
                     steps: [
                         { label: 'Pull all open receivables across 14 clients', status: 'todo' },
                         { label: 'Bucket by age: 0–30, 31–60, 61–90, 90+ days', status: 'todo' },
                         { label: 'Flag clients with >25% balance in the 90+ bucket', status: 'todo' },
-                        { label: 'Generate report and save as a Space', status: 'todo' },
+                        { label: 'Generate report and save as an artifact', status: 'todo' },
                     ],
                     phase: 'awaiting',
-                    result: 'Done. I aged 312 open invoices (1.84M DKK total). 3 clients have significant 90+ day exposure. I saved the report as a Space — you can open or share it anytime.',
+                    result: 'Done. I aged 312 open invoices (1.84M DKK total). 3 clients have significant 90+ day exposure. I saved the report as an artifact — you can open or share it anytime.',
                     createsSpace: 'Aged Receivables — All Clients',
-                    outcome: { title: 'Aged Receivables — All Clients', sub: 'Report saved as a Space' },
+                    outcome: { title: 'Aged Receivables — All Clients', sub: 'Report saved as an artifact' },
                 };
             }
             if (/remind|chase|follow up/.test(t)) {
@@ -676,14 +678,16 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
             id: nextId(),
             role: 'assistant',
             kind: 'text',
-            text: "I can help across your whole ledger — accounts, booked entries, customers, suppliers, products, projects, budgets, journals, dimensions, documents, subscriptions, quote-to-cash, accounting years and webhooks. Ask me to show any of them, take an action (with your approval), or type @ to bring in a saved Space.",
+            text: "I can help across your whole ledger — accounts, booked entries, customers, suppliers, products, projects, budgets, journals, dimensions, documents, subscriptions, quote-to-cash, accounting years and webhooks. Ask me to show any of them, take an action (with your approval), or type @ to bring in a saved artifact.",
         };
     }
 
-    function send(text: string) {
+    // `display` lets translated suggestion chips show their localized text while the
+    // canned-answer matching still runs on the English original.
+    function send(text: string, display?: string) {
         const trimmed = text.trim();
         if (!trimmed) return;
-        const userMsg: ChatMsg = { id: nextId(), role: 'user', text: trimmed };
+        const userMsg: ChatMsg = { id: nextId(), role: 'user', text: display ?? trimmed };
         const reply = classify(trimmed);
         const thinking: AssistantMsg = { id: reply.id, role: 'assistant', kind: 'thinking', statuses: statusesFor(reply) };
         setMessages((m) => [...m, userMsg, thinking]);
@@ -760,17 +764,17 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
             {empty ? (
                 <div className="flex-1 flex flex-col items-center justify-center px-6">
                     <Orb />
-                    <h1 className="mt-6 text-2xl font-semibold" style={{ color: COLORS.text }}>What can I do for you?</h1>
+                    <h1 className="mt-6 text-2xl font-semibold" style={{ color: COLORS.text }}>{t('What can I do for you?')}</h1>
                     <div className="w-full" style={{ maxWidth: 720 }}>
                         <Composer value={input} onChange={setInput} onSend={() => send(input)} spaces={spaces} className="mt-7" />
-                        <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>Suggestions:</p>
+                        <p className="mt-5 mb-2 text-sm" style={{ color: COLORS.textMuted }}>{t('Suggestions:')}</p>
                         <div className="flex flex-wrap items-start gap-2">
                             {suggestions.map((s) => (
-                                <EvaChip key={s} label={s} onClick={() => send(s)} />
+                                <EvaChip key={s} label={t(s)} onClick={() => send(s, t(s))} />
                             ))}
                         </div>
                         <p className="mt-4 text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                            <Icon name="ai-stars" /> Tip: type <b className="font-semibold">@</b> to bring a saved Space into the chat.
+                            <Icon name="ai-stars" /> {lang === 'da' ? <>Tip: skriv <b className="font-semibold">@</b> for at hente et gemt artefakt ind i chatten.</> : <>Tip: type <b className="font-semibold">@</b> to bring a saved artifact into the chat.</>}
                         </p>
                     </div>
                 </div>
@@ -1007,6 +1011,7 @@ function Composer({
 }: {
     value: string; onChange: (v: string) => void; onSend: () => void; spaces: Space[]; className?: string; autoFocus?: boolean;
 }) {
+    const { t } = useLang();
     const taRef = useRef<HTMLTextAreaElement>(null);
     const atIdx = value.lastIndexOf('@');
     const query = atIdx >= 0 ? value.slice(atIdx + 1) : '';
@@ -1034,7 +1039,7 @@ function Composer({
                     className="absolute left-0 right-0 rounded-xl bg-white overflow-hidden z-10"
                     style={{ bottom: 'calc(100% + 6px)', border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}
                 >
-                    <p className="px-3 pt-2.5 pb-1 text-xs font-medium" style={{ color: COLORS.textMuted }}>Call a Space into the chat</p>
+                    <p className="px-3 pt-2.5 pb-1 text-xs font-medium" style={{ color: COLORS.textMuted }}>{t('Call an artifact into the chat')}</p>
                     {matches.map((s) => (
                         <button
                             key={s.id}
@@ -1065,7 +1070,7 @@ function Composer({
                             else doSend();
                         }
                     }}
-                    placeholder="Ask your virtual assistant anything"
+                    placeholder={t('Ask your virtual assistant anything')}
                     rows={2}
                     className="w-full resize-none bg-transparent px-4 py-3 text-sm outline-none"
                     style={{ color: COLORS.text }}
@@ -1192,7 +1197,7 @@ function AssistantBubble({
             const opts = [
                 { emoji: '🔎', tint: '#eef2ff', title: 'Ask about your data', desc: 'Overdue invoices, your Q4 P&L, balances…', onClick: () => onFollowUp('Which invoices are overdue by more than 30 days?') },
                 { emoji: '⚡', tint: '#fff4e6', title: 'Enable a new skill', desc: 'Automate reconciliation, reminders & more', onClick: () => onNavigate('skills') },
-                { emoji: '🧩', tint: '#f3f0fb', title: 'Create a Space', desc: 'Build a dashboard, report or list', onClick: () => onNavigate('spaces') },
+                { emoji: '🧩', tint: '#f3f0fb', title: 'Create an artifact', desc: 'Build a dashboard, report or list', onClick: () => onNavigate('spaces') },
                 { emoji: '💡', tint: '#ecfdf5', title: 'Something else', desc: 'Tell me what you need and I’ll help', onClick: () => onFollowUp('What else can you help me with?') },
             ];
             return (
@@ -1262,13 +1267,13 @@ function AssistantBubble({
                     <div className="flex items-center gap-2 mb-3">
                         <EmojiTile emoji={space.emoji} size={22} />
                         <span className="text-sm font-medium" style={{ color: COLORS.text }}>{space.title}</span>
-                        <span className="rounded-md px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#8b46d6' }}>Space</span>
+                        <span className="rounded-md px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#8b46d6' }}>Artifact</span>
                     </div>
                     <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(msg.note)}</p>
                     {reveal && (
                         <div className="anim-in">
                             <ArtifactPreview space={space} compact />
-                            <div className="mt-3"><Button onClick={() => onNavigate('spaces')}>Open in Spaces</Button></div>
+                            <div className="mt-3"><Button onClick={() => onNavigate('spaces')}>Open in Artifacts</Button></div>
                         </div>
                     )}
                 </div>

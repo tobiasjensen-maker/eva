@@ -41,7 +41,7 @@ export function TemplateGallery({ kind, templates, categories, onClose, onCreate
     );
     const countFor = (c: string) => (c === 'All' ? templates.length : templates.filter((t) => t.category === c).length);
 
-    const titleText = kind === 'space' ? 'Space templates' : 'Skill library';
+    const titleText = kind === 'space' ? 'Artifact templates' : 'Skill library';
 
     function back() {
         setSelected(null);
@@ -228,7 +228,7 @@ function TemplateDetail({
                 <div className="mt-5 rounded-xl p-3 flex items-center gap-2.5" style={{ border: '1px solid #f3e6c0', background: '#fdf8ec' }}>
                     <Icon name="circle-information" style={{ color: '#92710f' }} />
                     <p className="text-sm" style={{ color: '#7a5b13' }}>
-                        You've used your 5 free Spaces. Additional Spaces are <b>{spacePrice} kr each</b>.
+                        You've used your 5 free artifacts. Additional artifacts are <b>{spacePrice} kr each</b>.
                     </p>
                 </div>
             )}
@@ -238,7 +238,7 @@ function TemplateDetail({
                 <div className="mt-5 rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
                     <p className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>Order summary</p>
                     <div className="flex items-center justify-between text-sm py-1.5">
-                        <span style={{ color: COLORS.textMuted }}>{kind === 'skill' ? template.title : `Extra Space — ${template.title}`}</span>
+                        <span style={{ color: COLORS.textMuted }}>{kind === 'skill' ? template.title : `Extra artifact — ${template.title}`}</span>
                         <span style={{ color: COLORS.text }}>{kind === 'skill' ? `${template.price} DKK/month` : `${spacePrice} kr`}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm py-1.5" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
@@ -255,7 +255,7 @@ function TemplateDetail({
             {/* actions */}
             <div className="flex justify-end gap-2 mt-6">
                 {kind === 'space' && !spacePaid && (
-                    <Button appearance="primary" onClick={onCreate}>Add to my Spaces</Button>
+                    <Button appearance="primary" onClick={onCreate}>Add to my artifacts</Button>
                 )}
                 {kind === 'space' && spacePaid && !purchasing && (
                     <Button appearance="primary" onClick={onStartPurchase}>{`Add for ${spacePrice} kr`}</Button>
