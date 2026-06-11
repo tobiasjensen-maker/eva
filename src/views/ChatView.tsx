@@ -701,6 +701,13 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
         }, delay);
     }
 
+    // "Modify" on a suggested plan — replace its steps before approval.
+    function updatePlan(msgId: number, steps: PlanStep[]) {
+        setMessages((prev) =>
+            prev.map((m) => (m.id === msgId && m.role === 'assistant' && m.kind === 'plan' ? { ...m, steps } : m))
+        );
+    }
+
     function approvePlan(msgId: number) {
         setMessages((prev) =>
             prev.map((m) => (m.id === msgId && m.role === 'assistant' && m.kind === 'plan' ? { ...m, phase: 'running' as const } : m))
@@ -803,6 +810,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                                                 instant={instantIds.has(m.id)}
                                                 isLast={idx === messages.length - 1}
                                                 onApprove={() => approvePlan(m.id)}
+                                                onUpdatePlan={(steps) => updatePlan(m.id, steps)}
                                                 onEnableSkill={onEnableSkill}
                                                 onNavigate={onNavigate}
                                                 onFollowUp={(q) => send(q, t(q))}
@@ -1177,7 +1185,7 @@ function FollowUps({ items, onPick }: { items: string[]; onPick: (t: string) => 
 }
 
 function AssistantBubble({
-    msg, skills, spaces, instant, isLast, onApprove, onEnableSkill, onNavigate, onStream, onFollowUp, onSelectClient, onCreateSpace, onCreateSkill,
+    msg, skills, spaces, instant, isLast, onApprove, onUpdatePlan, onEnableSkill, onNavigate, onStream, onFollowUp, onSelectClient, onCreateSpace, onCreateSkill,
 }: {
     msg: AssistantMsg;
     skills: Skill[];
@@ -1185,6 +1193,7 @@ function AssistantBubble({
     instant: boolean;
     isLast: boolean;
     onApprove: () => void;
+    onUpdatePlan: (steps: PlanStep[]) => void;
     onEnableSkill: (id: string) => void;
     onNavigate: (v: ViewId) => void;
     onStream: () => void;
@@ -1195,6 +1204,9 @@ function AssistantBubble({
 }) {
     const { t, lang } = useLang();
     const [textDone, setTextDone] = useState(instant);
+    // Plan editing ("Modify"): a draft of the step labels being edited.
+    const [draft, setDraft] = useState<string[] | null>(null);
+    const [planEdited, setPlanEdited] = useState(false);
     useEffect(() => {
         if (textDone) onStream();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1359,19 +1371,76 @@ function AssistantBubble({
                 <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(t(msg.intro))}</p>
                 {reveal && (
                     <div className="anim-in">
-                        <div className="flex flex-col gap-2.5">
-                            {msg.steps.map((s, i) => (
-                                <div key={i} className="flex items-start gap-2.5">
-                                    <StepMarker status={s.status} index={i + 1} />
-                                    <span className="text-sm" style={{ color: s.status === 'todo' ? COLORS.textMuted : COLORS.text }}>{t(s.label)}</span>
-                                </div>
-                            ))}
-                        </div>
-                        {msg.phase === 'awaiting' && (
-                            <div className="flex items-center gap-2 mt-4">
-                                <Button appearance="primary" onClick={onApprove}>{t('Approve plan')}</Button>
-                                <Button>{t('Modify')}</Button>
+                        {draft ? (
+                            // Edit mode — change, remove or add steps before approving.
+                            <div className="flex flex-col gap-2">
+                                {draft.map((label, i) => (
+                                    <div key={i} className="flex items-center gap-2.5">
+                                        <span className="flex items-center justify-center shrink-0 rounded-full text-xs font-semibold" style={{ width: 20, height: 20, background: '#ececed', color: COLORS.text }}>{i + 1}</span>
+                                        <input
+                                            value={label}
+                                            onChange={(e) => setDraft(draft.map((l, li) => (li === i ? e.target.value : l)))}
+                                            className="flex-1 rounded-lg px-3 py-1.5 text-sm bg-white"
+                                            style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                                        />
+                                        <button
+                                            title={t('Remove step')}
+                                            onClick={() => setDraft(draft.filter((_, li) => li !== i))}
+                                            className="shrink-0 rounded-md p-1"
+                                            style={{ color: COLORS.textMuted }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <Icon name="close" />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={() => setDraft([...draft, ''])}
+                                    className="flex items-center gap-1.5 text-sm font-medium self-start rounded-lg px-2 py-1"
+                                    style={{ color: '#4456c7' }}
+                                >
+                                    <Icon name="circle-plus" /> {t('Add step')}
+                                </button>
                             </div>
+                        ) : (
+                            <div className="flex flex-col gap-2.5">
+                                {msg.steps.map((s, i) => (
+                                    <div key={i} className="flex items-start gap-2.5">
+                                        <StepMarker status={s.status} index={i + 1} />
+                                        <span className="text-sm" style={{ color: s.status === 'todo' ? COLORS.textMuted : COLORS.text }}>{t(s.label)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {msg.phase === 'awaiting' && draft && (
+                            <div className="flex items-center gap-2 mt-4">
+                                <Button
+                                    appearance="primary"
+                                    disabled={draft.every((l) => !l.trim())}
+                                    onClick={() => {
+                                        onUpdatePlan(draft.filter((l) => l.trim()).map((label) => ({ label, status: 'todo' as const })));
+                                        setDraft(null);
+                                        setPlanEdited(true);
+                                    }}
+                                >
+                                    {t('Save plan')}
+                                </Button>
+                                <Button onClick={() => setDraft(null)}>{t('Cancel')}</Button>
+                            </div>
+                        )}
+                        {msg.phase === 'awaiting' && !draft && (
+                            <>
+                                {planEdited && (
+                                    <p className="text-xs mt-3 flex items-center gap-1.5" style={{ color: '#15803d' }}>
+                                        <Icon name="circle-tick" /> {t('Plan updated — approve when you’re ready.')}
+                                    </p>
+                                )}
+                                <div className="flex items-center gap-2 mt-4">
+                                    <Button appearance="primary" onClick={onApprove}>{t('Approve plan')}</Button>
+                                    <Button onClick={() => setDraft(msg.steps.map((s) => t(s.label)))}>{t('Modify')}</Button>
+                                </div>
+                            </>
                         )}
                         {msg.phase === 'running' && (
                             <p className="text-xs mt-4 flex items-center gap-2" style={{ color: COLORS.textMuted }}>
