@@ -588,7 +588,9 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     id: nextId(),
                     role: 'assistant',
                     kind: 'upsell',
-                    text: `That's a deep financial-analysis question. It's part of Financial Insights, which isn't switched on yet for ${scopeName}.`,
+                    text: lang === 'da'
+                        ? `Det er et dybt finansanalyse-spørgsmål. Det er en del af Financial Insights, som endnu ikke er slået til for ${scopeName}.`
+                        : `That's a deep financial-analysis question. It's part of Financial Insights, which isn't switched on yet for ${scopeName}.`,
                 };
             }
             return { id: nextId(), role: 'assistant', kind: 'data', dataKey: analyticsKey };
@@ -748,7 +750,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                         className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5"
                         style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
                     >
-                        <Icon name="time" /> History
+                        <Icon name="time" /> {t('History')}
                     </button>
                     {!empty && (
                         <button
@@ -756,7 +758,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                             className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5"
                             style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
                         >
-                            <Icon name="circle-plus" /> New chat
+                            <Icon name="circle-plus" /> {t('New chat')}
                         </button>
                     )}
                 </div>
@@ -803,7 +805,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                                                 onApprove={() => approvePlan(m.id)}
                                                 onEnableSkill={onEnableSkill}
                                                 onNavigate={onNavigate}
-                                                onFollowUp={(t) => send(t)}
+                                                onFollowUp={(q) => send(q, t(q))}
                                                 onSelectClient={onSelectClient}
                                                 onCreateSpace={onCreateSpace}
                                                 onCreateSkill={onCreateSkill}
@@ -989,6 +991,7 @@ function StreamText({ text, onDone, onTick, speed = 45 }: { text: string; onDone
 }
 
 function ThinkingBubble({ statuses }: { statuses: string[] }) {
+    const { t } = useLang();
     const [i, setI] = useState(0);
     useEffect(() => {
         const id = setInterval(() => setI((x) => (x < statuses.length - 1 ? x + 1 : x)), 700);
@@ -996,7 +999,7 @@ function ThinkingBubble({ statuses }: { statuses: string[] }) {
     }, [statuses]);
     return (
         <div className="flex items-center py-1.5">
-            <span className="text-sm" style={{ color: COLORS.textMuted }}>{statuses[i]}</span>
+            <span className="text-sm" style={{ color: COLORS.textMuted }}>{t(statuses[i])}</span>
         </div>
     );
 }
@@ -1156,15 +1159,17 @@ function followUpsFor(msg: AssistantMsg): string[] {
 }
 
 function FollowUps({ items, onPick }: { items: string[]; onPick: (t: string) => void }) {
+    const { t } = useLang();
     if (!items.length) return null;
     return (
         <div className="mt-4 anim-in">
             <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                <Icon name="ai-stars" /> Suggested follow-ups
+                <Icon name="ai-stars" /> {t('Suggested follow-ups')}
             </p>
             <div className="flex flex-wrap gap-2">
-                {items.map((t) => (
-                    <EvaChip key={t} label={t} onClick={() => onPick(t)} />
+                {items.map((item) => (
+                    // Show the translated chip; matching runs on the English original.
+                    <EvaChip key={item} label={t(item)} onClick={() => onPick(item)} />
                 ))}
             </div>
         </div>
@@ -1188,6 +1193,7 @@ function AssistantBubble({
     onCreateSpace: (title: string) => void;
     onCreateSkill: (title: string, description: string) => void;
 }) {
+    const { t, lang } = useLang();
     const [textDone, setTextDone] = useState(instant);
     useEffect(() => {
         if (textDone) onStream();
@@ -1207,15 +1213,15 @@ function AssistantBubble({
     const body = (() => {
         if (msg.kind === 'getstarted') {
             const opts = [
-                { emoji: '🔎', tint: '#eef2ff', title: 'Ask about your data', desc: 'Overdue invoices, your Q4 P&L, balances…', onClick: () => onFollowUp('Which invoices are overdue by more than 30 days?') },
-                { emoji: '⚡', tint: '#fff4e6', title: 'Enable a new skill', desc: 'Automate reconciliation, reminders & more', onClick: () => onNavigate('skills') },
-                { emoji: '🧩', tint: '#f3f0fb', title: 'Create an artifact', desc: 'Build a dashboard, report or list', onClick: () => onNavigate('spaces') },
-                { emoji: '💡', tint: '#ecfdf5', title: 'Something else', desc: 'Tell me what you need and I’ll help', onClick: () => onFollowUp('What else can you help me with?') },
+                { emoji: '🔎', tint: '#eef2ff', title: t('Ask about your data'), desc: t('Overdue invoices, your Q4 P&L, balances…'), onClick: () => onFollowUp('Which invoices are overdue by more than 30 days?') },
+                { emoji: '⚡', tint: '#fff4e6', title: t('Enable a new skill'), desc: t('Automate reconciliation, reminders & more'), onClick: () => onNavigate('skills') },
+                { emoji: '🧩', tint: '#f3f0fb', title: t('Create an artifact'), desc: t('Build a dashboard, report or list'), onClick: () => onNavigate('spaces') },
+                { emoji: '💡', tint: '#ecfdf5', title: t('Something else'), desc: t('Tell me what you need and I’ll help'), onClick: () => onFollowUp('What else can you help me with?') },
             ];
             return (
                 <div>
                     <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>
-                        Hi, I'm Eva. Your books are imported and I'm ready to go. Here are a few ways to see what I can do:
+                        {t("Hi, I'm Eva. Your books are imported and I'm ready to go. Here are a few ways to see what I can do:")}
                     </p>
                     <div className="grid grid-cols-2 gap-2.5">
                         {opts.map((o) => (
@@ -1238,19 +1244,19 @@ function AssistantBubble({
         }
         if (msg.kind === 'text') {
             return (
-                <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{lead(msg.text)}</p>
+                <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{lead(t(msg.text))}</p>
             );
         }
         if (msg.kind === 'clienttable') {
             const d = CLIENT_TABLES[msg.dataKey];
             return (
                 <div>
-                    <p className="text-sm mb-3" style={{ color: COLORS.text }}>{lead(d.summary)}</p>
+                    <p className="text-sm mb-3" style={{ color: COLORS.text }}>{lead(t(d.summary))}</p>
                     {reveal && (
                         <div className="anim-in">
                             <ClientTable data={d} onPick={(id) => onSelectClient?.(id)} />
                             <p className="text-xs mt-2 flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                                <Icon name="info" /> Click a row to switch to that client.
+                                <Icon name="info" /> {t('Click a row to switch to that client.')}
                             </p>
                         </div>
                     )}
@@ -1261,11 +1267,11 @@ function AssistantBubble({
             const d = getData(msg.dataKey);
             return (
                 <div>
-                    <p className="text-sm mb-3" style={{ color: COLORS.text }}>{lead(d.intro)}</p>
+                    <p className="text-sm mb-3" style={{ color: COLORS.text }}>{lead(t(d.intro))}</p>
                     {reveal && (
                         <div className="anim-in">
                             <MiniTable head={d.head} rows={d.rows} emphasizeLast={d.emphasizeLast} />
-                            {d.outro && <p className="text-sm mt-3" style={{ color: COLORS.textMuted }}>{d.outro}</p>}
+                            {d.outro && <p className="text-sm mt-3" style={{ color: COLORS.textMuted }}>{t(d.outro)}</p>}
                         </div>
                     )}
                 </div>
@@ -1279,13 +1285,13 @@ function AssistantBubble({
                     <div className="flex items-center gap-2 mb-3">
                         <EmojiTile emoji={space.emoji} size={22} />
                         <span className="text-sm font-medium" style={{ color: COLORS.text }}>{space.title}</span>
-                        <span className="rounded-md px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#8b46d6' }}>Artifact</span>
+                        <span className="rounded-md px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#8b46d6' }}>{t('Artifact')}</span>
                     </div>
                     <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(msg.note)}</p>
                     {reveal && (
                         <div className="anim-in">
                             <ArtifactPreview space={space} compact />
-                            <div className="mt-3"><Button onClick={() => onNavigate('spaces')}>Open in Artifacts</Button></div>
+                            <div className="mt-3"><Button onClick={() => onNavigate('spaces')}>{t('Open in Artifacts')}</Button></div>
                         </div>
                     )}
                 </div>
@@ -1295,8 +1301,10 @@ function AssistantBubble({
             const sk = skills.find((s) => s.id === msg.skillId)!;
             const enabled = sk.state !== 'locked';
             const leadText = enabled
-                ? `Great — the “${sk.title}” skill is enabled. I can do this now. Ask me again and I'll get started.`
-                : msg.text;
+                ? (lang === 'da'
+                    ? `Godt — handlingen “${t(sk.title)}” er aktiveret. Det kan jeg gøre nu. Spørg mig igen, så går jeg i gang.`
+                    : `Great — the “${sk.title}” skill is enabled. I can do this now. Ask me again and I'll get started.`)
+                : t(msg.text);
             return (
                 <div>
                     <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(leadText)}</p>
@@ -1307,11 +1315,11 @@ function AssistantBubble({
                                     <Icon name="lock" className="text-white" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>Skill required: {sk.title}</p>
-                                    <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{sk.description}</p>
+                                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Skill required:')} {t(sk.title)}</p>
+                                    <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t(sk.description)}</p>
                                     <div className="flex items-center gap-2 mt-3">
-                                        <Button appearance="primary" onClick={() => onEnableSkill(sk.id)}>{`Enable for ${sk.price} DKK/month`}</Button>
-                                        <Button onClick={() => onNavigate('skills')}>View in Skills</Button>
+                                        <Button appearance="primary" onClick={() => onEnableSkill(sk.id)}>{lang === 'da' ? `Aktivér for ${sk.price} DKK/md.` : `Enable for ${sk.price} DKK/month`}</Button>
+                                        <Button onClick={() => onNavigate('skills')}>{t('View in Skills')}</Button>
                                     </div>
                                 </div>
                             </div>
@@ -1323,7 +1331,7 @@ function AssistantBubble({
         if (msg.kind === 'upsell') {
             return (
                 <div>
-                    <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(msg.text)}</p>
+                    <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(t(msg.text))}</p>
                     {reveal && (
                         <div className="rounded-xl p-4 anim-in" style={{ border: '1px solid #efe1c4', background: '#fdf8ec' }}>
                             <div className="flex items-start gap-3">
@@ -1333,10 +1341,10 @@ function AssistantBubble({
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold" style={{ color: COLORS.text }}>Financial Insights</p>
                                     <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>
-                                        Unlock deep cash-flow, margin, anomaly and forecast analysis — and I'll answer analysis questions right here in chat.
+                                        {t("Unlock deep cash-flow, margin, anomaly and forecast analysis — and I'll answer analysis questions right here in chat.")}
                                     </p>
                                     <div className="flex items-center gap-2 mt-3">
-                                        <Button appearance="primary" onClick={() => onNavigate('insights')}>See Insights</Button>
+                                        <Button appearance="primary" onClick={() => onNavigate('insights')}>{t('See Insights')}</Button>
                                     </div>
                                 </div>
                             </div>
@@ -1348,32 +1356,32 @@ function AssistantBubble({
         // plan
         return (
             <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fcfcfd' }}>
-                <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(msg.intro)}</p>
+                <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{lead(t(msg.intro))}</p>
                 {reveal && (
                     <div className="anim-in">
                         <div className="flex flex-col gap-2.5">
                             {msg.steps.map((s, i) => (
                                 <div key={i} className="flex items-start gap-2.5">
                                     <StepMarker status={s.status} index={i + 1} />
-                                    <span className="text-sm" style={{ color: s.status === 'todo' ? COLORS.textMuted : COLORS.text }}>{s.label}</span>
+                                    <span className="text-sm" style={{ color: s.status === 'todo' ? COLORS.textMuted : COLORS.text }}>{t(s.label)}</span>
                                 </div>
                             ))}
                         </div>
                         {msg.phase === 'awaiting' && (
                             <div className="flex items-center gap-2 mt-4">
-                                <Button appearance="primary" onClick={onApprove}>Approve plan</Button>
-                                <Button>Modify</Button>
+                                <Button appearance="primary" onClick={onApprove}>{t('Approve plan')}</Button>
+                                <Button>{t('Modify')}</Button>
                             </div>
                         )}
                         {msg.phase === 'running' && (
                             <p className="text-xs mt-4 flex items-center gap-2" style={{ color: COLORS.textMuted }}>
                                 <span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                                Working on it…
+                                {t('Working on it…')}
                             </p>
                         )}
                         {msg.phase === 'done' && msg.result && (
                             <div className="mt-4 rounded-lg px-3 py-2.5 text-sm flex items-start gap-2" style={{ background: '#ecfdf5', color: '#065f46' }}>
-                                <Icon name="circle-tick" /> <span>{msg.result}</span>
+                                <Icon name="circle-tick" /> <span>{t(msg.result)}</span>
                             </div>
                         )}
                         {msg.phase === 'done' && msg.outcome && (() => {
@@ -1394,11 +1402,11 @@ function AssistantBubble({
                                             <Icon name={toSpaces ? 'ai-stars' : 'circle-tick'} />
                                         </span>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{msg.outcome.title}</p>
-                                            <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{msg.outcome.sub}</p>
+                                            <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(msg.outcome.title)}</p>
+                                            <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{t(msg.outcome.sub)}</p>
                                         </div>
                                         <span className="flex items-center gap-1 text-sm font-medium shrink-0" style={{ color: COLORS.text }}>
-                                            {toSpaces ? 'Open in Spaces' : 'View in Review'} <Icon name="chevron-right" />
+                                            {toSpaces ? t('Open in Artifacts') : t('View in Review')} <Icon name="chevron-right" />
                                         </span>
                                     </button>
                                 </div>
@@ -1572,6 +1580,7 @@ function StepMarker({ status, index }: { status: PlanStep['status']; index: numb
 
 // Cross-client table: first column is the client, each row clickable to switch context.
 function ClientTable({ data, onPick }: { data: ClientTableData; onPick: (id: string) => void }) {
+    const { t } = useLang();
     const nameOf = (id: string) => AGREEMENTS.find((a) => a.id === id)?.name ?? id;
     return (
         <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
@@ -1579,7 +1588,7 @@ function ClientTable({ data, onPick }: { data: ClientTableData; onPick: (id: str
                 <thead>
                     <tr style={{ background: '#f7f7f8' }}>
                         {data.head.map((h, i) => (
-                            <th key={i} className="font-medium px-3 py-2" style={{ color: COLORS.textMuted, textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
+                            <th key={i} className="font-medium px-3 py-2" style={{ color: COLORS.textMuted, textAlign: i === 0 ? 'left' : 'right' }}>{t(h)}</th>
                         ))}
                     </tr>
                 </thead>
@@ -1596,7 +1605,7 @@ function ClientTable({ data, onPick }: { data: ClientTableData; onPick: (id: str
                                 <span className="flex items-center gap-1.5">{nameOf(r.id)} <Icon name="chevron-right" style={{ color: '#c4c4cc' }} /></span>
                             </td>
                             {r.cells.map((c, ci) => (
-                                <td key={ci} className="px-3 py-2" style={{ textAlign: 'right', color: r.negative?.includes(ci) ? '#dc2626' : COLORS.text }}>{c}</td>
+                                <td key={ci} className="px-3 py-2" style={{ textAlign: 'right', color: r.negative?.includes(ci) ? '#dc2626' : COLORS.text }}>{t(c)}</td>
                             ))}
                         </tr>
                     ))}
@@ -1607,13 +1616,14 @@ function ClientTable({ data, onPick }: { data: ClientTableData; onPick: (id: str
 }
 
 function MiniTable({ head, rows, emphasizeLast }: { head: string[]; rows: string[][]; emphasizeLast?: boolean }) {
+    const { t } = useLang();
     return (
         <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
             <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
                 <thead>
                     <tr style={{ background: '#f7f7f8' }}>
                         {head.map((h, i) => (
-                            <th key={i} className="font-medium px-3 py-2" style={{ color: COLORS.textMuted, textAlign: i === head.length - 1 ? 'right' : 'left' }}>{h}</th>
+                            <th key={i} className="font-medium px-3 py-2" style={{ color: COLORS.textMuted, textAlign: i === head.length - 1 ? 'right' : 'left' }}>{t(h)}</th>
                         ))}
                     </tr>
                 </thead>
@@ -1621,7 +1631,7 @@ function MiniTable({ head, rows, emphasizeLast }: { head: string[]; rows: string
                     {rows.map((r, ri) => (
                         <tr key={ri} style={{ borderTop: `1px solid ${COLORS.cardBorder}`, fontWeight: emphasizeLast && ri === rows.length - 1 ? 600 : 400 }}>
                             {r.map((c, ci) => (
-                                <td key={ci} className="px-3 py-2" style={{ color: COLORS.text, textAlign: ci === r.length - 1 ? 'right' : 'left' }}>{c}</td>
+                                <td key={ci} className="px-3 py-2" style={{ color: COLORS.text, textAlign: ci === r.length - 1 ? 'right' : 'left' }}>{t(c)}</td>
                             ))}
                         </tr>
                     ))}

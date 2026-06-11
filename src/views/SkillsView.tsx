@@ -355,7 +355,7 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                         <Icon name="lock" style={{ color: '#8b46d6' }} />
                         <p className="text-sm flex-1" style={{ color: COLORS.text }}>
                             {lang === 'da'
-                                ? <>Denne skill er ikke aktiveret endnu. Konfigurér den nedenfor, og aktivér den for hele din praksis for <b>{skill.price} DKK/md.</b></>
+                                ? <>Denne handling er ikke aktiveret endnu. Konfigurér den nedenfor, og aktivér den for hele din praksis for <b>{skill.price} DKK/md.</b></>
                                 : <>This skill isn’t enabled yet. Configure it below, then enable it for your whole practice for <b>{skill.price} DKK/month</b>.</>}
                         </p>
                     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { COLORS, EmojiTile } from './ui';
+import { useLang } from './i18n';
 import { ArtifactPreview } from './SpaceArtifact';
 import type { Space } from './types';
 
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function TemplateGallery({ kind, templates, categories, onClose, onCreateSpace, onEnableSkill, spaceOverLimit, spacePrice = 49 }: Props) {
+    const { t } = useLang();
     const [query, setQuery] = useState('');
     const [category, setCategory] = useState('All');
     const [selected, setSelected] = useState<Template | null>(null);
@@ -41,7 +43,7 @@ export function TemplateGallery({ kind, templates, categories, onClose, onCreate
     );
     const countFor = (c: string) => (c === 'All' ? templates.length : templates.filter((t) => t.category === c).length);
 
-    const titleText = kind === 'space' ? 'Artifact templates' : 'Skill library';
+    const titleText = kind === 'space' ? t('Artifact templates') : t('Skill library');
 
     function back() {
         setSelected(null);

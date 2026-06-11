@@ -142,7 +142,7 @@ interface PeriodData {
     chart: { month: string; revenue: number }[];
 }
 
-function getPeriodData(profile: Profile, periodKey: string): PeriodData {
+function getPeriodData(profile: Profile, periodKey: string, t: (s: string) => string = (s) => s): PeriodData {
     const m = profile.monthly;
     let revenue: number;
     let revDelta: string;
@@ -174,10 +174,10 @@ function getPeriodData(profile: Profile, periodKey: string): PeriodData {
         kpis: [
             { value: fmtKr(revenue), delta: revDelta, positive: !revDelta.startsWith('-') },
             { value: mpct(profile.margin), delta: profile.marginDelta, positive: !profile.marginDelta.startsWith('-') },
-            { value: profile.cash, delta: `${profile.runway} runway`, positive: true },
-            { value: profile.overdue, delta: profile.overdueCount, positive: false },
+            { value: profile.cash, delta: `${profile.runway.replace('mo.', t('mo.'))} ${t('runway')}`, positive: true },
+            { value: profile.overdue, delta: t(profile.overdueCount), positive: false },
         ],
-        chartSub: `${periodLabel} (DKK, thousands) · ${revDelta} vs prior period`,
+        chartSub: `${t(periodLabel)} (DKK, ${t('thousands')}) · ${revDelta} ${t('vs prior period')}`,
         chart,
     };
 }
@@ -212,15 +212,16 @@ const PREMIUM_META = [
     { key: 'benchmark', title: 'Peer benchmarking', icon: 'contacts', desc: 'How this client compares to similar businesses in your portfolio.' },
 ];
 
-function renderPremium(key: string, p: Profile): JSX.Element {
+function renderPremium(key: string, p: Profile, t: (s: string) => string = (s) => s): JSX.Element {
     if (key === 'cashflow') {
         const net6 = p.monthly.slice(6).map((v) => Math.round((v * p.net) / 100));
+        const [outCat, outAmt] = p.largestOutflow.split(' · ');
         return (
             <div>
                 <BarsRow values={net6} color="#2f7d54" />
                 <div className="mt-3">
-                    <StatLine label="Net operating cash flow" value={`+${fmtKr(sum(net6))}`} accent="#2f7d54" />
-                    <StatLine label="Largest outflow" value={p.largestOutflow} />
+                    <StatLine label={t('Net operating cash flow')} value={`+${fmtKr(sum(net6))}`} accent="#2f7d54" />
+                    <StatLine label={t('Largest outflow')} value={`${t(outCat)} · ${outAmt}`} />
                 </div>
             </div>
         );
@@ -231,8 +232,8 @@ function renderPremium(key: string, p: Profile): JSX.Element {
             <div>
                 <BarsRow values={bars} color="#6366f1" />
                 <div className="mt-3">
-                    <StatLine label="Gross margin" value={`${mpct(p.margin)} ▲`} accent="#6366f1" />
-                    <StatLine label="Net margin" value={mpct(p.net)} />
+                    <StatLine label={t('Gross margin')} value={`${mpct(p.margin)} ▲`} accent="#6366f1" />
+                    <StatLine label={t('Net margin')} value={mpct(p.net)} />
                 </div>
             </div>
         );
@@ -242,7 +243,7 @@ function renderPremium(key: string, p: Profile): JSX.Element {
             <div className="flex flex-col gap-2">
                 {p.expenses.map(([l, v]) => (
                     <div key={l}>
-                        <div className="flex justify-between text-xs mb-1" style={{ color: COLORS.textMuted }}><span>{l}</span><span>{v}%</span></div>
+                        <div className="flex justify-between text-xs mb-1" style={{ color: COLORS.textMuted }}><span>{t(l)}</span><span>{v}%</span></div>
                         <div className="rounded-full" style={{ height: 6, background: '#eee' }}>
                             <div className="rounded-full" style={{ height: 6, width: `${v}%`, background: '#ed9b2c' }} />
                         </div>
@@ -254,9 +255,9 @@ function renderPremium(key: string, p: Profile): JSX.Element {
     if (key === 'anomalies') {
         return (
             <div className="flex flex-col gap-2">
-                {p.anomalies.map(([t, c]) => (
-                    <div key={t} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
-                        <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: c }} /> {t}
+                {p.anomalies.map(([txt, c]) => (
+                    <div key={txt} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
+                        <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: c }} /> {t(txt)}
                     </div>
                 ))}
             </div>
@@ -269,8 +270,8 @@ function renderPremium(key: string, p: Profile): JSX.Element {
             <div>
                 <BarsRow values={bars} color="#14b8a6" />
                 <div className="mt-3">
-                    <StatLine label="Projected end of next quarter" value={p.forecastEnd} accent="#14b8a6" />
-                    <StatLine label="Confidence" value="High (±6%)" />
+                    <StatLine label={t('Projected end of next quarter')} value={p.forecastEnd} accent="#14b8a6" />
+                    <StatLine label={t('Confidence')} value={t('High (±6%)')} />
                 </div>
             </div>
         );
@@ -279,18 +280,18 @@ function renderPremium(key: string, p: Profile): JSX.Element {
     return (
         <div>
             {p.benchmark.map(([l, a, b]) => (
-                <StatLine key={l} label={l} value={`${a}  ·  ${b}`} />
+                <StatLine key={l} label={t(l)} value={`${a}  ·  ${b.replace('Peers', t('Peers'))}`} />
             ))}
         </div>
     );
 }
 
 export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', pro, onUpgrade }: Props) {
-    const { t } = useLang();
-    const subjectLabel = scope === 'portfolio' ? 'your portfolio' : scopeName;
+    const { t, lang } = useLang();
+    const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const profile = PROFILES[scope] ?? PROFILES.portfolio;
     const [period, setPeriod] = useState('6m');
-    const pd = getPeriodData(profile, period);
+    const pd = getPeriodData(profile, period, t);
 
     return (
         <div className="h-full overflow-y-auto">
@@ -303,17 +304,19 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                                 <Icon name="ai-stars" />
                             </span>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white">Unlock full Financial Insights</p>
+                                <p className="text-sm font-semibold text-white">{t('Unlock full Financial Insights')}</p>
                                 <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                                    Deep cash-flow, margin, anomaly and forecast analysis for {subjectLabel} — plus Eva can answer analysis questions right in chat.
+                                    {lang === 'da'
+                                        ? `Dyb analyse af likviditet, marginer, afvigelser og prognoser for ${subjectLabel} — og Eva kan svare på analysespørgsmål direkte i chatten.`
+                                        : `Deep cash-flow, margin, anomaly and forecast analysis for ${subjectLabel} — plus Eva can answer analysis questions right in chat.`}
                                 </p>
                             </div>
-                            <Button appearance="primary" onClick={onUpgrade}>Upgrade · {INSIGHTS_PRICE} kr/mo</Button>
+                            <Button appearance="primary" onClick={onUpgrade}>{t('Upgrade')} · {INSIGHTS_PRICE} kr/{t('mo')}</Button>
                         </div>
                     )}
 
                     {/* basic insights — always visible (free preview) */}
-                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>Overview</p>
+                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Overview')}</p>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                         {KPI_META.map((k, i) => {
                             const data = pd.kpis[i];
@@ -323,28 +326,28 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                                         <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', color: '#52525b' }}>
                                             <Icon name={k.icon as never} />
                                         </span>
-                                        <span className="text-xs font-medium" style={{ color: data.positive ? '#2f7d54' : '#b9842b' }}>{data.delta}</span>
+                                        <span className="text-xs font-medium" style={{ color: data.positive ? '#2f7d54' : '#b9842b' }}>{t(data.delta)}</span>
                                     </div>
                                     <p className="text-xl font-semibold mt-2.5" style={{ color: COLORS.text }}>{data.value}</p>
-                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{k.label}</p>
+                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(k.label)}</p>
                                 </Card>
                             );
                         })}
                     </div>
 
                     <Card className="p-5 mb-7">
-                        <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>Revenue trend</p>
+                        <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('Revenue trend')}</p>
                         <p className="text-xs mb-4" style={{ color: COLORS.textMuted }}>{pd.chartSub}</p>
                         <div className="va-chart" style={{ width: '100%', maxWidth: 760 }}>
-                            <BarChart data={pd.chart} dataKey="month" showYAxis yAxisTickFormatter={(v) => `${(v as number) / 1000}M`} tooltipTitle="Revenue">
-                                <BarChart.Bar dataKey="revenue" label="Revenue" color="orange" formatter={(v) => `${v}k DKK`} />
+                            <BarChart data={pd.chart} dataKey="month" showYAxis yAxisTickFormatter={(v) => `${(v as number) / 1000}M`} tooltipTitle={t('Revenue')}>
+                                <BarChart.Bar dataKey="revenue" label={t('Revenue')} color="orange" formatter={(v) => `${v}k DKK`} />
                             </BarChart>
                         </div>
                     </Card>
 
                     {/* premium insights */}
                     <div className="flex items-center justify-between mb-2.5">
-                        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: COLORS.textMuted }}>Deep analysis</p>
+                        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Deep analysis')}</p>
                         {!pro && (
                             <span className="flex items-center gap-1 text-xs font-medium" style={{ color: '#92710f' }}>
                                 <Icon name="lock" /> Insights Pro
@@ -365,11 +368,11 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                                             <Icon name={p.icon as never} />
                                         </span>
                                         <div>
-                                            <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{p.title}</p>
-                                            <p className="text-xs leading-tight" style={{ color: COLORS.textMuted }}>{p.desc}</p>
+                                            <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{t(p.title)}</p>
+                                            <p className="text-xs leading-tight" style={{ color: COLORS.textMuted }}>{t(p.desc)}</p>
                                         </div>
                                     </div>
-                                    {renderPremium(p.key, profile)}
+                                    {renderPremium(p.key, profile, t)}
                                 </Card>
                             ))}
                         </div>
@@ -380,12 +383,12 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                                     <span className="flex items-center justify-center mx-auto rounded-xl" style={{ width: 46, height: 46, background: '#fbf3e0', color: '#b9842b' }}>
                                         <Icon name="lock" />
                                     </span>
-                                    <p className="text-base font-semibold mt-3" style={{ color: COLORS.text }}>Unlock 6 deeper analyses</p>
+                                    <p className="text-base font-semibold mt-3" style={{ color: COLORS.text }}>{t('Unlock 6 deeper analyses')}</p>
                                     <p className="text-sm mt-1.5" style={{ color: COLORS.textMuted }}>
-                                        Cash flow, margins, expense breakdown, anomaly detection, forecasting and peer benchmarking — kept up to date automatically.
+                                        {t('Cash flow, margins, expense breakdown, anomaly detection, forecasting and peer benchmarking — kept up to date automatically.')}
                                     </p>
-                                    <Button appearance="primary" className="mt-4" onClick={onUpgrade}>Upgrade for {INSIGHTS_PRICE} kr/mo</Button>
-                                    <p className="text-xs mt-2.5" style={{ color: COLORS.textMuted }}>Cancel anytime · also unlocks analysis in chat</p>
+                                    <Button appearance="primary" className="mt-4" onClick={onUpgrade}>{t('Upgrade for')} {INSIGHTS_PRICE} kr/{t('mo')}</Button>
+                                    <p className="text-xs mt-2.5" style={{ color: COLORS.textMuted }}>{t('Cancel anytime · also unlocks analysis in chat')}</p>
                                 </div>
                             </div>
                         )}
@@ -396,7 +399,11 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 }
 
 // ---- Eva insights-analyst answers (consumed by the shell chat panel) ----
-export function insightsIntro(pro: boolean, subjectLabel: string): string {
+export function insightsIntro(pro: boolean, subjectLabel: string, lang: 'en' | 'da' = 'en'): string {
+    if (lang === 'da')
+        return pro
+            ? `Jeg har fuld adgang til tallene for ${subjectLabel}. Bed mig analysere en tendens, forklare en ændring eller lave en prognose.`
+            : `Jeg kan vise dig det grundlæggende for ${subjectLabel}. Lås Indsigt op, så analyserer jeg likviditet, marginer, afvigelser og prognoser i dybden.`;
     return pro
         ? `I've got full access to the numbers for ${subjectLabel}. Ask me to analyze a trend, explain a change, or forecast.`
         : `I can show you the basics for ${subjectLabel}. Unlock Insights and I'll analyze cash flow, margins, anomalies and forecasts in depth.`;
@@ -406,29 +413,47 @@ export function insightsChips(pro: boolean): string[] {
         ? ['Analyze cash flow', 'Why did margin change?', 'Forecast next quarter', 'Any anomalies?']
         : ['Analyze cash flow', 'Forecast next quarter', 'What does Insights include?'];
 }
-export function insightsAnswer(scope: string, pro: boolean, subjectLabel: string, q: string): string {
-    if (!pro) return `That's a deep-analysis question. With Insights Pro I'd break this down for ${subjectLabel} — unlock it on this page to have me answer it here.`;
+export function insightsAnswer(scope: string, pro: boolean, subjectLabel: string, q: string, lang: 'en' | 'da' = 'en'): string {
+    if (!pro)
+        return lang === 'da'
+            ? `Det er et dybdeanalyse-spørgsmål. Med Indsigt Pro ville jeg bryde det ned for ${subjectLabel} — lås det op på denne side, så svarer jeg her.`
+            : `That's a deep-analysis question. With Insights Pro I'd break this down for ${subjectLabel} — unlock it on this page to have me answer it here.`;
     const profile = PROFILES[scope] ?? PROFILES.portfolio;
-    return proAnswer(profile, subjectLabel, q);
+    return proAnswer(profile, subjectLabel, q, lang);
 }
 
-function proAnswer(profile: Profile, subjectLabel: string, q: string): string {
+function proAnswer(profile: Profile, subjectLabel: string, q: string, lang: 'en' | 'da' = 'en'): string {
     const t = q.toLowerCase();
+    const da = lang === 'da';
     const net6 = profile.monthly.slice(6).reduce((a, v) => a + (v * profile.net) / 100, 0);
-    if (/cash ?flow|liquidity|runway/.test(t))
-        return `Net operating cash flow is about +${fmtKr(net6)} over the last 6 months for ${subjectLabel}. The biggest outflow is ${profile.largestOutflow}. At the current burn, runway is ~${profile.runway}`;
+    if (/cash ?flow|liquidity|runway|likviditet/.test(t))
+        return da
+            ? `Driftslikviditeten er cirka +${fmtKr(net6)} over de seneste 6 måneder for ${subjectLabel}. Den største udbetaling er ${profile.largestOutflow}. Med det nuværende forbrug er likviditetshorisonten ~${profile.runway}`
+            : `Net operating cash flow is about +${fmtKr(net6)} over the last 6 months for ${subjectLabel}. The biggest outflow is ${profile.largestOutflow}. At the current burn, runway is ~${profile.runway}`;
     if (/margin|profit/.test(t))
-        return `Gross margin is ${mpct(profile.margin)} (${profile.marginDelta}); net margin sits at ${mpct(profile.net)}.`;
-    if (/expense|cost|spend/.test(t)) {
+        return da
+            ? `Bruttomarginen er ${mpct(profile.margin)} (${profile.marginDelta}); nettomarginen ligger på ${mpct(profile.net)}.`
+            : `Gross margin is ${mpct(profile.margin)} (${profile.marginDelta}); net margin sits at ${mpct(profile.net)}.`;
+    if (/expense|cost|spend|omkostning|forbrug/.test(t)) {
         const e = profile.expenses;
-        return `Spend is led by ${e[0][0].toLowerCase()} (${e[0][1]}%), then ${e[1][0].toLowerCase()} (${e[1][1]}%) and ${e[2][0].toLowerCase()} (${e[2][1]}%).`;
+        return da
+            ? `Forbruget ledes af ${e[0][0].toLowerCase()} (${e[0][1]}%), derefter ${e[1][0].toLowerCase()} (${e[1][1]}%) og ${e[2][0].toLowerCase()} (${e[2][1]}%).`
+            : `Spend is led by ${e[0][0].toLowerCase()} (${e[0][1]}%), then ${e[1][0].toLowerCase()} (${e[1][1]}%) and ${e[2][0].toLowerCase()} (${e[2][1]}%).`;
     }
-    if (/forecast|predict|next|project/.test(t))
-        return `Projecting cash at ~${profile.forecastEnd} by end of next quarter (±6%) for ${subjectLabel}, assuming current collection speed.`;
-    if (/anomal|unusual|risk|flag/.test(t))
-        return `I flagged: ${profile.anomalies.map((a) => a[0]).join('; ')}. Want me to open any in Review?`;
-    if (/benchmark|peer|compare/.test(t))
-        return `Versus similar businesses: ${profile.benchmark.map((b) => `${b[0].toLowerCase()} ${b[1]} vs ${b[2].replace('Peers ', 'peers ')}`).join('; ')}.`;
-    return `Looking at ${subjectLabel}: revenue is trending ${profile.yoy} year-on-year, gross margin ${mpct(profile.margin)}, with ~${profile.runway} of runway. Ask me about cash flow, margins, expenses, anomalies or the forecast.`;
+    if (/forecast|predict|next|project|prognose/.test(t))
+        return da
+            ? `Jeg forventer en likviditet på ~${profile.forecastEnd} ved udgangen af næste kvartal (±6%) for ${subjectLabel}, forudsat uændret betalingshastighed.`
+            : `Projecting cash at ~${profile.forecastEnd} by end of next quarter (±6%) for ${subjectLabel}, assuming current collection speed.`;
+    if (/anomal|unusual|risk|flag|afvigelse/.test(t))
+        return da
+            ? `Jeg har markeret: ${profile.anomalies.map((a) => a[0]).join('; ')}. Skal jeg åbne nogen af dem i Gennemgang?`
+            : `I flagged: ${profile.anomalies.map((a) => a[0]).join('; ')}. Want me to open any in Review?`;
+    if (/benchmark|peer|compare|sammenlign/.test(t))
+        return da
+            ? `Sammenlignet med lignende virksomheder: ${profile.benchmark.map((b) => `${b[0].toLowerCase()} ${b[1]} mod ${b[2].replace('Peers ', '')} hos sammenlignelige`).join('; ')}.`
+            : `Versus similar businesses: ${profile.benchmark.map((b) => `${b[0].toLowerCase()} ${b[1]} vs ${b[2].replace('Peers ', 'peers ')}`).join('; ')}.`;
+    return da
+        ? `Ser jeg på ${subjectLabel}: omsætningen udvikler sig ${profile.yoy} år-over-år, bruttomargin ${mpct(profile.margin)}, med ~${profile.runway} likviditetshorisont. Spørg mig om likviditet, marginer, omkostninger, afvigelser eller prognosen.`
+        : `Looking at ${subjectLabel}: revenue is trending ${profile.yoy} year-on-year, gross margin ${mpct(profile.margin)}, with ~${profile.runway} of runway. Ask me about cash flow, margins, expenses, anomalies or the forecast.`;
 }
 

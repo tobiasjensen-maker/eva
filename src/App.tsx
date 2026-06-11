@@ -134,37 +134,61 @@ export default function App() {
     const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review').length;
 
     function skillsAnswer(q: string): string {
-        const t = q.toLowerCase();
-        const active = skills.filter((s) => s.state === 'active').length;
-        if (/which|enable|recommend|should|next/.test(t)) return `You have ${active} skills active. Based on your books I'd enable “Collect missing documents” and “Close the books” next — they'd save the most manual work.`;
-        if (/reconcil|bank/.test(t)) return 'Bank reconciliation matches incoming and outgoing payments to invoices and bills, then books them to the right account — you only review anything low-confidence.';
-        if (/remind/.test(t)) return 'The reminders skill watches overdue invoices and sends the right template per client and language, logs a note, and follows up automatically.';
-        return 'Each skill automates one job — reconciliation, reminders, document collection, monitoring and more. Open a skill to set its trigger, autonomy and guardrails. What do you want to automate?';
+        const s = q.toLowerCase();
+        const active = skills.filter((x) => x.state === 'active').length;
+        const da = lang === 'da';
+        if (/which|enable|recommend|should|next|hvilke|aktiver|anbefal/.test(s))
+            return da
+                ? `Du har ${active} aktive handlinger. Ud fra dine bøger ville jeg aktivere “Indsaml manglende bilag” og “Afslut bøgerne” som de næste — de sparer mest manuelt arbejde.`
+                : `You have ${active} skills active. Based on your books I'd enable “Collect missing documents” and “Close the books” next — they'd save the most manual work.`;
+        if (/reconcil|bank|afstem/.test(s))
+            return da
+                ? 'Bankafstemning matcher ind- og udbetalinger med fakturaer og regninger og bogfører dem på den rigtige konto — du gennemgår kun det, der har lav sikkerhed.'
+                : 'Bank reconciliation matches incoming and outgoing payments to invoices and bills, then books them to the right account — you only review anything low-confidence.';
+        if (/remind|rykker/.test(s))
+            return da
+                ? 'Rykker-handlingen overvåger forfaldne fakturaer og sender den rigtige skabelon pr. klient og sprog, logger en note og følger automatisk op.'
+                : 'The reminders skill watches overdue invoices and sends the right template per client and language, logs a note, and follows up automatically.';
+        return da
+            ? 'Hver handling automatiserer én opgave — afstemning, rykkere, bilagsindsamling, overvågning og mere. Åbn en handling for at sætte dens udløser, autonomi og værn. Hvad vil du automatisere?'
+            : 'Each skill automates one job — reconciliation, reminders, document collection, monitoring and more. Open a skill to set its trigger, autonomy and guardrails. What do you want to automate?';
     }
     function spacesAnswer(q: string): string {
-        const t = q.toLowerCase().replace(/[?.!]/g, '').trim();
-        if (activeSpace) return `On it — I'll ${t} for “${activeSpace.title}” and update it live.`;
-        if (/dashboard|revenue/.test(t)) return 'I can build a revenue dashboard with a monthly trend, period comparison and a forecast. Want me to create it now?';
-        if (/receivable|aged|report/.test(t)) return 'An aged receivables report buckets open invoices by 0–30 / 31–60 / 61–90 / 90+ days and flags the worst exposure. I can save it as an artifact.';
-        return 'An artifact is a reusable dashboard, report, list or form built from your data. Tell me what you want to see and I’ll create it.';
+        const s = q.toLowerCase().replace(/[?.!]/g, '').trim();
+        const da = lang === 'da';
+        if (activeSpace)
+            return da
+                ? `Det klarer jeg — jeg ${s} for “${activeSpace.title}” og opdaterer det live.`
+                : `On it — I'll ${s} for “${activeSpace.title}” and update it live.`;
+        if (/dashboard|revenue|omsætning/.test(s))
+            return da
+                ? 'Jeg kan bygge et omsætningsdashboard med månedlig udvikling, periodesammenligning og en prognose. Skal jeg oprette det nu?'
+                : 'I can build a revenue dashboard with a monthly trend, period comparison and a forecast. Want me to create it now?';
+        if (/receivable|aged|report|debitor|rapport/.test(s))
+            return da
+                ? 'En aldersfordelt debitorrapport grupperer åbne fakturaer i 0–30 / 31–60 / 61–90 / 90+ dage og fremhæver den største eksponering. Jeg kan gemme den som et artefakt.'
+                : 'An aged receivables report buckets open invoices by 0–30 / 31–60 / 61–90 / 90+ days and flags the worst exposure. I can save it as an artifact.';
+        return da
+            ? 'Et artefakt er et genanvendeligt dashboard, en rapport, en liste eller en formular bygget på dine data. Fortæl mig, hvad du vil se, så opretter jeg det.'
+            : 'An artifact is a reusable dashboard, report, list or form built from your data. Tell me what you want to see and I’ll create it.';
     }
 
     // The contextual Eva chat panel (third shell block) — present on every content page.
-    const subjectLabel = scope === 'portfolio' ? 'your portfolio' : scopeName;
+    const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
         view === 'activity'
             ? {
                   subtitle: 'review assistant',
                   intro: "I'm Eva. Ask me about your review queue — or hit “Ask Eva” on a flagged item and I'll explain my thinking.",
                   chips: ['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?'],
-                  respond: (q: string) => reviewAnswer(activity, q),
+                  respond: (q: string) => reviewAnswer(activity, q, lang),
               }
             : view === 'insights'
             ? {
                   subtitle: 'insights analyst',
-                  intro: insightsIntro(insightsPro, subjectLabel),
+                  intro: insightsIntro(insightsPro, subjectLabel, lang),
                   chips: insightsChips(insightsPro),
-                  respond: (q: string) => insightsAnswer(scope, insightsPro, subjectLabel, q),
+                  respond: (q: string) => insightsAnswer(scope, insightsPro, subjectLabel, q, lang),
               }
             : view === 'skills'
             ? {
@@ -177,7 +201,9 @@ export default function App() {
             ? {
                   subtitle: activeSpace ? 'about this artifact' : 'artifacts assistant',
                   intro: activeSpace
-                      ? `Ask me to refine “${activeSpace.title}” — add a forecast, filter it, or export it.`
+                      ? (lang === 'da'
+                          ? `Bed mig forfine “${activeSpace.title}” — tilføj en prognose, filtrér det, eller eksportér det.`
+                          : `Ask me to refine “${activeSpace.title}” — add a forecast, filter it, or export it.`)
                       : "I'm Eva. Tell me what you want to track and I'll spin up an artifact — a dashboard, report, list or form.",
                   chips: activeSpace
                       ? ['Add a forecast', 'Filter to last quarter', 'Export as PDF']
@@ -220,7 +246,7 @@ export default function App() {
             state: 'active',
             stat: t('Just created'),
         }]);
-        toast.success(lang === 'da' ? `Skill “${title}” oprettet` : `Created skill “${title}”`);
+        toast.success(lang === 'da' ? `Handling “${title}” oprettet` : `Created skill “${title}”`);
     }
 
     function addSpace(title: string, description: string) {

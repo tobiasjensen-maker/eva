@@ -2,7 +2,7 @@ import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
-import { useLang } from '../i18n';
+import { useLang, translate } from '../i18n';
 
 type Confidence = 'high' | 'medium' | 'low';
 export type ActivityStatus = 'completed' | 'needs-review' | 'failed';
@@ -184,23 +184,38 @@ type StatusFilter = 'all' | 'completed' | 'needs-review';
 const clientName = (id: string) => (id === 'portfolio' ? 'Portfolio-wide' : AGREEMENTS.find((a) => a.id === id)?.name ?? id);
 
 // Answers for the shell chat panel's typed questions / chips on the Review screen.
-export function reviewAnswer(entries: LogEntry[], q: string): string {
+export function reviewAnswer(entries: LogEntry[], q: string, lang: 'en' | 'da' = 'en'): string {
     const t = q.toLowerCase();
+    const da = lang === 'da';
     const flagged = entries.filter((e) => e.status === 'needs-review');
-    if (/attention|most|priorit|urgent|first|start/.test(t)) {
-        if (!flagged.length) return 'Nothing is flagged right now — you’re all caught up. 🎉';
+    if (/attention|most|priorit|urgent|first|start|opmærksomhed|vigtig/.test(t)) {
+        if (!flagged.length)
+            return da ? 'Intet er markeret lige nu — du er helt ajour. 🎉' : 'Nothing is flagged right now — you’re all caught up. 🎉';
         const top = flagged.find((e) => e.confidence === 'low') ?? flagged[0];
-        return `You have ${flagged.length} item${flagged.length > 1 ? 's' : ''} flagged. I'd start with “${top.desc}” for ${clientName(top.client)} — it's ${top.confidence} confidence, so it most needs a human eye.`;
+        const confDa = top.confidence === 'low' ? 'lav' : top.confidence === 'medium' ? 'middel' : 'høj';
+        return da
+            ? `Du har ${flagged.length} markered${flagged.length > 1 ? 'e punkter' : 'et punkt'}. Jeg ville starte med “${translate('da', top.desc)}” for ${translate('da', clientName(top.client))} — sikkerheden er ${confDa}, så det har mest brug for et menneskeligt blik.`
+            : `You have ${flagged.length} item${flagged.length > 1 ? 's' : ''} flagged. I'd start with “${top.desc}” for ${clientName(top.client)} — it's ${top.confidence} confidence, so it most needs a human eye.`;
     }
-    if (/summar|today|recap|do/.test(t)) {
+    if (/summar|today|recap|do|opsummer|dagens/.test(t)) {
         const today = entries.filter((e) => e.daysAgo === 0);
-        return `Today I took ${today.length} actions: ${today.filter((e) => e.status === 'completed').length} auto-resolved and ${today.filter((e) => e.status === 'needs-review').length} flagged for your review.`;
+        const done = today.filter((e) => e.status === 'completed').length;
+        const flaggedToday = today.filter((e) => e.status === 'needs-review').length;
+        return da
+            ? `I dag udførte jeg ${today.length} handlinger: ${done} auto-løst og ${flaggedToday} markeret til din gennemgang.`
+            : `Today I took ${today.length} actions: ${done} auto-resolved and ${flaggedToday} flagged for your review.`;
     }
-    if (/risk|wrong|fail|confiden/.test(t)) {
+    if (/risk|wrong|fail|confiden|risikab/.test(t)) {
         const low = flagged.filter((e) => e.confidence === 'low');
-        return low.length ? `The riskiest items are the low-confidence ones: ${low.map((e) => `“${e.desc}”`).join(', ')}. I held these rather than acting automatically.` : 'No low-confidence actions outstanding — nothing risky in the queue.';
+        if (!low.length)
+            return da ? 'Ingen udestående handlinger med lav sikkerhed — intet risikabelt i køen.' : 'No low-confidence actions outstanding — nothing risky in the queue.';
+        return da
+            ? `De mest risikable punkter er dem med lav sikkerhed: ${low.map((e) => `“${translate('da', e.desc)}”`).join(', ')}. Dem holdt jeg tilbage frem for at handle automatisk.`
+            : `The riskiest items are the low-confidence ones: ${low.map((e) => `“${e.desc}”`).join(', ')}. I held these rather than acting automatically.`;
     }
-    return 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask Eva” on an item.';
+    return da
+        ? 'Jeg kan forklare ethvert markeret punkt, opsummere hvad jeg har gjort, eller tage næste skridt for dig. Prøv “Hvad kræver mest min opmærksomhed?”, eller klik “Spørg Eva” på et punkt.'
+        : 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask Eva” on an item.';
 }
 
 export default function ActivityView({
@@ -213,7 +228,7 @@ export default function ActivityView({
     scope?: string;
     onAskEva: (user: string, answer: string) => void;
 }) {
-    const { t } = useLang();
+    const { t, lang } = useLang();
     const [range, setRange] = useState('30');
     const [client, setClient] = useState(scope === 'portfolio' ? 'all' : scope);
     const [expanded, setExpanded] = useState<string | null>(null);
@@ -224,22 +239,28 @@ export default function ActivityView({
     function askAbout(e: LogEntry) {
         const needsReview = e.status === 'needs-review';
         const consider = needsReview && e.confidence === 'low';
+        const da = lang === 'da';
+        const client = t(clientName(e.client));
         const userText = consider
-            ? `What should I check on for ${clientName(e.client)}?`
+            ? (da ? `Hvad skal jeg tjekke for ${client}?` : `What should I check on for ${clientName(e.client)}?`)
             : needsReview
-                ? `Why are you suggesting this for ${clientName(e.client)}?`
-                : `Why did you do this for ${clientName(e.client)}?`;
+                ? (da ? `Hvorfor foreslår du dette for ${client}?` : `Why are you suggesting this for ${clientName(e.client)}?`)
+                : (da ? `Hvorfor gjorde du dette for ${client}?` : `Why did you do this for ${clientName(e.client)}?`);
         const lead = consider
-            ? 'I flagged this for you to review because:'
+            ? (da ? 'Jeg markerede dette til din gennemgang, fordi:' : 'I flagged this for you to review because:')
             : needsReview
-                ? "I'm suggesting this because:"
-                : 'I did this because:';
+                ? (da ? 'Jeg foreslår dette, fordi:' : "I'm suggesting this because:")
+                : (da ? 'Jeg gjorde dette, fordi:' : 'I did this because:');
+        const confLabel = da ? (e.confidence === 'low' ? 'lav' : e.confidence === 'medium' ? 'middel' : 'høj') : e.confidence;
         const tail = consider
-            ? ' I’m not confident enough to act on this myself, so it’s worth your check before you sign off.'
+            ? (da ? ' Jeg er ikke sikker nok til selv at handle på det, så det er værd at tjekke, før du godkender.' : ' I’m not confident enough to act on this myself, so it’s worth your check before you sign off.')
             : needsReview && e.suggestions?.length
-                ? ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?`
+                ? (da ? ` Jeg vil anbefale “${e.suggestions[0]}” — skal jeg gå i gang?` : ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?`)
                 : '';
-        const answer = `${lead} ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${tail}`;
+        const reasoning = da ? e.reasoning.map((r) => t(r)).join(' ') : e.reasoning.join(' ');
+        const answer = da
+            ? `${lead} ${reasoning} Min sikkerhed er ${confLabel}.${e.source ? ` Kilde: ${e.source}.` : ''}${tail}`
+            : `${lead} ${reasoning} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${tail}`;
         onAskEva(userText, answer);
     }
 
