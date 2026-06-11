@@ -3785,6 +3785,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .gap-x-2 {
   column-gap: 0.5rem;
 }
+.gap-x-2\.5 {
+  column-gap: 0.625rem;
+}
 .gap-x-4 {
   column-gap: 1rem;
 }
