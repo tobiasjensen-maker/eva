@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { Card, Dot, EmojiTile, PageHeader, COLORS } from '../ui';
+import { Card, Dot, EmojiTile, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import type { Skill } from '../types';
@@ -188,10 +188,49 @@ const SKILL_TEST: Record<string, { summary: string; rows: string[] }> = {
     anomalies: { summary: 'Detected 3 anomalies', rows: ['1 duplicate payment', '1 unusual supplier charge (3× average)', '1 out-of-pattern expense'] },
 };
 
+// What this skill has actually done — shown in the Activity tab of the detail page.
+interface SkillEvent { date: string; time: string; client: string; desc: string; status: 'done' | 'flagged'; }
+const SKILL_ACTIVITY: Record<string, SkillEvent[]> = {
+    reconciliation: [
+        { date: 'Today', time: '09:12', client: 'Nordic Build ApS', desc: 'Booked transaction #4521 to Account 2100 — Creditors', status: 'done' },
+        { date: 'Today', time: '10:21', client: 'Café Solsikke', desc: 'Matched a MobilePay batch (42 transactions) to open invoices', status: 'done' },
+        { date: 'Yesterday', time: '16:30', client: 'Bryg & Co', desc: 'Booked transaction #4498 to Account 1000 — Sales', status: 'done' },
+        { date: 'Yesterday', time: '08:30', client: 'Lys Design', desc: 'Couldn’t match transaction #4502 — flagged for manual matching', status: 'flagged' },
+        { date: 'Mon', time: '09:50', client: 'Cloud SaaS', desc: 'Booked 6 subscription payments to Account 1000 — Sales', status: 'done' },
+        { date: '28 May', time: '16:00', client: 'Tech Equipment AS', desc: 'Booked 12 transactions in bulk to Account 5000 — Cost of goods', status: 'done' },
+    ],
+    reminders: [
+        { date: 'Today', time: '09:48', client: 'Digital Marketing Pro', desc: 'Sent reminder for #DMK-014 (12.500 DKK, 42 days overdue)', status: 'done' },
+        { date: 'Yesterday', time: '15:02', client: 'Nordic Build ApS', desc: 'Sent reminder for #NB-228 (34.200 DKK)', status: 'done' },
+        { date: 'Mon', time: '14:40', client: 'Office Supplies Co', desc: 'Sent a 2nd reminder for #OS-077 (24.900 DKK)', status: 'done' },
+        { date: '24 May', time: '10:05', client: 'Café Solsikke', desc: 'Sent reminder for #CS-119 (4.300 DKK)', status: 'done' },
+    ],
+    documents: [
+        { date: 'Today', time: '11:40', client: 'Tech Equipment AS', desc: 'Requested 5 missing receipts from the client', status: 'done' },
+        { date: 'Yesterday', time: '11:23', client: 'Café Solsikke', desc: 'Collected a receipt for entry #8821 and attached it', status: 'done' },
+        { date: 'Wed', time: '09:22', client: 'Bryg & Co', desc: 'Requested VAT documentation for the Q4 settlement', status: 'done' },
+    ],
+    monitor: [
+        { date: 'Today', time: '12:15', client: 'Portfolio-wide', desc: 'Flagged operating cash flow down 12% vs Q3 across 3 clients', status: 'flagged' },
+        { date: 'Mon', time: '10:15', client: 'Digital Marketing Pro', desc: 'Raised revenue concentration risk — one client = 41%', status: 'flagged' },
+        { date: '22 May', time: '08:40', client: 'Cloud SaaS', desc: 'Highlighted improving gross margin (+3.1 pp)', status: 'done' },
+    ],
+    anomalies: [
+        { date: 'Today', time: '11:05', client: 'Office Supplies Co', desc: 'Flagged a 14.900 DKK supplier charge — 3× the monthly average', status: 'flagged' },
+        { date: 'Yesterday', time: '14:18', client: 'Tech Equipment AS', desc: 'Flagged a possible duplicate bill #TE-189', status: 'flagged' },
+        { date: '26 May', time: '11:11', client: 'Café Solsikke', desc: 'Flagged cash runway under 2 months', status: 'flagged' },
+    ],
+    'close-books': [
+        { date: 'Tue', time: '13:05', client: 'Nordic Build ApS', desc: 'Prepared the month-end close checklist (18 items)', status: 'done' },
+        { date: '30 Apr', time: '17:20', client: 'Bryg & Co', desc: 'Closed April — 6 control accounts reconciled', status: 'done' },
+    ],
+};
+
 function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => void; onEnable: () => void }) {
     const locked = skill.state === 'locked';
     const actions = SKILL_META[skill.id]?.features ?? [];
     const cfg = SKILL_CONFIG[skill.id] ?? DEFAULT_CONFIG;
+    const [tab, setTab] = useState<'config' | 'activity'>('config');
     const [active, setActive] = useState(skill.state === 'active');
     const [trigger, setTrigger] = useState(cfg.trigger);
     const [event, setEvent] = useState(cfg.event ?? EVENTS[0]);
@@ -232,6 +271,19 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                     </div>
                 )}
 
+                {/* Configuration / Activity tabs */}
+                <div className="mb-6">
+                    <SegmentedTabs
+                        value={tab}
+                        onChange={(v) => setTab(v as 'config' | 'activity')}
+                        options={[{ value: 'config', label: 'Configuration' }, { value: 'activity', label: 'Activity' }]}
+                    />
+                </div>
+
+                {tab === 'activity' ? (
+                    <ActivityTab skill={skill} locked={locked} />
+                ) : (
+                <>
                 {/* What's done with this skill */}
                 {actions.length > 0 && (
                     <Section title="What's done with this skill" sub="These steps run automatically each time the skill takes effect.">
@@ -320,6 +372,8 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                         <Button appearance="primary" onClick={onBack}>Save changes</Button>
                     )}
                 </div>
+                </>
+                )}
             </div>
 
             {testOpen && <TestRunModal skill={skill} onClose={() => setTestOpen(false)} />}
@@ -387,6 +441,56 @@ function TestRunModal({ skill, onClose }: { skill: Skill; onClose: () => void })
                         </div>
                     </>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
+    const events = SKILL_ACTIVITY[skill.id] ?? [];
+    if (locked || events.length === 0) {
+        return (
+            <Card className="p-10 text-center mb-10">
+                <p className="text-sm" style={{ color: COLORS.textMuted }}>
+                    {locked ? 'No activity yet — enable this skill to let Eva start working.' : 'No activity recorded for this skill yet.'}
+                </p>
+            </Card>
+        );
+    }
+    const flagged = events.filter((e) => e.status === 'flagged').length;
+    return (
+        <div className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>What Eva has done</h2>
+                <span className="text-sm" style={{ color: COLORS.textMuted }}>
+                    · {events.length} action{events.length === 1 ? '' : 's'}{flagged > 0 ? ` · ${flagged} flagged for review` : ''}
+                </span>
+            </div>
+            <div className="flex flex-col gap-2">
+                {events.map((e, i) => {
+                    const done = e.status === 'done';
+                    const fg = done ? '#15803d' : '#92710f';
+                    return (
+                        <Card key={i} className="p-4 flex items-center gap-3">
+                            <span
+                                title={done ? 'Completed' : 'Flagged for review'}
+                                className="flex items-center justify-center shrink-0 rounded-lg"
+                                style={{ width: 34, height: 34, background: `${fg}1a`, color: fg }}
+                            >
+                                <Icon name={done ? 'circle-tick' : 'circle-warning'} />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium" style={{ color: COLORS.text }}>{e.desc}</p>
+                                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{e.client} · {e.date} · {e.time}</p>
+                            </div>
+                            {!done && (
+                                <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#fbf3e0', color: '#92710f' }}>
+                                    Needs review
+                                </span>
+                            )}
+                        </Card>
+                    );
+                })}
             </div>
         </div>
     );
