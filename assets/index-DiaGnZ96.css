@@ -4662,6 +4662,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .text-opacity-25 {
   --tw-text-opacity: 0.25;
 }
+.underline {
+  text-decoration-line: underline;
+}
 .no-underline {
   text-decoration-line: none;
 }
