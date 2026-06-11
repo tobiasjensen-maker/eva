@@ -195,6 +195,19 @@ export function SegmentedTabs({ value, onChange, options }: { value: string; onC
     );
 }
 
+// Action bar pinned to the bottom of a detail page. Pair it with a flex-col page
+// wrapper (header + scrollable content above, this bar below) so the content
+// scrolls underneath while the CTAs stay visible.
+export function StickyFooter({ children }: { children: ReactNode }) {
+    return (
+        <div className="shrink-0" style={{ background: '#fff', borderTop: `1px solid ${COLORS.cardBorder}` }}>
+            <div className="mx-auto px-8 flex items-center justify-between gap-3" style={{ maxWidth: 1040, paddingTop: 12, paddingBottom: 12 }}>
+                {children}
+            </div>
+        </div>
+    );
+}
+
 // Eva-branded suggestion / action chip — the Eva mark + label in an outlined pill.
 export function EvaChip({ label, onClick }: { label: string; onClick: () => void }) {
     return (

@@ -1,6 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { Card, Dot, EmojiTile, PageHeader, COLORS } from '../ui';
+import { Card, Dot, EmojiTile, PageHeader, StickyFooter, COLORS } from '../ui';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import type { Skill } from '../types';
@@ -311,7 +311,8 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
     const [testOpen, setTestOpen] = useState(false);
 
     return (
-        <div className="h-full overflow-y-auto">
+        <div className="h-full flex flex-col">
+            <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
             <PageHeader
                 title={skill.title}
                 onBack={onBack}
@@ -445,8 +446,13 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                     </div>
                 </Section>
 
-                {/* footer actions */}
-                <div className="flex items-center justify-between mt-8 pb-10">
+                </>
+                )}
+            </div>
+            </div>
+
+            {tab === 'config' && (
+                <StickyFooter>
                     <div className="flex gap-2">
                         <Button onClick={onBack}>Cancel</Button>
                         <Button onClick={() => setTestOpen(true)}><Icon name="play" /> Test run</Button>
@@ -456,10 +462,8 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                     ) : (
                         <Button appearance="primary" onClick={onBack}>Save changes</Button>
                     )}
-                </div>
-                </>
-                )}
-            </div>
+                </StickyFooter>
+            )}
 
             {testOpen && <TestRunModal skill={skill} onClose={() => setTestOpen(false)} />}
         </div>

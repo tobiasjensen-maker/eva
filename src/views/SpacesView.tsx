@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, PageHeader, COLORS } from '../ui';
+import { Card, EmojiTile, PageHeader, StickyFooter, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import type { Space } from '../types';
@@ -98,18 +98,28 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
 
 function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
     return (
-        <div className="h-full overflow-y-auto">
-            <PageHeader title={space.title} onBack={onBack} backLabel="Spaces" />
-            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
-                <div className="flex items-start gap-3 mb-6">
-                    <EmojiTile emoji={space.emoji} size={44} />
-                    <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>
-                        {space.description}
-                    </p>
-                </div>
+        <div className="h-full flex flex-col">
+            <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+                <PageHeader title={space.title} onBack={onBack} backLabel="Spaces" />
+                <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+                    <div className="flex items-start gap-3 mb-6">
+                        <EmojiTile emoji={space.emoji} size={44} />
+                        <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>
+                            {space.description}
+                        </p>
+                    </div>
 
-                <ArtifactPreview space={space} />
+                    <ArtifactPreview space={space} />
+                </div>
             </div>
+
+            <StickyFooter>
+                <Button onClick={onBack}>Cancel</Button>
+                <div className="flex gap-2">
+                    <Button><Icon name="export" /> Export</Button>
+                    <Button appearance="primary" onClick={onBack}>Save changes</Button>
+                </div>
+            </StickyFooter>
         </div>
     );
 }
