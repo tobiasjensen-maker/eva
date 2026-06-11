@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { Card, Dot, EmojiTile, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { Card, Dot, EmojiTile, PageHeader, COLORS } from '../ui';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import type { Skill } from '../types';
@@ -189,42 +189,110 @@ const SKILL_TEST: Record<string, { summary: string; rows: string[] }> = {
 };
 
 // What this skill has actually done — shown in the Activity tab of the detail page.
-interface SkillEvent { date: string; time: string; client: string; desc: string; status: 'done' | 'flagged'; }
+interface SkillEvent { daysAgo: number; time: string; client: string; desc: string; status: 'done' | 'flagged'; }
+
+// Curated recent entries per skill (the most recent, true-to-life actions).
 const SKILL_ACTIVITY: Record<string, SkillEvent[]> = {
     reconciliation: [
-        { date: 'Today', time: '09:12', client: 'Nordic Build ApS', desc: 'Booked transaction #4521 to Account 2100 — Creditors', status: 'done' },
-        { date: 'Today', time: '10:21', client: 'Café Solsikke', desc: 'Matched a MobilePay batch (42 transactions) to open invoices', status: 'done' },
-        { date: 'Yesterday', time: '16:30', client: 'Bryg & Co', desc: 'Booked transaction #4498 to Account 1000 — Sales', status: 'done' },
-        { date: 'Yesterday', time: '08:30', client: 'Lys Design', desc: 'Couldn’t match transaction #4502 — flagged for manual matching', status: 'flagged' },
-        { date: 'Mon', time: '09:50', client: 'Cloud SaaS', desc: 'Booked 6 subscription payments to Account 1000 — Sales', status: 'done' },
-        { date: '28 May', time: '16:00', client: 'Tech Equipment AS', desc: 'Booked 12 transactions in bulk to Account 5000 — Cost of goods', status: 'done' },
+        { daysAgo: 0, time: '09:12', client: 'Nordic Build ApS', desc: 'Booked transaction #4521 to Account 2100 — Creditors', status: 'done' },
+        { daysAgo: 0, time: '10:21', client: 'Café Solsikke', desc: 'Matched a MobilePay batch (42 transactions) to open invoices', status: 'done' },
+        { daysAgo: 1, time: '16:30', client: 'Bryg & Co', desc: 'Booked transaction #4498 to Account 1000 — Sales', status: 'done' },
+        { daysAgo: 1, time: '08:30', client: 'Lys Design', desc: 'Couldn’t match transaction #4502 — flagged for manual matching', status: 'flagged' },
+        { daysAgo: 3, time: '09:50', client: 'Cloud SaaS', desc: 'Booked 6 subscription payments to Account 1000 — Sales', status: 'done' },
+        { daysAgo: 14, time: '16:00', client: 'Tech Equipment AS', desc: 'Booked 12 transactions in bulk to Account 5000 — Cost of goods', status: 'done' },
     ],
     reminders: [
-        { date: 'Today', time: '09:48', client: 'Digital Marketing Pro', desc: 'Sent reminder for #DMK-014 (12.500 DKK, 42 days overdue)', status: 'done' },
-        { date: 'Yesterday', time: '15:02', client: 'Nordic Build ApS', desc: 'Sent reminder for #NB-228 (34.200 DKK)', status: 'done' },
-        { date: 'Mon', time: '14:40', client: 'Office Supplies Co', desc: 'Sent a 2nd reminder for #OS-077 (24.900 DKK)', status: 'done' },
-        { date: '24 May', time: '10:05', client: 'Café Solsikke', desc: 'Sent reminder for #CS-119 (4.300 DKK)', status: 'done' },
+        { daysAgo: 0, time: '09:48', client: 'Digital Marketing Pro', desc: 'Sent reminder for #DMK-014 (12.500 DKK, 42 days overdue)', status: 'done' },
+        { daysAgo: 1, time: '15:02', client: 'Nordic Build ApS', desc: 'Sent reminder for #NB-228 (34.200 DKK)', status: 'done' },
+        { daysAgo: 3, time: '14:40', client: 'Office Supplies Co', desc: 'Sent a 2nd reminder for #OS-077 (24.900 DKK)', status: 'done' },
+        { daysAgo: 18, time: '10:05', client: 'Café Solsikke', desc: 'Sent reminder for #CS-119 (4.300 DKK)', status: 'done' },
     ],
     documents: [
-        { date: 'Today', time: '11:40', client: 'Tech Equipment AS', desc: 'Requested 5 missing receipts from the client', status: 'done' },
-        { date: 'Yesterday', time: '11:23', client: 'Café Solsikke', desc: 'Collected a receipt for entry #8821 and attached it', status: 'done' },
-        { date: 'Wed', time: '09:22', client: 'Bryg & Co', desc: 'Requested VAT documentation for the Q4 settlement', status: 'done' },
+        { daysAgo: 0, time: '11:40', client: 'Tech Equipment AS', desc: 'Requested 5 missing receipts from the client', status: 'done' },
+        { daysAgo: 1, time: '11:23', client: 'Café Solsikke', desc: 'Collected a receipt for entry #8821 and attached it', status: 'done' },
+        { daysAgo: 5, time: '09:22', client: 'Bryg & Co', desc: 'Requested VAT documentation for the Q4 settlement', status: 'done' },
     ],
     monitor: [
-        { date: 'Today', time: '12:15', client: 'Portfolio-wide', desc: 'Flagged operating cash flow down 12% vs Q3 across 3 clients', status: 'flagged' },
-        { date: 'Mon', time: '10:15', client: 'Digital Marketing Pro', desc: 'Raised revenue concentration risk — one client = 41%', status: 'flagged' },
-        { date: '22 May', time: '08:40', client: 'Cloud SaaS', desc: 'Highlighted improving gross margin (+3.1 pp)', status: 'done' },
+        { daysAgo: 0, time: '12:15', client: 'Portfolio-wide', desc: 'Flagged operating cash flow down 12% vs Q3 across 3 clients', status: 'flagged' },
+        { daysAgo: 3, time: '10:15', client: 'Digital Marketing Pro', desc: 'Raised revenue concentration risk — one client = 41%', status: 'flagged' },
+        { daysAgo: 20, time: '08:40', client: 'Cloud SaaS', desc: 'Highlighted improving gross margin (+3.1 pp)', status: 'done' },
     ],
     anomalies: [
-        { date: 'Today', time: '11:05', client: 'Office Supplies Co', desc: 'Flagged a 14.900 DKK supplier charge — 3× the monthly average', status: 'flagged' },
-        { date: 'Yesterday', time: '14:18', client: 'Tech Equipment AS', desc: 'Flagged a possible duplicate bill #TE-189', status: 'flagged' },
-        { date: '26 May', time: '11:11', client: 'Café Solsikke', desc: 'Flagged cash runway under 2 months', status: 'flagged' },
+        { daysAgo: 0, time: '11:05', client: 'Office Supplies Co', desc: 'Flagged a 14.900 DKK supplier charge — 3× the monthly average', status: 'flagged' },
+        { daysAgo: 1, time: '14:18', client: 'Tech Equipment AS', desc: 'Flagged a possible duplicate bill #TE-189', status: 'flagged' },
+        { daysAgo: 16, time: '11:11', client: 'Café Solsikke', desc: 'Flagged cash runway under 2 months', status: 'flagged' },
     ],
     'close-books': [
-        { date: 'Tue', time: '13:05', client: 'Nordic Build ApS', desc: 'Prepared the month-end close checklist (18 items)', status: 'done' },
-        { date: '30 Apr', time: '17:20', client: 'Bryg & Co', desc: 'Closed April — 6 control accounts reconciled', status: 'done' },
+        { daysAgo: 4, time: '13:05', client: 'Nordic Build ApS', desc: 'Prepared the month-end close checklist (18 items)', status: 'done' },
+        { daysAgo: 42, time: '17:20', client: 'Bryg & Co', desc: 'Closed April — 6 control accounts reconciled', status: 'done' },
     ],
 };
+
+const ACTIVITY_CLIENTS = ['Nordic Build ApS', 'Café Solsikke', 'Bryg & Co', 'Lys Design', 'Cloud SaaS', 'Tech Equipment AS', 'Digital Marketing Pro', 'Office Supplies Co'];
+const STAT_NOUN: Record<string, string> = {
+    reconciliation: 'entries booked', monitor: 'insights generated', reminders: 'reminders sent',
+    documents: 'documents collected', 'close-books': 'periods closed', anomalies: 'anomalies flagged',
+};
+
+// The headline number from the skill card (e.g. "432 reminders sent" → 432).
+function statCount(skill: Skill): number {
+    const m = (skill.stat ?? '').replace(/[.,]/g, '').match(/\d+/);
+    return m ? parseInt(m[0], 10) : (SKILL_ACTIVITY[skill.id]?.length ?? 0);
+}
+
+// Templated description for a generated (older) action, varied by index.
+function genDesc(skillId: string, i: number, flagged: boolean): string {
+    const n = 4500 - i;
+    switch (skillId) {
+        case 'reconciliation':
+            return flagged ? `Couldn’t match transaction #${n} — flagged for manual matching`
+                : `Booked transaction #${n} to ${['Account 2100 — Creditors', 'Account 1000 — Sales', 'Account 5000 — Cost of goods', 'Account 6900 — Bank fees'][i % 4]}`;
+        case 'reminders':
+            return flagged ? `Reminder for #INV-${n} bounced — email undeliverable`
+                : `Sent ${['a 1st', 'a 2nd', 'a final'][i % 3]} payment reminder for invoice #INV-${n}`;
+        case 'documents':
+            return flagged ? `Document request for entry #${n} still outstanding after 2 follow-ups`
+                : `${i % 2 ? 'Collected and filed a receipt' : 'Requested a missing document'} for entry #${n}`;
+        case 'monitor':
+            return flagged ? `Flagged a margin dip for ${ACTIVITY_CLIENTS[i % ACTIVITY_CLIENTS.length]}`
+                : `Posted an insight on ${['cash flow', 'receivables', 'spend', 'margin'][i % 4]} for ${ACTIVITY_CLIENTS[i % ACTIVITY_CLIENTS.length]}`;
+        case 'anomalies':
+            return `Flagged ${['an unusual charge', 'a possible duplicate', 'an out-of-pattern expense', 'a price spike'][i % 4]} for review`;
+        case 'close-books':
+            return `Closed the period for ${ACTIVITY_CLIENTS[i % ACTIVITY_CLIENTS.length]} — control accounts reconciled`;
+        default:
+            return `Ran for ${ACTIVITY_CLIENTS[i % ACTIVITY_CLIENTS.length]}`;
+    }
+}
+
+// Build the full action history for a skill, padded out to its headline count so
+// the totals match the skill card and every action is findable via the filters.
+function buildEvents(skill: Skill): SkillEvent[] {
+    const recent = SKILL_ACTIVITY[skill.id] ?? [];
+    const total = Math.max(statCount(skill), recent.length);
+    const events = [...recent];
+    for (let i = recent.length; i < total; i++) {
+        const flagged = i % 19 === 0;
+        const daysAgo = 2 + Math.floor((i / Math.max(total, 1)) * 178); // spread older items across ~6 months
+        events.push({
+            daysAgo,
+            time: `${String(7 + (i % 11)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}`,
+            client: ACTIVITY_CLIENTS[i % ACTIVITY_CLIENTS.length],
+            desc: genDesc(skill.id, i, flagged),
+            status: flagged ? 'flagged' : 'done',
+        });
+    }
+    return events;
+}
+
+// Day-count → friendly date label.
+function dayLabel(daysAgo: number): string {
+    if (daysAgo === 0) return 'Today';
+    if (daysAgo === 1) return 'Yesterday';
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
 
 function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => void; onEnable: () => void }) {
     const locked = skill.state === 'locked';
@@ -272,12 +340,29 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                 )}
 
                 {/* Configuration / Activity tabs */}
-                <div className="mb-6">
-                    <SegmentedTabs
-                        value={tab}
-                        onChange={(v) => setTab(v as 'config' | 'activity')}
-                        options={[{ value: 'config', label: 'Configuration' }, { value: 'activity', label: 'Activity' }]}
-                    />
+                <div className="flex items-center gap-7 mb-6" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    {([
+                        { k: 'config', label: 'Configuration', count: undefined as number | undefined },
+                        { k: 'activity', label: 'Activity', count: locked ? undefined : statCount(skill) },
+                    ] as const).map((t) => {
+                        const on = tab === t.k;
+                        return (
+                            <button
+                                key={t.k}
+                                onClick={() => setTab(t.k)}
+                                className="relative flex items-center gap-2"
+                                style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}
+                            >
+                                {t.label}
+                                {t.count !== undefined && (
+                                    <span className="rounded-full px-1.5 text-xs font-semibold" style={{ background: on ? '#ececed' : '#f4f4f5', color: COLORS.textMuted, lineHeight: '18px' }}>
+                                        {t.count.toLocaleString('en-US')}
+                                    </span>
+                                )}
+                                {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {tab === 'activity' ? (
@@ -446,9 +531,22 @@ function TestRunModal({ skill, onClose }: { skill: Skill; onClose: () => void })
     );
 }
 
+const ACTIVITY_RANGES = [
+    { value: 'all', label: 'All time' },
+    { value: '7', label: 'Last 7 days' },
+    { value: '30', label: 'Last 30 days' },
+    { value: '90', label: 'Last 90 days' },
+];
+const RENDER_LIMIT = 50;
+
 function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
-    const events = SKILL_ACTIVITY[skill.id] ?? [];
-    if (locked || events.length === 0) {
+    const all = useMemo(() => (locked ? [] : buildEvents(skill)), [skill, locked]);
+    const [query, setQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'done' | 'flagged'>('all');
+    const [clientFilter, setClientFilter] = useState('all');
+    const [range, setRange] = useState('all');
+
+    if (locked || all.length === 0) {
         return (
             <Card className="p-10 text-center mb-10">
                 <p className="text-sm" style={{ color: COLORS.textMuted }}>
@@ -457,41 +555,103 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
             </Card>
         );
     }
-    const flagged = events.filter((e) => e.status === 'flagged').length;
+
+    const clients = Array.from(new Set(all.map((e) => e.client))).sort();
+    const totalFlagged = all.filter((e) => e.status === 'flagged').length;
+    const q = query.trim().toLowerCase();
+    const filtered = all.filter((e) => {
+        if (statusFilter !== 'all' && e.status !== statusFilter) return false;
+        if (clientFilter !== 'all' && e.client !== clientFilter) return false;
+        if (range !== 'all' && e.daysAgo > parseInt(range, 10)) return false;
+        if (q && !e.desc.toLowerCase().includes(q) && !e.client.toLowerCase().includes(q)) return false;
+        return true;
+    });
+    const shown = filtered.slice(0, RENDER_LIMIT);
+    const noun = STAT_NOUN[skill.id] ?? 'actions taken';
+    const filtersActive = q !== '' || statusFilter !== 'all' || clientFilter !== 'all' || range !== 'all';
+    const selStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text } as const;
+
     return (
         <div className="mb-10">
-            <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>What Eva has done</h2>
-                <span className="text-sm" style={{ color: COLORS.textMuted }}>
-                    · {events.length} action{events.length === 1 ? '' : 's'}{flagged > 0 ? ` · ${flagged} flagged for review` : ''}
-                </span>
+            {/* headline — matches the number on the skill card */}
+            <div className="flex items-baseline gap-2.5 mb-4">
+                <span className="text-3xl font-semibold leading-none" style={{ color: COLORS.text }}>{all.length.toLocaleString('en-US')}</span>
+                <span className="text-sm" style={{ color: COLORS.textMuted }}>{noun}{totalFlagged > 0 ? ` · ${totalFlagged.toLocaleString('en-US')} flagged for review` : ''}</span>
             </div>
-            <div className="flex flex-col gap-2">
-                {events.map((e, i) => {
-                    const done = e.status === 'done';
-                    const fg = done ? '#15803d' : '#92710f';
-                    return (
-                        <Card key={i} className="p-4 flex items-center gap-3">
-                            <span
-                                title={done ? 'Completed' : 'Flagged for review'}
-                                className="flex items-center justify-center shrink-0 rounded-lg"
-                                style={{ width: 34, height: 34, background: `${fg}1a`, color: fg }}
-                            >
-                                <Icon name={done ? 'circle-tick' : 'circle-warning'} />
-                            </span>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium" style={{ color: COLORS.text }}>{e.desc}</p>
-                                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{e.client} · {e.date} · {e.time}</p>
-                            </div>
-                            {!done && (
-                                <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#fbf3e0', color: '#92710f' }}>
-                                    Needs review
+
+            {/* advanced filters */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="relative flex-1" style={{ minWidth: 220 }}>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
+                    <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search actions or clients…"
+                        className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white"
+                        style={selStyle}
+                    />
+                </div>
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'done' | 'flagged')} className="rounded-lg px-3 py-2 text-sm bg-white" style={selStyle}>
+                    <option value="all">All statuses</option>
+                    <option value="done">Completed</option>
+                    <option value="flagged">Flagged for review</option>
+                </select>
+                <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selStyle}>
+                    <option value="all">All clients</option>
+                    {clients.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select value={range} onChange={(e) => setRange(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selStyle}>
+                    {ACTIVITY_RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+                {filtersActive && (
+                    <button onClick={() => { setQuery(''); setStatusFilter('all'); setClientFilter('all'); setRange('all'); }} className="text-sm font-medium px-2 py-2" style={{ color: '#4456c7' }}>
+                        Clear
+                    </button>
+                )}
+            </div>
+
+            <p className="text-xs mb-3" style={{ color: COLORS.textMuted }}>
+                {filtered.length === all.length ? `Showing all ${all.length.toLocaleString('en-US')} actions` : `${filtered.length.toLocaleString('en-US')} of ${all.length.toLocaleString('en-US')} actions match`}
+                {filtered.length > RENDER_LIMIT ? ` · showing the first ${RENDER_LIMIT}` : ''}
+            </p>
+
+            {filtered.length === 0 ? (
+                <Card className="p-10 text-center">
+                    <p className="text-sm" style={{ color: COLORS.textMuted }}>No actions match these filters.</p>
+                </Card>
+            ) : (
+                <div className="flex flex-col gap-2">
+                    {shown.map((e, i) => {
+                        const done = e.status === 'done';
+                        const fg = done ? '#15803d' : '#92710f';
+                        return (
+                            <Card key={i} className="p-4 flex items-center gap-3">
+                                <span
+                                    title={done ? 'Completed' : 'Flagged for review'}
+                                    className="flex items-center justify-center shrink-0 rounded-lg"
+                                    style={{ width: 34, height: 34, background: `${fg}1a`, color: fg }}
+                                >
+                                    <Icon name={done ? 'circle-tick' : 'circle-warning'} />
                                 </span>
-                            )}
-                        </Card>
-                    );
-                })}
-            </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{e.desc}</p>
+                                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{e.client} · {dayLabel(e.daysAgo)} · {e.time}</p>
+                                </div>
+                                {!done && (
+                                    <span className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#fbf3e0', color: '#92710f' }}>
+                                        Needs review
+                                    </span>
+                                )}
+                            </Card>
+                        );
+                    })}
+                    {filtered.length > RENDER_LIMIT && (
+                        <p className="text-xs text-center mt-2" style={{ color: COLORS.textMuted }}>
+                            + {(filtered.length - RENDER_LIMIT).toLocaleString('en-US')} more — narrow the filters to find a specific action.
+                        </p>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
