@@ -64,11 +64,11 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'MobilePay settlement · 18.430 DKK',
         doc: { kind: 'Transaction', ref: 'MobilePay batch', detail: '42 transactions · 18.430 DKK · fully reconciled' } },
     { id: 'a4', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '11:05', skill: 'anomalies', client: 'office',
-        desc: 'Book a 14.900 DKK supplier charge — 3× the monthly average', confidence: 'low', status: 'needs-review',
-        reasoning: ['Charge is 3.1× the 6-month average for this supplier.', 'No matching purchase order or approval was found.', 'Low confidence — held for human review before booking.'],
+        desc: 'Check a 14.900 DKK supplier charge — 3× the monthly average', confidence: 'low', status: 'needs-review',
+        reasoning: ['Charge is 3.1× the 6-month average for this supplier.', 'No matching purchase order or approval was found.', 'Low confidence — I’m not sure enough to book it, so it’s for you to check first.'],
         source: 'Bill from Office Supplies Co · 26 Jan',
         doc: { kind: 'Invoice', ref: '#OS-2291', detail: 'Office Supplies Co · 14.900 DKK · no matching purchase order' },
-        suggestions: ['Approve & book', 'Ask client to confirm'] },
+        suggestions: ['Confirm it’s legitimate', 'Ask the client to confirm'] },
     { id: 'a5', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '11:40', skill: 'documents', client: 'tech',
         desc: 'Requested 5 missing receipts from the client', confidence: 'medium', status: 'completed',
         reasoning: ['5 booked entries had no attached documentation.', 'Grouped them into a single request to avoid spamming the client.', 'Set a 3-day follow-up reminder.'],
@@ -141,10 +141,10 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'Bank import · 142.600 DKK',
         doc: { kind: 'Transaction', ref: 'Bank import', detail: '12 transactions · 142.600 DKK · booked to Account 5000' } },
     { id: 'a18', daysAgo: 14, bucket: 'older', dateLabel: '26 May', time: '11:11', skill: 'anomalies', client: 'cafe',
-        desc: 'Draft a cash-runway check-in for Café Solsikke — runway under 2 months', confidence: 'low', status: 'needs-review',
-        reasoning: ['Projected runway fell below the 2-month threshold.', 'Driven by slower weekday footfall and a card-fee increase.', 'Held for advisory review.'],
+        desc: 'Review Café Solsikke’s cash runway — under 2 months', confidence: 'low', status: 'needs-review',
+        reasoning: ['Projected runway fell below the 2-month threshold.', 'Driven by slower weekday footfall and a card-fee increase.', 'Low confidence — worth your judgement before raising it with the client.'],
         source: 'Cash-flow model · runway 1.4 mo',
-        suggestions: ['Draft a check-in for the client', 'Acknowledge'] },
+        suggestions: ['Flag it with the client', 'Note it for the next review'] },
 ];
 
 const BUCKET_LABEL: Record<Bucket, string> = {
@@ -220,10 +220,24 @@ export default function ActivityView({
 
     // "Ask Eva" on a flagged item — hand the question + explanation to the shell chat panel.
     function askAbout(e: LogEntry) {
-        const suggestion = e.status === 'needs-review';
-        const userText = suggestion ? `Why are you suggesting this for ${clientName(e.client)}?` : `Why did you do this for ${clientName(e.client)}?`;
-        const lead = suggestion ? "I'm suggesting this because:" : 'I did this because:';
-        const answer = `${lead} ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${suggestion && e.suggestions?.length ? ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?` : ''}`;
+        const needsReview = e.status === 'needs-review';
+        const consider = needsReview && e.confidence === 'low';
+        const userText = consider
+            ? `What should I check on for ${clientName(e.client)}?`
+            : needsReview
+                ? `Why are you suggesting this for ${clientName(e.client)}?`
+                : `Why did you do this for ${clientName(e.client)}?`;
+        const lead = consider
+            ? 'I flagged this for you to review because:'
+            : needsReview
+                ? "I'm suggesting this because:"
+                : 'I did this because:';
+        const tail = consider
+            ? ' I’m not confident enough to act on this myself, so it’s worth your check before you sign off.'
+            : needsReview && e.suggestions?.length
+                ? ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?`
+                : '';
+        const answer = `${lead} ${e.reasoning.join(' ')} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${tail}`;
         onAskEva(userText, answer);
     }
 
@@ -350,6 +364,9 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
     const needsReview = entry.status === 'needs-review';
+    // Low-confidence flags are things Eva can't act on alone — the AO considers them and checks them off.
+    // Higher-confidence flags are actions Eva can carry out once accepted.
+    const consider = needsReview && entry.confidence === 'low';
     return (
         <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: open ? '#fafafa' : '#fff' }}>
@@ -383,7 +400,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                     <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fcfcfd' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
-                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{needsReview ? 'Why Eva suggests this' : 'Why did Eva do this?'}</span>
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? 'What Eva wants you to check' : needsReview ? 'Why Eva suggests this' : 'Why did Eva do this?'}</span>
                         </div>
 
                         <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.join(' ')}</p>
@@ -427,9 +444,15 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                                 <div className="flex items-center gap-3">
                                     <span className="flex items-center gap-1.5 text-sm" style={{ color: entry.resolution === 'Dismissed' ? COLORS.textMuted : '#15803d' }}>
                                         <Icon name={entry.resolution === 'Dismissed' ? 'circle-warning' : 'circle-tick'} />
-                                        {!entry.resolution ? 'Done automatically' : entry.resolution === 'Dismissed' ? 'Dismissed' : entry.resolution === 'Confirmed' ? 'Accepted' : `Accepted — “${entry.resolution}”`}
+                                        {!entry.resolution ? 'Done automatically' : entry.resolution === 'Dismissed' ? 'Dismissed' : entry.resolution === 'Reviewed' ? 'Reviewed' : entry.resolution === 'Confirmed' ? 'Accepted' : `Accepted — “${entry.resolution}”`}
                                     </span>
                                     <Button onClick={onReverse}><Icon name="arrow-left" /> Undo</Button>
+                                </div>
+                            ) : consider ? (
+                                // AO-judgement item — Eva can't action it; the accountant checks it off.
+                                <div className="flex items-center gap-2">
+                                    <Button onClick={() => onResolve('Dismissed')}>Not relevant</Button>
+                                    <Button appearance="primary" onClick={() => onResolve('Reviewed')}><Icon name="circle-tick" /> Mark as reviewed</Button>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
