@@ -1442,26 +1442,26 @@ function AssistantBubble({
     );
 }
 
-// Friendly names + a suggested automation for each data view Eva can render.
-const VIEW_META: Record<string, { artifact: string; skill: string; skillDesc: string }> = {
-    overdue: { artifact: 'Overdue invoices', skill: 'Watch overdue invoices', skillDesc: 'Checks for invoices passing 30 days overdue and flags them to Review.' },
-    unreconciled: { artifact: 'Unreconciled bank transactions', skill: 'Chase unreconciled transactions', skillDesc: 'Watches for bank transactions without a match and flags them to Review.' },
-    pnl: { artifact: 'P&L statement', skill: 'Refresh the P&L every month', skillDesc: 'Rebuilds this P&L at month-end and highlights notable changes.' },
-    cashflow: { artifact: 'Cash flow analysis', skill: 'Monitor cash flow', skillDesc: 'Tracks operating cash flow and alerts you when the trend turns negative.' },
-    margins: { artifact: 'Margin analysis', skill: 'Watch gross margin', skillDesc: 'Recalculates margins and flags significant moves to Review.' },
-    forecast: { artifact: 'Revenue forecast', skill: 'Keep the forecast fresh', skillDesc: 'Re-runs this forecast as new data lands.' },
-    anomalies: { artifact: 'Anomaly report', skill: 'Flag new anomalies', skillDesc: 'Scans for unusual transactions and flags them to Review.' },
-    benchmark: { artifact: 'Peer benchmark', skill: 'Track the peer benchmark', skillDesc: 'Refreshes the benchmark quarterly and highlights gaps.' },
-    analysis: { artifact: 'Financial health summary', skill: 'Monitor financial health', skillDesc: 'Keeps this summary current and flags deteriorating metrics.' },
-    customers: { artifact: 'Customer balances', skill: 'Watch customer balances', skillDesc: 'Tracks balances and flags customers passing their credit limit.' },
-    suppliers: { artifact: 'Supplier directory', skill: 'Watch supplier bills', skillDesc: 'Tracks open bills and flags upcoming due dates.' },
-    budgets: { artifact: 'Budget overview', skill: 'Watch budget variance', skillDesc: 'Flags lines drifting from budget to Review.' },
-    projects: { artifact: 'Project budgets', skill: 'Watch project budgets', skillDesc: 'Flags projects approaching or over budget.' },
-    subscriptions: { artifact: 'Subscription overview', skill: 'Watch MRR & churn', skillDesc: 'Tracks subscription changes and flags churn risk.' },
-    revenue: { artifact: 'Revenue by client', skill: 'Track revenue by client', skillDesc: 'Updates this view monthly and highlights big movers.' },
-    docs: { artifact: 'Missing documents by client', skill: 'Chase missing documents', skillDesc: 'Requests missing documents from clients automatically.' },
-    reconcile: { artifact: 'Reconciliation status by client', skill: 'Watch reconciliation status', skillDesc: 'Flags clients falling behind on reconciliation.' },
-    runway: { artifact: 'Cash runway by client', skill: 'Watch client cash runway', skillDesc: 'Alerts you when a client’s runway drops under 2 months.' },
+// Friendly names, a suggested automation, and its value proposition for each data view Eva can render.
+const VIEW_META: Record<string, { artifact: string; skill: string; skillDesc: string; value: string }> = {
+    overdue: { artifact: 'Overdue invoices', skill: 'Watch overdue invoices', skillDesc: 'Checks for invoices passing 30 days overdue and flags them to Review.', value: 'Automated, I’d catch invoices the day they pass 30 days and have reminders drafted before you open the books — roughly 2 hours saved a month.' },
+    unreconciled: { artifact: 'Unreconciled bank transactions', skill: 'Chase unreconciled transactions', skillDesc: 'Watches for bank transactions without a match and flags them to Review.', value: 'Automated, I’d match new bank transactions daily and only bring you the exceptions — no month-end pile-up.' },
+    pnl: { artifact: 'P&L statement', skill: 'Refresh the P&L every month', skillDesc: 'Rebuilds this P&L at month-end and highlights notable changes.', value: 'Automated, a fresh P&L lands at every month-end with the notable changes already highlighted.' },
+    cashflow: { artifact: 'Cash flow analysis', skill: 'Monitor cash flow', skillDesc: 'Tracks operating cash flow and alerts you when the trend turns negative.', value: 'Automated, I’d warn you the moment the cash trend turns negative — weeks before it becomes urgent.' },
+    margins: { artifact: 'Margin analysis', skill: 'Watch gross margin', skillDesc: 'Recalculates margins and flags significant moves to Review.', value: 'Automated, margin slips get flagged the month they happen instead of at year-end.' },
+    forecast: { artifact: 'Revenue forecast', skill: 'Keep the forecast fresh', skillDesc: 'Re-runs this forecast as new data lands.', value: 'Automated, the forecast refreshes as new data lands, so decisions always rest on current numbers.' },
+    anomalies: { artifact: 'Anomaly report', skill: 'Flag new anomalies', skillDesc: 'Scans for unusual transactions and flags them to Review.', value: 'Automated, unusual charges get caught before they’re booked — not after the damage is done.' },
+    benchmark: { artifact: 'Peer benchmark', skill: 'Track the peer benchmark', skillDesc: 'Refreshes the benchmark quarterly and highlights gaps.', value: 'Automated, you’d see each quarter where a client drifts from peers — ready-made advisory talking points.' },
+    analysis: { artifact: 'Financial health summary', skill: 'Monitor financial health', skillDesc: 'Keeps this summary current and flags deteriorating metrics.', value: 'Automated, you’d get a monthly health check with deteriorating metrics flagged early.' },
+    customers: { artifact: 'Customer balances', skill: 'Watch customer balances', skillDesc: 'Tracks balances and flags customers passing their credit limit.', value: 'Automated, customers passing their credit limit get flagged before the next sale goes out.' },
+    suppliers: { artifact: 'Supplier directory', skill: 'Watch supplier bills', skillDesc: 'Tracks open bills and flags upcoming due dates.', value: 'Automated, upcoming due dates get flagged so you never miss a payment discount.' },
+    budgets: { artifact: 'Budget overview', skill: 'Watch budget variance', skillDesc: 'Flags lines drifting from budget to Review.', value: 'Automated, budget drift is flagged in-month — while you can still do something about it.' },
+    projects: { artifact: 'Project budgets', skill: 'Watch project budgets', skillDesc: 'Flags projects approaching or over budget.', value: 'Automated, over-budget projects get flagged at 80% spend, not after the overrun.' },
+    subscriptions: { artifact: 'Subscription overview', skill: 'Watch MRR & churn', skillDesc: 'Tracks subscription changes and flags churn risk.', value: 'Automated, churn risk and MRR dips surface the day they start, not in the quarterly review.' },
+    revenue: { artifact: 'Revenue by client', skill: 'Track revenue by client', skillDesc: 'Updates this view monthly and highlights big movers.', value: 'Automated, this ranking refreshes monthly with big movers highlighted — instant talking points per client.' },
+    docs: { artifact: 'Missing documents by client', skill: 'Chase missing documents', skillDesc: 'Requests missing documents from clients automatically.', value: 'Automated, clients get chased for missing documents without you writing a single email.' },
+    reconcile: { artifact: 'Reconciliation status by client', skill: 'Watch reconciliation status', skillDesc: 'Flags clients falling behind on reconciliation.', value: 'Automated, clients falling behind get flagged weekly — keeping month-end painless.' },
+    runway: { artifact: 'Cash runway by client', skill: 'Watch client cash runway', skillDesc: 'Alerts you when a client’s runway drops under 2 months.', value: 'Automated, a runway warning lands in Review the moment any client drops under 2 months.' },
 };
 
 function viewMeta(kind: 'data' | 'clienttable', dataKey: string) {
@@ -1470,11 +1470,13 @@ function viewMeta(kind: 'data' | 'clienttable', dataKey: string) {
         artifact: `${fallbackName} view`,
         skill: `Keep “${fallbackName}” up to date`,
         skillDesc: 'Watches this view and flags notable changes to Review.',
+        value: 'Automated, this view stays current and notable changes land in Review — no manual checking.',
     };
     return kind === 'clienttable' ? { ...base, artifact: `${base.artifact} — all clients` } : base;
 }
 
-// Action bar under every data view: keep it as an artifact, or turn it into a recurring skill.
+// Under every data view: keep it as an artifact, and an Eva-suggested AI workflow
+// that pitches the value of automating the view before setting it up as a skill.
 function ArtifactActions({
     kind, dataKey, onCreateSpace, onCreateSkill, onNavigate,
 }: {
@@ -1487,9 +1489,8 @@ function ArtifactActions({
     const { t } = useLang();
     const meta = viewMeta(kind, dataKey);
     const [saved, setSaved] = useState(false);
-    const [automating, setAutomating] = useState(false);
-    const [created, setCreated] = useState(false);
-    const [name, setName] = useState(meta.skill);
+    const [phase, setPhase] = useState<'suggest' | 'form' | 'created' | 'dismissed'>('suggest');
+    const [name, setName] = useState(t(meta.skill));
     const [freq, setFreq] = useState('Weekly');
 
     const doneChip = (label: string, linkLabel: string, onLink: () => void) => (
@@ -1509,17 +1510,27 @@ function ArtifactActions({
                         <Icon name="layout" /> {t('Save as artifact')}
                     </Button>
                 )}
-                {created ? (
-                    doneChip(t('Skill created'), t('View in Skills'), () => onNavigate('skills'))
-                ) : (
-                    <Button onClick={() => setAutomating((o) => !o)}>
-                        <Icon name="ai-stars" /> {t('Automate this')}
-                    </Button>
-                )}
+                {phase === 'created' && doneChip(t('Skill created'), t('View in Skills'), () => onNavigate('skills'))}
             </div>
 
-            {automating && !created && (
-                <div className="rounded-xl p-4 mt-2.5" style={{ border: '1px solid #e6dcfb', background: '#faf6ff', maxWidth: 520 }}>
+            {/* Eva's suggested AI workflow — leads with the value of automating this view */}
+            {phase === 'suggest' && (
+                <div className="rounded-xl p-4 mt-2.5 flex items-start gap-3" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
+                    <span className="shrink-0 mt-0.5"><Orb size={18} /></span>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b9842b' }}>{t('Suggested AI workflow')}</p>
+                        <p className="text-sm font-semibold mt-1" style={{ color: COLORS.text }}>{t(meta.skill)}</p>
+                        <p className="text-sm mt-0.5 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(meta.value)}</p>
+                        <div className="flex items-center gap-2 mt-3">
+                            <Button appearance="primary" onClick={() => setPhase('form')}><Icon name="ai-stars" /> {t('Set it up')}</Button>
+                            <Button onClick={() => setPhase('dismissed')}>{t('Not now')}</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {phase === 'form' && (
+                <div className="rounded-xl p-4 mt-2.5" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
                     <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a skill from this view')}</p>
                     <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('Eva will keep this view up to date and flag notable changes to Review.')}</p>
                     <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Skill name')}</label>
@@ -1543,14 +1554,13 @@ function ArtifactActions({
                         ))}
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
-                        <Button onClick={() => setAutomating(false)}>{t('Cancel')}</Button>
+                        <Button onClick={() => setPhase('suggest')}>{t('Cancel')}</Button>
                         <Button
                             appearance="primary"
                             disabled={!name.trim()}
                             onClick={() => {
                                 onCreateSkill(name.trim(), `${meta.skillDesc} Runs ${freq.toLowerCase()}.`);
-                                setCreated(true);
-                                setAutomating(false);
+                                setPhase('created');
                             }}
                         >
                             <Icon name="ai-stars" /> {t('Create skill')}
