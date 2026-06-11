@@ -213,6 +213,18 @@ const DA: Record<string, string> = {
     'Automates annual report preparation and formatting.': 'Automatiserer udarbejdelse og opsætning af årsrapporter.',
 
     // ---- Artifacts ----
+    'Save as artifact': 'Gem som artefakt',
+    'Saved as artifact': 'Gemt som artefakt',
+    'Open in Artifacts': 'Åbn i Artefakter',
+    'Automate this': 'Automatisér dette',
+    'Create a skill from this view': 'Opret en skill ud fra denne visning',
+    'Eva will keep this view up to date and flag notable changes to Review.': 'Eva holder visningen opdateret og markerer væsentlige ændringer i Gennemgang.',
+    'Skill name': 'Skill-navn',
+    'Run': 'Kør',
+    'Create skill': 'Opret skill',
+    'Skill created': 'Skill oprettet',
+    'View in Skills': 'Se under Skills',
+    'Just created': 'Lige oprettet',
     'New artifact': 'Nyt artefakt',
     'messages': 'beskeder',
     'Updated': 'Opdateret',

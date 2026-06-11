@@ -16,6 +16,12 @@ function Stream({ text, onTick }: { text: string; onTick: () => void }) {
     const [n, setN] = useState(0);
     useEffect(() => {
         setN(0);
+        // Hidden tabs throttle timers hard — skip the typing animation there.
+        if (document.visibilityState === 'hidden') {
+            setN(words.length);
+            onTick();
+            return;
+        }
         let i = 0;
         const id = setInterval(() => {
             i++;

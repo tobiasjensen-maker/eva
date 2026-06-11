@@ -40,6 +40,7 @@ interface Props {
     onEnableSkill: (id: string) => void;
     onNavigate: (v: ViewId) => void;
     onCreateSpace: (title: string) => void;
+    onCreateSkill: (title: string, description: string) => void;
     seedWelcome?: boolean;
     onWelcomeConsumed?: () => void;
     scope?: string;
@@ -472,7 +473,7 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient }: Props) {
     const { t, lang } = useLang();
     // Seed Eva's getting-started message right after onboarding (lazy init → StrictMode-safe)
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : []));
@@ -804,6 +805,8 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                                                 onNavigate={onNavigate}
                                                 onFollowUp={(t) => send(t)}
                                                 onSelectClient={onSelectClient}
+                                                onCreateSpace={onCreateSpace}
+                                                onCreateSkill={onCreateSkill}
                                                 onStream={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })}
                                             />
                                         </div>
@@ -962,6 +965,13 @@ function StreamText({ text, onDone, onTick, speed = 45 }: { text: string; onDone
     const [n, setN] = useState(0);
     useEffect(() => {
         setN(0);
+        // Hidden tabs throttle timers hard — skip the typing animation there.
+        if (document.visibilityState === 'hidden') {
+            setN(words.length);
+            onTick?.();
+            onDone?.();
+            return;
+        }
         let i = 0;
         const id = setInterval(() => {
             i++;
@@ -1162,7 +1172,7 @@ function FollowUps({ items, onPick }: { items: string[]; onPick: (t: string) => 
 }
 
 function AssistantBubble({
-    msg, skills, spaces, instant, isLast, onApprove, onEnableSkill, onNavigate, onStream, onFollowUp, onSelectClient,
+    msg, skills, spaces, instant, isLast, onApprove, onEnableSkill, onNavigate, onStream, onFollowUp, onSelectClient, onCreateSpace, onCreateSkill,
 }: {
     msg: AssistantMsg;
     skills: Skill[];
@@ -1175,6 +1185,8 @@ function AssistantBubble({
     onStream: () => void;
     onFollowUp: (t: string) => void;
     onSelectClient?: (id: string) => void;
+    onCreateSpace: (title: string) => void;
+    onCreateSkill: (title: string, description: string) => void;
 }) {
     const [textDone, setTextDone] = useState(instant);
     useEffect(() => {
@@ -1402,11 +1414,142 @@ function AssistantBubble({
 
     const planUnfinished = msg.kind === 'plan' && msg.phase !== 'done';
     const showFollowUps = isLast && reveal && !planUnfinished;
+    // Any rendered data view can be kept: saved as an artifact, or turned into a recurring skill.
+    const savable = reveal && (msg.kind === 'data' || msg.kind === 'clienttable');
 
     return (
         <div>
             {body}
+            {savable && (
+                <ArtifactActions
+                    kind={msg.kind as 'data' | 'clienttable'}
+                    dataKey={(msg as Extract<AssistantMsg, { kind: 'data' | 'clienttable' }>).dataKey}
+                    onCreateSpace={onCreateSpace}
+                    onCreateSkill={onCreateSkill}
+                    onNavigate={onNavigate}
+                />
+            )}
             {showFollowUps && <FollowUps items={followUpsFor(msg)} onPick={onFollowUp} />}
+        </div>
+    );
+}
+
+// Friendly names + a suggested automation for each data view Eva can render.
+const VIEW_META: Record<string, { artifact: string; skill: string; skillDesc: string }> = {
+    overdue: { artifact: 'Overdue invoices', skill: 'Watch overdue invoices', skillDesc: 'Checks for invoices passing 30 days overdue and flags them to Review.' },
+    unreconciled: { artifact: 'Unreconciled bank transactions', skill: 'Chase unreconciled transactions', skillDesc: 'Watches for bank transactions without a match and flags them to Review.' },
+    pnl: { artifact: 'P&L statement', skill: 'Refresh the P&L every month', skillDesc: 'Rebuilds this P&L at month-end and highlights notable changes.' },
+    cashflow: { artifact: 'Cash flow analysis', skill: 'Monitor cash flow', skillDesc: 'Tracks operating cash flow and alerts you when the trend turns negative.' },
+    margins: { artifact: 'Margin analysis', skill: 'Watch gross margin', skillDesc: 'Recalculates margins and flags significant moves to Review.' },
+    forecast: { artifact: 'Revenue forecast', skill: 'Keep the forecast fresh', skillDesc: 'Re-runs this forecast as new data lands.' },
+    anomalies: { artifact: 'Anomaly report', skill: 'Flag new anomalies', skillDesc: 'Scans for unusual transactions and flags them to Review.' },
+    benchmark: { artifact: 'Peer benchmark', skill: 'Track the peer benchmark', skillDesc: 'Refreshes the benchmark quarterly and highlights gaps.' },
+    analysis: { artifact: 'Financial health summary', skill: 'Monitor financial health', skillDesc: 'Keeps this summary current and flags deteriorating metrics.' },
+    customers: { artifact: 'Customer balances', skill: 'Watch customer balances', skillDesc: 'Tracks balances and flags customers passing their credit limit.' },
+    suppliers: { artifact: 'Supplier directory', skill: 'Watch supplier bills', skillDesc: 'Tracks open bills and flags upcoming due dates.' },
+    budgets: { artifact: 'Budget overview', skill: 'Watch budget variance', skillDesc: 'Flags lines drifting from budget to Review.' },
+    projects: { artifact: 'Project budgets', skill: 'Watch project budgets', skillDesc: 'Flags projects approaching or over budget.' },
+    subscriptions: { artifact: 'Subscription overview', skill: 'Watch MRR & churn', skillDesc: 'Tracks subscription changes and flags churn risk.' },
+    revenue: { artifact: 'Revenue by client', skill: 'Track revenue by client', skillDesc: 'Updates this view monthly and highlights big movers.' },
+    docs: { artifact: 'Missing documents by client', skill: 'Chase missing documents', skillDesc: 'Requests missing documents from clients automatically.' },
+    reconcile: { artifact: 'Reconciliation status by client', skill: 'Watch reconciliation status', skillDesc: 'Flags clients falling behind on reconciliation.' },
+    runway: { artifact: 'Cash runway by client', skill: 'Watch client cash runway', skillDesc: 'Alerts you when a client’s runway drops under 2 months.' },
+};
+
+function viewMeta(kind: 'data' | 'clienttable', dataKey: string) {
+    const fallbackName = dataKey.charAt(0).toUpperCase() + dataKey.slice(1);
+    const base = VIEW_META[dataKey] ?? {
+        artifact: `${fallbackName} view`,
+        skill: `Keep “${fallbackName}” up to date`,
+        skillDesc: 'Watches this view and flags notable changes to Review.',
+    };
+    return kind === 'clienttable' ? { ...base, artifact: `${base.artifact} — all clients` } : base;
+}
+
+// Action bar under every data view: keep it as an artifact, or turn it into a recurring skill.
+function ArtifactActions({
+    kind, dataKey, onCreateSpace, onCreateSkill, onNavigate,
+}: {
+    kind: 'data' | 'clienttable';
+    dataKey: string;
+    onCreateSpace: (title: string) => void;
+    onCreateSkill: (title: string, description: string) => void;
+    onNavigate: (v: ViewId) => void;
+}) {
+    const { t } = useLang();
+    const meta = viewMeta(kind, dataKey);
+    const [saved, setSaved] = useState(false);
+    const [automating, setAutomating] = useState(false);
+    const [created, setCreated] = useState(false);
+    const [name, setName] = useState(meta.skill);
+    const [freq, setFreq] = useState('Weekly');
+
+    const doneChip = (label: string, linkLabel: string, onLink: () => void) => (
+        <span className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm" style={{ background: '#e9f7ef', color: '#15803d' }}>
+            <Icon name="circle-tick" /> {label}
+            <button onClick={onLink} className="font-semibold underline" style={{ color: '#15803d' }}>{linkLabel}</button>
+        </span>
+    );
+
+    return (
+        <div className="mt-3 anim-in">
+            <div className="flex flex-wrap items-center gap-2">
+                {saved ? (
+                    doneChip(t('Saved as artifact'), t('Open in Artifacts'), () => onNavigate('spaces'))
+                ) : (
+                    <Button onClick={() => { onCreateSpace(meta.artifact); setSaved(true); }}>
+                        <Icon name="layout" /> {t('Save as artifact')}
+                    </Button>
+                )}
+                {created ? (
+                    doneChip(t('Skill created'), t('View in Skills'), () => onNavigate('skills'))
+                ) : (
+                    <Button onClick={() => setAutomating((o) => !o)}>
+                        <Icon name="ai-stars" /> {t('Automate this')}
+                    </Button>
+                )}
+            </div>
+
+            {automating && !created && (
+                <div className="rounded-xl p-4 mt-2.5" style={{ border: '1px solid #e6dcfb', background: '#faf6ff', maxWidth: 520 }}>
+                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a skill from this view')}</p>
+                    <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('Eva will keep this view up to date and flag notable changes to Review.')}</p>
+                    <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Skill name')}</label>
+                    <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full rounded-lg px-3 py-2 text-sm bg-white"
+                        style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                    />
+                    <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Run')}</label>
+                    <div className="flex gap-2">
+                        {['Daily', 'Weekly', 'Monthly'].map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFreq(f)}
+                                className="rounded-lg px-3 py-1.5 text-sm"
+                                style={{ border: `1px solid ${freq === f ? COLORS.text : COLORS.cardBorder}`, background: freq === f ? COLORS.text : '#fff', color: freq === f ? '#fff' : COLORS.text }}
+                            >
+                                {t(f)}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <Button onClick={() => setAutomating(false)}>{t('Cancel')}</Button>
+                        <Button
+                            appearance="primary"
+                            disabled={!name.trim()}
+                            onClick={() => {
+                                onCreateSkill(name.trim(), `${meta.skillDesc} Runs ${freq.toLowerCase()}.`);
+                                setCreated(true);
+                                setAutomating(false);
+                            }}
+                        >
+                            <Icon name="ai-stars" /> {t('Create skill')}
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

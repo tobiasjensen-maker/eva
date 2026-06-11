@@ -50,6 +50,7 @@ const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
 ];
 
 let spaceSeq = 100;
+let skillSeq = 100;
 
 export default function App() {
     const toast = useToast();
@@ -206,6 +207,20 @@ export default function App() {
         setSkills((prev) => prev.map((s) => (s.id === id ? { ...s, state: 'active', stat: 'Just enabled' } : s)));
         const sk = skills.find((s) => s.id === id);
         if (sk) toast.success(`Enabled “${sk.title}” for ${sk.price} DKK/month`);
+    }
+
+    // A custom skill created from a data view in the chat ("Automate this").
+    function createSkillFromChat(title: string, description: string) {
+        setSkills((prev) => [...prev, {
+            id: `custom-${skillSeq++}`,
+            emoji: '🪄',
+            title,
+            description,
+            color: '#8b46d6',
+            state: 'active',
+            stat: t('Just created'),
+        }]);
+        toast.success(lang === 'da' ? `Skill “${title}” oprettet` : `Created skill “${title}”`);
     }
 
     function addSpace(title: string, description: string) {
@@ -435,6 +450,7 @@ export default function App() {
                         onEnableSkill={enableSkill}
                         onNavigate={goView}
                         onCreateSpace={(title) => addSpace(title, 'Generated from a chat conversation.')}
+                        onCreateSkill={createSkillFromChat}
                         seedWelcome={welcome}
                         onWelcomeConsumed={() => setWelcome(false)}
                         scope={scope}
