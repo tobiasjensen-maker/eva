@@ -30,6 +30,12 @@ export function Onboarding({ onClose, onComplete }: { onClose: () => void; onCom
     useEffect(() => {
         if (step !== 'importing') return;
         setDone(0);
+        // Hidden tabs throttle timers hard — skip the import animation there.
+        if (document.visibilityState === 'hidden') {
+            setDone(IMPORT_ITEMS.length);
+            const id = setTimeout(() => setStep('ready'), 300);
+            return () => clearTimeout(id);
+        }
         let i = 0;
         const id = setInterval(() => {
             i++;
