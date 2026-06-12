@@ -22,6 +22,8 @@ type AssistantMsg =
           result?: string;
           createsSpace?: string;
           outcome?: { title: string; sub: string };
+          // Once the action is DONE, Eva suggests automating it as an AI workflow.
+          workflow?: { skill: string; skillDesc: string; value: string };
       }
     | { id: number; role: 'assistant'; kind: 'skill'; skillId: string; text: string }
     | { id: number; role: 'assistant'; kind: 'spacecall'; spaceId: string; note: string }
@@ -540,6 +542,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     kind: 'plan',
                     intro: PORTFOLIO_REMINDER_PLAN.intro,
                     steps: PORTFOLIO_REMINDER_PLAN.steps.map((label) => ({ label, status: 'todo' as const })),
+                    workflow: { skill: 'Send payment reminders automatically', skillDesc: 'Watches overdue invoices across all clients and sends the right reminder per client.', value: 'Automated, I’d catch invoices the day they pass 30 days and have reminders drafted before you open the books — roughly 2 hours saved a month.' },
                     phase: 'awaiting',
                     result: PORTFOLIO_REMINDER_PLAN.result,
                     outcome: PORTFOLIO_REMINDER_PLAN.outcome,
@@ -617,6 +620,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     result: 'Done. I aged 312 open invoices (1.84M DKK total). 3 clients have significant 90+ day exposure. I saved the report as an artifact — you can open or share it anytime.',
                     createsSpace: 'Aged Receivables — All Clients',
                     outcome: { title: 'Aged Receivables — All Clients', sub: 'Report saved as an artifact' },
+                    workflow: { skill: 'Refresh the aged receivables report', skillDesc: 'Rebuilds this report on a schedule and flags clients drifting into the 90+ bucket.', value: 'Automated, this report rebuilds itself and flags clients drifting into the 90+ bucket — no manual pulls.' },
                 };
             }
             if (/remind|chase|follow up/.test(t)) {
@@ -634,6 +638,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     phase: 'awaiting',
                     result: 'Sent 8 reminders across 6 customers (74.200 DKK overdue). I logged a note on each invoice and will follow up automatically in 7 days if unpaid.',
                     outcome: { title: '8 payment reminders sent', sub: '74.200 DKK across 6 customers' },
+                    workflow: { skill: 'Send payment reminders automatically', skillDesc: 'Watches overdue invoices and sends the right reminder per customer.', value: 'Automated, I’d catch invoices the day they pass 30 days and have reminders drafted before you open the books — roughly 2 hours saved a month.' },
                 };
             }
             const dom = findDomain(t);
@@ -652,6 +657,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     phase: 'awaiting',
                     result: `Done — your ${noun} are updated. You can see the change in Review.`,
                     outcome: { title: `${dom.label} updated`, sub: 'Added to your Review queue' },
+                    workflow: { skill: 'Automate this task', skillDesc: 'Runs this routine on a schedule and logs every run to Review.', value: 'Automated, I’d handle this routine for you and log every run to Review — you only step in when something needs judgement.' },
                 };
             }
             return {
@@ -667,6 +673,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                 phase: 'awaiting',
                 result: 'Done — entries prepared and posted. You can see them in Review.',
                 outcome: { title: 'Entries prepared', sub: 'Ready for you in the Review feed' },
+                workflow: { skill: 'Automate this task', skillDesc: 'Runs this routine on a schedule and logs every run to Review.', value: 'Automated, I’d handle this routine for you and log every run to Review — you only step in when something needs judgement.' },
             };
         }
 
@@ -1481,6 +1488,16 @@ function AssistantBubble({
                                 </div>
                             );
                         })()}
+                        {/* The action is done — now (and only now) Eva offers to automate it */}
+                        {msg.phase === 'done' && msg.workflow && (
+                            <WorkflowSuggestion
+                                skill={msg.workflow.skill}
+                                skillDesc={msg.workflow.skillDesc}
+                                value={msg.workflow.value}
+                                onCreateSkill={onCreateSkill}
+                                onNavigate={onNavigate}
+                            />
+                        )}
                     </div>
                 )}
             </div>
@@ -1491,7 +1508,7 @@ function AssistantBubble({
 
     const planUnfinished = msg.kind === 'plan' && msg.phase !== 'done';
     const showFollowUps = isLast && reveal && !planUnfinished;
-    // Any rendered data view can be kept: saved as an artifact, or turned into a recurring skill.
+    // Any rendered data view can be kept as an artifact.
     const savable = reveal && (msg.kind === 'data' || msg.kind === 'clienttable');
 
     return (
@@ -1502,7 +1519,6 @@ function AssistantBubble({
                     kind={msg.kind as 'data' | 'clienttable'}
                     dataKey={(msg as Extract<AssistantMsg, { kind: 'data' | 'clienttable' }>).dataKey}
                     onCreateSpace={onCreateSpace}
-                    onCreateSkill={onCreateSkill}
                     onNavigate={onNavigate}
                 />
             )}
@@ -1544,99 +1560,120 @@ function viewMeta(kind: 'data' | 'clienttable', dataKey: string) {
     return kind === 'clienttable' ? { ...base, artifact: `${base.artifact} — all clients` } : base;
 }
 
-// Under every data view: keep it as an artifact, and an Eva-suggested AI workflow
-// that pitches the value of automating the view before setting it up as a skill.
+// Under every data view: keep it as an artifact. (Automation is only suggested
+// after Eva has actually performed an action — see WorkflowSuggestion on done plans.)
 function ArtifactActions({
-    kind, dataKey, onCreateSpace, onCreateSkill, onNavigate,
+    kind, dataKey, onCreateSpace, onNavigate,
 }: {
     kind: 'data' | 'clienttable';
     dataKey: string;
     onCreateSpace: (title: string) => void;
-    onCreateSkill: (title: string, description: string) => void;
     onNavigate: (v: ViewId) => void;
 }) {
     const { t } = useLang();
     const meta = viewMeta(kind, dataKey);
     const [saved, setSaved] = useState(false);
-    const [phase, setPhase] = useState<'suggest' | 'form' | 'created' | 'dismissed'>('suggest');
-    const [name, setName] = useState(t(meta.skill));
-    const [freq, setFreq] = useState('Weekly');
-
-    const doneChip = (label: string, linkLabel: string, onLink: () => void) => (
-        <span className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm" style={{ background: '#e9f7ef', color: '#15803d' }}>
-            <Icon name="circle-tick" /> {label}
-            <button onClick={onLink} className="font-semibold underline" style={{ color: '#15803d' }}>{linkLabel}</button>
-        </span>
-    );
 
     return (
         <div className="mt-3 anim-in">
-            <div className="flex flex-wrap items-center gap-2">
-                {saved ? (
-                    doneChip(t('Saved as artifact'), t('Open in Artifacts'), () => onNavigate('spaces'))
-                ) : (
-                    <Button onClick={() => { onCreateSpace(meta.artifact); setSaved(true); }}>
-                        <Icon name="layout" /> {t('Save as artifact')}
-                    </Button>
-                )}
-                {phase === 'created' && doneChip(t('Skill created'), t('View in Skills'), () => onNavigate('skills'))}
+            {saved ? (
+                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm" style={{ background: '#e9f7ef', color: '#15803d' }}>
+                    <Icon name="circle-tick" /> {t('Saved as artifact')}
+                    <button onClick={() => onNavigate('spaces')} className="font-semibold underline" style={{ color: '#15803d' }}>{t('Open in Artifacts')}</button>
+                </span>
+            ) : (
+                <Button onClick={() => { onCreateSpace(meta.artifact); setSaved(true); }}>
+                    <Icon name="layout" /> {t('Save as artifact')}
+                </Button>
+            )}
+        </div>
+    );
+}
+
+// After Eva has DONE an action, she suggests automating it as an AI workflow —
+// leading with the concrete value of never doing it manually again.
+function WorkflowSuggestion({
+    skill, skillDesc, value, onCreateSkill, onNavigate,
+}: {
+    skill: string;
+    skillDesc: string;
+    value: string;
+    onCreateSkill: (title: string, description: string) => void;
+    onNavigate: (v: ViewId) => void;
+}) {
+    const { t } = useLang();
+    const [phase, setPhase] = useState<'suggest' | 'form' | 'created' | 'dismissed'>('suggest');
+    const [name, setName] = useState(t(skill));
+    const [freq, setFreq] = useState('Weekly');
+
+    if (phase === 'dismissed') return null;
+
+    if (phase === 'created') {
+        return (
+            <div className="mt-3 anim-in">
+                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm" style={{ background: '#e9f7ef', color: '#15803d' }}>
+                    <Icon name="circle-tick" /> {t('Skill created')}
+                    <button onClick={() => onNavigate('skills')} className="font-semibold underline" style={{ color: '#15803d' }}>{t('View in Skills')}</button>
+                </span>
             </div>
+        );
+    }
 
-            {/* Eva's suggested AI workflow — leads with the value of automating this view */}
-            {phase === 'suggest' && (
-                <div className="rounded-xl p-4 mt-2.5 flex items-start gap-3" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
-                    <span className="shrink-0 mt-0.5"><Orb size={18} /></span>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b9842b' }}>{t('Suggested AI workflow')}</p>
-                        <p className="text-sm font-semibold mt-1" style={{ color: COLORS.text }}>{t(meta.skill)}</p>
-                        <p className="text-sm mt-0.5 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(meta.value)}</p>
-                        <div className="flex items-center gap-2 mt-3">
-                            <Button appearance="primary" onClick={() => setPhase('form')}><Icon name="ai-stars" /> {t('Set it up')}</Button>
-                            <Button onClick={() => setPhase('dismissed')}>{t('Not now')}</Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {phase === 'form' && (
-                <div className="rounded-xl p-4 mt-2.5" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
-                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a skill from this view')}</p>
-                    <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('Eva will keep this view up to date and flag notable changes to Review.')}</p>
-                    <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Skill name')}</label>
-                    <input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full rounded-lg px-3 py-2 text-sm bg-white"
-                        style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
-                    />
-                    <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Run')}</label>
-                    <div className="flex gap-2">
-                        {['Daily', 'Weekly', 'Monthly'].map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setFreq(f)}
-                                className="rounded-lg px-3 py-1.5 text-sm"
-                                style={{ border: `1px solid ${freq === f ? COLORS.text : COLORS.cardBorder}`, background: freq === f ? COLORS.text : '#fff', color: freq === f ? '#fff' : COLORS.text }}
-                            >
-                                {t(f)}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button onClick={() => setPhase('suggest')}>{t('Cancel')}</Button>
-                        <Button
-                            appearance="primary"
-                            disabled={!name.trim()}
-                            onClick={() => {
-                                onCreateSkill(name.trim(), `${meta.skillDesc} Runs ${freq.toLowerCase()}.`);
-                                setPhase('created');
-                            }}
+    if (phase === 'form') {
+        return (
+            <div className="rounded-xl p-4 mt-3 anim-in" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
+                <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a skill from this action')}</p>
+                <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('Eva will run this for you on a schedule and flag anything notable to Review.')}</p>
+                <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Skill name')}</label>
+                <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-sm bg-white"
+                    style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                />
+                <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Run')}</label>
+                <div className="flex gap-2">
+                    {['Daily', 'Weekly', 'Monthly'].map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => setFreq(f)}
+                            className="rounded-lg px-3 py-1.5 text-sm"
+                            style={{ border: `1px solid ${freq === f ? COLORS.text : COLORS.cardBorder}`, background: freq === f ? COLORS.text : '#fff', color: freq === f ? '#fff' : COLORS.text }}
                         >
-                            <Icon name="ai-stars" /> {t('Create skill')}
-                        </Button>
-                    </div>
+                            {t(f)}
+                        </button>
+                    ))}
                 </div>
-            )}
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button onClick={() => setPhase('suggest')}>{t('Cancel')}</Button>
+                    <Button
+                        appearance="primary"
+                        disabled={!name.trim()}
+                        onClick={() => {
+                            onCreateSkill(name.trim(), `${skillDesc} Runs ${freq.toLowerCase()}.`);
+                            setPhase('created');
+                        }}
+                    >
+                        <Icon name="ai-stars" /> {t('Create skill')}
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-xl p-4 mt-3 flex items-start gap-3 anim-in" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
+            <span className="shrink-0 mt-0.5"><Orb size={18} /></span>
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b9842b' }}>{t('Suggested AI workflow')}</p>
+                <p className="text-sm font-semibold mt-1" style={{ color: COLORS.text }}>{t('I just did this manually — want it automated?')}</p>
+                <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(skill)}</p>
+                <p className="text-sm mt-0.5 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(value)}</p>
+                <div className="flex items-center gap-2 mt-3">
+                    <Button appearance="primary" onClick={() => setPhase('form')}><Icon name="ai-stars" /> {t('Set it up')}</Button>
+                    <Button onClick={() => setPhase('dismissed')}>{t('Not now')}</Button>
+                </div>
+            </div>
         </div>
     );
 }
