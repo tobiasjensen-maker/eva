@@ -3138,6 +3138,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .mt-3 {
   margin-top: 0.75rem;
 }
+.mt-3\.5 {
+  margin-top: 0.875rem;
+}
 .mt-4 {
   margin-top: 1rem;
 }
@@ -4665,6 +4668,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .underline {
   text-decoration-line: underline;
 }
+.line-through {
+  text-decoration-line: line-through;
+}
 .no-underline {
   text-decoration-line: none;
 }
@@ -4720,6 +4726,11 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .outline {
   outline-style: solid;
+}
+.ring {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 .ring-2 {
   --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
