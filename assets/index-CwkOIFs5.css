@@ -4413,6 +4413,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .pl-0\.5 {
   padding-left: 0.125rem;
 }
+.pl-1 {
+  padding-left: 0.25rem;
+}
 .pl-1\.5 {
   padding-left: 0.375rem;
 }
