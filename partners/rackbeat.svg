@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 54" role="img" aria-label="Rackbeat">
+  <polygon points="26,5 47,16 26,27 5,16" fill="#2b1b4d"/>
+  <polygon points="5,16 26,27 26,49 5,38" fill="#6aa3da"/>
+  <polygon points="47,16 26,27 26,49 47,38" fill="#6b4ea0"/>
+  <text x="60" y="38" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" letter-spacing="-0.5" fill="#1f1840">Rackbeat</text>
+</svg>
