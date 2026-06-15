@@ -3138,9 +3138,6 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .mt-3 {
   margin-top: 0.75rem;
 }
-.mt-3\.5 {
-  margin-top: 0.875rem;
-}
 .mt-4 {
   margin-top: 1rem;
 }
@@ -3763,6 +3760,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .gap-3 {
   gap: 0.75rem;
+}
+.gap-3\.5 {
+  gap: 0.875rem;
 }
 .gap-4 {
   gap: 1rem;
