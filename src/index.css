@@ -12,6 +12,11 @@ body {
     background: #f6f6f7;
 }
 
+/* Use Inter as the app-wide font, overriding taco's default. */
+html, body, button, input, textarea, select, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
 /* taco's base stylesheet adds large default margins to text elements; reset them
    (element-level specificity so Tailwind margin utilities still take precedence) */
 h1, h2, h3, h4, h5, h6, p {
