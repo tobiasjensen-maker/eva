@@ -593,7 +593,7 @@ export function SpacesIcon({ active }: { active: boolean }) {
 }
 
 // Resolve a file in /public against the app's base path (so it works under /eva/ on GitHub Pages).
-const asset = (file: string) => `${import.meta.env.BASE_URL}${file}`;
+export const asset = (file: string) => `${import.meta.env.BASE_URL}${file}`;
 
 // e-conomic orange symbol mark (official asset)
 export function NodeMark({ size = 26 }: { size?: number }) {
