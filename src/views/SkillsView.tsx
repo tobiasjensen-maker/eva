@@ -26,55 +26,41 @@ const SKILL_META: Record<string, { category: string; features: string[] }> = {
     anomalies: { category: 'Insights', features: ['Detects unusual transactions', 'Explains why they stand out', 'Suggests how to handle them'] },
 };
 
-// ---- Skills tab: what Eva can do directly through the e-conomic APIs, grouped ----
-const ECONOMIC_SKILLS: { group: string; icon: string; skills: { name: string; desc: string }[] }[] = [
-    { group: 'Bookkeeping', icon: 'plus-minus', skills: [
-        { name: 'Read & search entries', desc: 'Look up booked entries, journals and account balances.' },
-        { name: 'Create & post journal entries', desc: 'Draft and book entries to the right accounts.' },
-        { name: 'Reconcile bank transactions', desc: 'Match imported bank lines to invoices and bills.' },
-        { name: 'Manage the chart of accounts', desc: 'Read accounts and apply posting rules.' },
-    ] },
-    { group: 'Invoicing & receivables', icon: 'document', skills: [
-        { name: 'Read invoices & customers', desc: 'Access open, paid and overdue invoices.' },
-        { name: 'Send payment reminders', desc: 'Issue reminders and log a note on each invoice.' },
-        { name: 'Create & send invoices', desc: 'Draft invoices and send them to customers.' },
-    ] },
-    { group: 'Suppliers & expenses', icon: 'transfer', skills: [
-        { name: 'Read bills & suppliers', desc: 'Access supplier bills and their payment status.' },
-        { name: 'Register supplier payments', desc: 'Match and book outgoing payments.' },
-    ] },
-    { group: 'Documents', icon: 'attach', skills: [
-        { name: 'Read & attach documents', desc: 'Pull receipts and attach them to the right entry.' },
-        { name: 'Request missing documents', desc: 'Ask clients for receipts and supplier invoices.' },
-        { name: 'OCR & extract receipt data', desc: 'Read totals, dates and VAT from scans.' },
-    ] },
-    { group: 'Reporting & VAT', icon: 'chart-bar', skills: [
-        { name: 'Generate P&L & balance', desc: 'Build financial statements for any period.' },
-        { name: 'Prepare VAT settlement', desc: 'Calculate VAT and prepare the SKAT filing.' },
-        { name: 'Run period & year-end close', desc: 'Reconcile control accounts and close the books.' },
-    ] },
-];
+// ---- Capabilities: what Eva can do — e-conomic native (built in) + 3rd-party partner skills ----
+interface Capability {
+    id: string;
+    name: string;
+    initials: string;
+    color: string;
+    category: string;
+    native: boolean; // e-conomic native → installed by default, can't be removed
+    desc: string;
+    skills: string[];
+}
 
-// ---- Integrations tab: 3rd-party skills installable from e-conomic partners ----
-const PARTNER_INTEGRATIONS: { id: string; name: string; initials: string; color: string; category: string; desc: string; skills: string[] }[] = [
-    { id: 'likvido', name: 'Likvido', initials: 'L', color: '#1f9d6b', category: 'Receivables',
+const CAPABILITIES: Capability[] = [
+    // e-conomic native — the foundation, presented as already installed
+    { id: 'economic', name: 'e-conomic', initials: 'e', color: '#ed9b2c', category: 'Core', native: true,
+        desc: 'Native access to your e-conomic ledger — the foundation Eva builds every flow on.',
+        skills: ['Bookkeeping & bank reconciliation', 'Invoicing, customers & reminders', 'Suppliers, bills & payments', 'Documents, receipts & OCR', 'Reporting, VAT & period close'] },
+    // 3rd-party partners — installable from the e-conomic marketplace
+    { id: 'likvido', name: 'Likvido', initials: 'L', color: '#1f9d6b', category: 'Receivables', native: false,
         desc: 'Automated debtor management, reminders and debt collection.',
         skills: ['Escalate overdue invoices to collection', 'Offer invoice financing', 'Reconcile Likvido payouts'] },
-    { id: 'budget123', name: 'Budget123', initials: 'B', color: '#3b6fe0', category: 'Planning',
+    { id: 'budget123', name: 'Budget123', initials: 'B', color: '#3b6fe0', category: 'Planning', native: false,
         desc: 'Budgeting, forecasting and liquidity planning on top of your books.',
         skills: ['Build budgets & forecasts', 'Project liquidity', 'Track budget variance'] },
-    { id: 'creditro', name: 'Creditro', initials: 'C', color: '#7c3aed', category: 'Compliance',
+    { id: 'creditro', name: 'Creditro', initials: 'C', color: '#7c3aed', category: 'Compliance', native: false,
         desc: 'Automated KYC, AML and credit checks for client onboarding.',
         skills: ['Run KYC & AML checks', 'Monitor credit ratings', 'Flag compliance risks'] },
-    { id: 'rackbeat', name: 'RackBeat', initials: 'R', color: '#e0782f', category: 'Inventory',
+    { id: 'rackbeat', name: 'RackBeat', initials: 'R', color: '#e0782f', category: 'Inventory', native: false,
         desc: 'Inventory and warehouse management synced with your ledger.',
         skills: ['Sync inventory & stock levels', 'Create purchase orders', 'Book cost of goods sold'] },
 ];
 
 const AUTO_TABS = [
     { k: 'flows', label: 'Flows' },
-    { k: 'skills', label: 'Skills' },
-    { k: 'integrations', label: 'Integrations' },
+    { k: 'capabilities', label: 'Capabilities' },
 ] as const;
 type AutoTab = (typeof AUTO_TABS)[number]['k'];
 
@@ -148,8 +134,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     </>
                 )}
 
-                {tab === 'skills' && <SkillsCatalog />}
-                {tab === 'integrations' && <IntegrationsMarket />}
+                {tab === 'capabilities' && <CapabilitiesMarket />}
             </div>
 
             {gallery && (
@@ -165,100 +150,71 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     );
 }
 
-// ---- Skills tab — grouped e-conomic API capabilities ----
-function SkillsCatalog() {
+// ---- Capabilities tab — e-conomic native + partner skills, all as cards ----
+function CapabilitiesMarket() {
     const { t } = useLang();
-    const [off, setOff] = useState<Set<string>>(new Set());
-    const toggle = (name: string) =>
-        setOff((prev) => {
-            const next = new Set(prev);
-            if (next.has(name)) next.delete(name);
-            else next.add(name);
-            return next;
-        });
+    const [installed, setInstalled] = useState<Set<string>>(new Set());
+    const native = CAPABILITIES.filter((c) => c.native);
+    const partners = CAPABILITIES.filter((c) => !c.native);
     return (
         <div className="pb-10">
-            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('What Eva can do directly with your e-conomic data. Turn a skill off to put it out of reach.')}</p>
-            <div className="flex flex-col gap-6">
-                {ECONOMIC_SKILLS.map((g) => (
-                    <div key={g.group}>
-                        <div className="flex items-center gap-2 mb-2.5">
-                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: '#f1f1f3', color: '#52525b' }}>
-                                <Icon name={g.icon as never} />
-                            </span>
-                            <h2 className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(g.group)}</h2>
-                            <span className="text-xs" style={{ color: COLORS.textMuted }}>· {g.skills.length}</span>
-                        </div>
-                        <Card className="overflow-hidden">
-                            {g.skills.map((s, i) => {
-                                const on = !off.has(s.name);
-                                return (
-                                    <div key={s.name} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: i ? `1px solid ${COLORS.cardBorder}` : 'none' }}>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(s.name)}</p>
-                                            <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(s.desc)}</p>
-                                        </div>
-                                        <span className="text-xs font-medium shrink-0" style={{ color: on ? '#15803d' : COLORS.textMuted }}>{on ? t('On') : t('Off')}</span>
-                                        <Switch checked={on} onChange={() => toggle(s.name)} />
-                                    </div>
-                                );
-                            })}
-                        </Card>
-                    </div>
+            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Everything Eva can do — built in with e-conomic, plus skills you install from partners. Your flows draw on whatever is installed here.')}</p>
+
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Built in')}</p>
+            <div className="grid grid-cols-2 gap-4 mb-7">
+                {native.map((c) => <CapabilityCard key={c.id} cap={c} installed onInstall={() => {}} />)}
+            </div>
+
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('From e-conomic partners')}</p>
+            <div className="grid grid-cols-2 gap-4">
+                {partners.map((c) => (
+                    <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => setInstalled((prev) => new Set(prev).add(c.id))} />
                 ))}
             </div>
         </div>
     );
 }
 
-// ---- Integrations tab — marketplace of installable partner skills ----
-function IntegrationsMarket() {
+function CapabilityCard({ cap, installed, onInstall }: { cap: Capability; installed: boolean; onInstall: () => void }) {
     const { t } = useLang();
-    const [installed, setInstalled] = useState<Set<string>>(new Set());
     return (
-        <div className="pb-10">
-            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Extend Eva with skills from e-conomic partners. Once installed, a partner’s skills are available to your flows.')}</p>
-            <div className="grid grid-cols-2 gap-4">
-                {PARTNER_INTEGRATIONS.map((p) => {
-                    const on = installed.has(p.id);
-                    return (
-                        <Card key={p.id} className="p-5 flex flex-col" style={{ minHeight: 232 }}>
-                            <div className="flex items-start gap-3">
-                                <span className="flex items-center justify-center shrink-0 rounded-xl text-white font-semibold" style={{ width: 40, height: 40, background: p.color, fontSize: 16 }}>{p.initials}</span>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{p.name}</p>
-                                        <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(p.category)}</span>
-                                    </div>
-                                    <p className="text-sm mt-1 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(p.desc)}</p>
-                                </div>
-                            </div>
-                            <div className="mt-3.5">
-                                <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('Adds these skills')}</p>
-                                <div className="flex flex-col gap-1.5">
-                                    {p.skills.map((sk) => (
-                                        <div key={sk} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
-                                            <Icon name="circle-tick" style={{ color: '#16a34a' }} /> {t(sk)}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="mt-auto pt-4">
-                                {on ? (
-                                    <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: '#15803d' }}>
-                                        <Icon name="circle-tick" /> {t('Installed')}
-                                    </span>
-                                ) : (
-                                    <Button appearance="primary" onClick={() => setInstalled((prev) => new Set(prev).add(p.id))}>
-                                        <Icon name="circle-plus" /> {t('Install')}
-                                    </Button>
-                                )}
-                            </div>
-                        </Card>
-                    );
-                })}
+        <Card className="p-5 flex flex-col" style={{ minHeight: 236 }}>
+            <div className="flex items-start gap-3">
+                <span className="flex items-center justify-center shrink-0 rounded-xl text-white font-semibold" style={{ width: 40, height: 40, background: cap.color, fontSize: 16 }}>{cap.initials}</span>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{cap.name}</p>
+                        <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(cap.category)}</span>
+                    </div>
+                    <p className="text-sm mt-1 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(cap.desc)}</p>
+                </div>
             </div>
-        </div>
+            <div className="mt-3.5">
+                <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{cap.native ? t('Includes') : t('Adds these skills')}</p>
+                <div className="flex flex-col gap-1.5">
+                    {cap.skills.map((sk) => (
+                        <div key={sk} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
+                            <Icon name="circle-tick" style={{ color: '#16a34a' }} /> {t(sk)}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="mt-auto pt-4">
+                {cap.native ? (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: COLORS.textMuted }}>
+                        <Icon name="lock" /> {t('Built in · always on')}
+                    </span>
+                ) : installed ? (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: '#15803d' }}>
+                        <Icon name="circle-tick" /> {t('Installed')}
+                    </span>
+                ) : (
+                    <Button appearance="primary" onClick={onInstall}>
+                        <Icon name="circle-plus" /> {t('Install')}
+                    </Button>
+                )}
+            </div>
+        </Card>
     );
 }
 
