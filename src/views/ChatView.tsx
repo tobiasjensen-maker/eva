@@ -132,6 +132,25 @@ const CLIENT_TABLES: Record<string, ClientTableData> = {
     },
 };
 
+// Eva's opening portfolio brief, shown as the first message right after onboarding.
+const PORTFOLIO_BRIEF = {
+    clients: 8,
+    revenue: '4,80 mio. kr',
+    overdue: '214.500 kr',
+    attention: 3,
+    priorities: [
+        { id: 'cafe', sev: 'high' as const, metric: '1,4 mo. runway', reason: 'Cash runway under 2 months — only 85.000 kr left' },
+        { id: 'nordic', sev: 'med' as const, metric: '84.200 kr overdue', reason: 'Largest overdue exposure · oldest invoice 38 days' },
+        { id: 'office', sev: 'med' as const, metric: '14.900 kr charge', reason: 'Unusual supplier charge — 3× the monthly average' },
+    ],
+    // Next best actions, tailored to the clients above (each routes to a chat action).
+    actions: [
+        'Send reminders to all clients with overdue invoices',
+        'Draft a cash-flow check-in for Café Solsikke',
+        'Draft a query to Office Supplies Co about the 14.900 kr charge',
+    ],
+};
+
 const PORTFOLIO_REMINDER_PLAN = {
     intro: "Here's my plan to send reminders across every client with overdue invoices. Review it before I start — nothing goes out until you approve.",
     steps: [
@@ -1231,31 +1250,62 @@ function AssistantBubble({
 
     const body = (() => {
         if (msg.kind === 'getstarted') {
-            const opts = [
-                { emoji: '🔎', tint: '#eef2ff', title: t('Ask about your data'), desc: t('Overdue invoices, your Q4 P&L, balances…'), onClick: () => onFollowUp('Which invoices are overdue by more than 30 days?') },
-                { emoji: '⚡', tint: '#fff4e6', title: t('Enable a new skill'), desc: t('Automate reconciliation, reminders & more'), onClick: () => onNavigate('skills') },
-                { emoji: '🧩', tint: '#f3f0fb', title: t('Create an artifact'), desc: t('Build a dashboard, report or list'), onClick: () => onNavigate('spaces') },
-                { emoji: '💡', tint: '#ecfdf5', title: t('Something else'), desc: t('Tell me what you need and I’ll help'), onClick: () => onFollowUp('What else can you help me with?') },
+            const b = PORTFOLIO_BRIEF;
+            const nameOf = (id: string) => AGREEMENTS.find((a) => a.id === id)?.name ?? id;
+            const sevColor = (s: 'high' | 'med') => (s === 'high' ? '#dc2626' : '#b9842b');
+            const stats = [
+                { label: t('Clients'), value: String(b.clients) },
+                { label: t('Overdue'), value: b.overdue },
+                { label: t('Need attention'), value: String(b.attention) },
             ];
+            const greeting =
+                lang === 'da'
+                    ? `Sådan ser din portefølje ud. Du arbejder på tværs af ${b.clients} klienter — samlet omsætning ${b.revenue}, med ${b.overdue} forfaldent. ${b.attention} klienter bør du se nærmere på først:`
+                    : `Here's where your portfolio stands. You're working across ${b.clients} clients — total revenue ${b.revenue}, with ${b.overdue} overdue. ${b.attention} clients need a closer look first:`;
             return (
                 <div>
-                    <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>
-                        {t("Hi, I'm Eva. Your books are imported and I'm ready to go. Here are a few ways to see what I can do:")}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2.5">
-                        {opts.map((o) => (
+                    <p className="text-sm leading-relaxed mb-3" style={{ color: COLORS.text }}>{greeting}</p>
+
+                    {/* portfolio numbers */}
+                    <div className="grid grid-cols-3 gap-2.5 mb-4">
+                        {stats.map((s) => (
+                            <div key={s.label} className="rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
+                                <p className="text-lg font-semibold leading-none" style={{ color: COLORS.text }}>{s.value}</p>
+                                <p className="text-xs mt-1.5" style={{ color: COLORS.textMuted }}>{s.label}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* who to pay attention to first */}
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Who to look at first')}</p>
+                    <div className="flex flex-col gap-2 mb-4">
+                        {b.priorities.map((p) => (
                             <button
-                                key={o.title}
-                                onClick={o.onClick}
-                                className="flex flex-col text-left rounded-2xl p-3.5 bg-white"
-                                style={{ border: `1px solid ${COLORS.cardBorder}`, transition: 'background .15s, border-color .15s, transform .15s' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; e.currentTarget.style.transform = 'none'; }}
+                                key={p.id}
+                                onClick={() => onSelectClient?.(p.id)}
+                                className="w-full flex items-center gap-3 rounded-xl p-3 text-left bg-white"
+                                style={{ border: `1px solid ${COLORS.cardBorder}`, transition: 'background .15s, border-color .15s' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}
                             >
-                                <span className="flex items-center justify-center rounded-xl" style={{ width: 38, height: 38, background: o.tint, fontSize: 20, lineHeight: 1 }}>{o.emoji}</span>
-                                <p className="text-sm font-semibold mt-2.5" style={{ color: COLORS.text }}>{o.title}</p>
-                                <p className="text-xs mt-1 leading-snug" style={{ color: COLORS.textMuted }}>{o.desc}</p>
+                                <span className="shrink-0 rounded-full mt-0.5" style={{ width: 9, height: 9, background: sevColor(p.sev) }} />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{nameOf(p.id)}</p>
+                                    <p className="text-xs mt-0.5 leading-snug" style={{ color: COLORS.textMuted }}>{t(p.reason)}</p>
+                                </div>
+                                <span className="text-xs font-medium shrink-0" style={{ color: sevColor(p.sev) }}>{t(p.metric)}</span>
+                                <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
                             </button>
+                        ))}
+                    </div>
+
+                    {/* next best actions */}
+                    <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                        <Icon name="ai-stars" /> {t('Suggested next best actions')}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        {b.actions.map((a) => (
+                            <EvaChip key={a} label={t(a)} onClick={() => onFollowUp(a)} />
                         ))}
                     </div>
                 </div>
