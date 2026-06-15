@@ -121,7 +121,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
 
     const openFlow = openId ? skills.find((s) => s.id === openId) ?? null : null;
     if (openFlow) {
-        return <FlowDetail skill={openFlow} onBack={() => setOpenId(null)} onEnable={() => onEnable(openFlow.id)} />;
+        return <FlowDetail skill={openFlow} onBack={() => setOpenId(null)} onEnable={() => onEnable(openFlow.id)} installed={installedCaps} />;
     }
 
     const openCap = openCapId ? CAPABILITIES.find((c) => c.id === openCapId) ?? null : null;
@@ -548,14 +548,7 @@ function FlowRow({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
     );
 }
 
-// ---- Skill detail / configuration page ----
-
-const TRIGGERS = [
-    { key: 'event', icon: 'workflow', title: 'When something happens', desc: 'React to events like a new bank transaction or an overdue invoice.' },
-    { key: 'schedule', icon: 'time', title: 'On a schedule', desc: 'Run automatically at set intervals.' },
-    { key: 'continuous', icon: 'refresh', title: 'Continuously', desc: 'Monitor and act in the background as data changes.' },
-    { key: 'manual', icon: 'chat', title: 'Only when I ask', desc: 'Run on demand from the chat.' },
-];
+// ---- Flow builder / configuration page ----
 
 const AUTONOMY = [
     { key: 'suggest', icon: 'lightbulb', title: 'Suggest only', desc: 'Drafts proposals and leaves them for you in Review.' },
@@ -563,7 +556,35 @@ const AUTONOMY = [
     { key: 'auto', icon: 'play', title: 'Fully autonomous', desc: 'Acts on its own and logs everything to Review.' },
 ];
 
-const EVENTS = ['A new bank transaction arrives', 'An invoice becomes overdue', 'A new document is received', 'Month-end is reached', 'A client sends a message'];
+// Flow builder primitives — a starter (trigger) and a library of steps.
+interface FlowStep { id: string; icon: string; label: string; capId?: string }
+
+const FLOW_STARTERS = [
+    { id: 'schedule', icon: 'time', label: 'On a schedule' },
+    { id: 'bank', icon: 'transfer', label: 'When a bank transaction arrives' },
+    { id: 'overdue', icon: 'document', label: 'When an invoice becomes overdue' },
+    { id: 'document', icon: 'attach', label: 'When a document is received' },
+    { id: 'monthend', icon: 'calendar', label: 'When the month closes' },
+    { id: 'chat', icon: 'chat', label: 'When I ask in chat' },
+];
+
+// e-conomic-native steps (always available)
+const ECONOMIC_STEPS: FlowStep[] = [
+    { id: 'read-invoices', icon: 'document', label: 'Read open invoices' },
+    { id: 'match-bank', icon: 'transfer', label: 'Match a bank transaction' },
+    { id: 'create-entry', icon: 'plus-minus', label: 'Create a journal entry' },
+    { id: 'draft-reminder', icon: 'envelope', label: 'Draft a payment reminder' },
+    { id: 'send-reminder', icon: 'envelope', label: 'Send a reminder & log a note' },
+    { id: 'request-doc', icon: 'attach', label: 'Request a document from the client' },
+    { id: 'generate-report', icon: 'chart-bar', label: 'Generate a report' },
+    { id: 'flag-review', icon: 'circle-warning', label: 'Flag for review' },
+];
+// Eva AI reasoning steps (always available)
+const AI_STEPS: FlowStep[] = [
+    { id: 'ai-decide', icon: 'ai-stars', label: 'Ask Eva to decide' },
+    { id: 'ai-summarize', icon: 'ai-stars', label: 'Summarize' },
+    { id: 'ai-extract', icon: 'ai-stars', label: 'Extract data' },
+];
 
 interface SkillConfig {
     trigger: string;
@@ -732,36 +753,38 @@ function dayLabel(daysAgo: number, locale = 'en-GB'): string {
     return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-function FlowDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => void; onEnable: () => void }) {
+function seedStarter(cfg: SkillConfig): string {
+    if (cfg.trigger === 'schedule' || cfg.trigger === 'continuous') return 'schedule';
+    if (cfg.trigger === 'manual') return 'chat';
+    if (cfg.event === 'An invoice becomes overdue') return 'overdue';
+    if (cfg.event === 'A new document is received') return 'document';
+    return 'bank';
+}
+
+function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBack: () => void; onEnable: () => void; installed: Set<string> }) {
     const { t, lang } = useLang();
     const locked = skill.state === 'locked';
-    const actions = SKILL_META[skill.id]?.features ?? [];
     const cfg = SKILL_CONFIG[skill.id] ?? DEFAULT_CONFIG;
     const [tab, setTab] = useState<'config' | 'activity'>('config');
     const [active, setActive] = useState(skill.state === 'active');
-    const [trigger, setTrigger] = useState(cfg.trigger);
-    const [event, setEvent] = useState(cfg.event ?? EVENTS[0]);
     const [frequency, setFrequency] = useState(cfg.frequency ?? 'Daily');
     const [time, setTime] = useState(cfg.time ?? '08:00');
     const [autonomy, setAutonomy] = useState(cfg.autonomy);
     const [notify, setNotify] = useState(cfg.notify);
     const [guardrail, setGuardrail] = useState(cfg.guardrail);
     const [threshold, setThreshold] = useState(cfg.threshold ?? '10.000');
-    // Each step is a block that can be toggled out of the flow.
-    const [blocksOff, setBlocksOff] = useState<Set<number>>(new Set());
+    // Flow builder: a starter (trigger) + an ordered list of steps.
+    const [starter, setStarter] = useState<string>(() => seedStarter(cfg));
+    const [steps, setSteps] = useState<FlowStep[]>(() => (SKILL_META[skill.id]?.features ?? []).map((f, i) => ({ id: `${skill.id}-${i}`, icon: 'workflow', label: f })));
+    const [picker, setPicker] = useState<'starter' | 'step' | null>(null);
     // The flow is set up once for the practice; it can run on all clients or a subset.
     const [clientMode, setClientMode] = useState<'all' | 'selected'>('all');
     const [clientSel, setClientSel] = useState<Set<string>>(() => new Set(AGREEMENTS.slice(0, 3).map((a) => a.id)));
     const [testOpen, setTestOpen] = useState(false);
 
-    function toggleBlock(i: number) {
-        setBlocksOff((prev) => {
-            const next = new Set(prev);
-            if (next.has(i)) next.delete(i);
-            else next.add(i);
-            return next;
-        });
-    }
+    const starterDef = FLOW_STARTERS.find((s) => s.id === starter);
+    const addStep = (s: FlowStep) => setSteps((prev) => [...prev, { ...s, id: `${s.id}-${prev.length}-${s.label.length}` }]);
+    const removeStep = (i: number) => setSteps((prev) => prev.filter((_, x) => x !== i));
 
     function toggleClient(id: string) {
         setClientSel((prev) => {
@@ -835,27 +858,68 @@ function FlowDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => v
                     <ActivityTab skill={skill} locked={locked} />
                 ) : (
                 <>
-                {/* Blocks — the skills this flow strings together; toggle any off to skip it */}
-                {actions.length > 0 && (
-                    <Section title={t('Blocks')} sub={t('The skills this flow runs in order. Turn a block off to skip it.')}>
-                        <div className="flex flex-col gap-2">
-                            {actions.map((a, i) => {
-                                const on = !blocksOff.has(i);
-                                return (
-                                    <div
-                                        key={a}
-                                        className="flex items-center gap-3 rounded-xl p-3"
-                                        style={{ border: `1px solid ${COLORS.cardBorder}`, background: on ? '#fff' : '#fafafa' }}
-                                    >
-                                        <span className="flex items-center justify-center shrink-0 rounded-full text-xs font-semibold" style={{ width: 22, height: 22, background: on ? '#ececed' : '#f1f1f3', color: on ? COLORS.text : '#a8a8b0' }}>{i + 1}</span>
-                                        <span className="flex-1 text-sm" style={{ color: on ? COLORS.text : '#a8a8b0', textDecoration: on ? 'none' : 'line-through' }}>{t(a)}</span>
-                                        <Switch checked={on} onChange={() => toggleBlock(i)} />
-                                    </div>
-                                );
-                            })}
+                {/* Flow builder — a starter (trigger) and an ordered list of steps */}
+                <Section title={t('Build the flow')} sub={t('Pick what starts the flow, then add the steps Eva runs in order.')}>
+                    {/* Starter */}
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Starter')}</p>
+                    <button
+                        onClick={() => setPicker('starter')}
+                        className="w-full flex items-center gap-3 rounded-xl p-3.5 text-left"
+                        style={{ border: `1px solid ${starterDef ? COLORS.cardBorder : '#bcd0f7'}`, background: starterDef ? '#fff' : '#f5f8ff' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a9b6cf')}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = starterDef ? COLORS.cardBorder : '#bcd0f7')}
+                    >
+                        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: '#f1f1f3', color: '#52525b' }}>
+                            <Icon name={(starterDef?.icon ?? 'time') as never} />
+                        </span>
+                        <span className="flex-1 text-sm font-medium" style={{ color: starterDef ? COLORS.text : '#4456c7' }}>
+                            {starterDef ? t(starterDef.label) : t('Choose a starter')}
+                        </span>
+                        <Icon name="edit" style={{ color: COLORS.textMuted }} />
+                    </button>
+
+                    {/* Schedule detail when the starter is a schedule */}
+                    {starter === 'schedule' && (
+                        <div className="flex flex-wrap items-end gap-4 mt-3 pl-1">
+                            <Field label={t('Frequency')}>
+                                <div className="flex gap-2">
+                                    {['Daily', 'Weekly', 'Monthly'].map((f) => (
+                                        <button key={f} onClick={() => setFrequency(f)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${frequency === f ? COLORS.text : COLORS.cardBorder}`, background: frequency === f ? COLORS.text : '#fff', color: frequency === f ? '#fff' : COLORS.text }}>{t(f)}</button>
+                                    ))}
+                                </div>
+                            </Field>
+                            <Field label={t('At')}>
+                                <input value={time} onChange={(e) => setTime(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 100 }} />
+                            </Field>
                         </div>
-                    </Section>
-                )}
+                    )}
+
+                    {/* Steps */}
+                    <p className="text-xs font-semibold uppercase tracking-wide mt-5 mb-2" style={{ color: COLORS.textMuted }}>{t('Steps')}</p>
+                    <div className="flex flex-col gap-2">
+                        {steps.map((s, i) => (
+                            <div key={s.id} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
+                                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: s.capId ? '#f3f0fb' : '#f1f1f3', color: s.capId ? '#7c3aed' : '#52525b' }}>
+                                    <Icon name={s.icon as never} />
+                                </span>
+                                <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
+                                <button onClick={() => removeStep(i)} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                    <Icon name="close" />
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            onClick={() => setPicker('step')}
+                            className="w-full flex items-center gap-2 rounded-xl p-3 text-sm font-medium"
+                            style={{ border: `1.5px dashed ${COLORS.cardBorder}`, color: '#4456c7' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a9b6cf')}
+                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
+                        >
+                            <Icon name="circle-plus" /> {t('Add step')}
+                        </button>
+                    </div>
+                </Section>
 
                 {/* Applies to — the skill is practice-level; choose where it runs */}
                 <Section title={t('Applies to')} sub={t('This flow runs across your whole practice — choose which clients it acts on.')}>
@@ -883,38 +947,6 @@ function FlowDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => v
                                     </button>
                                 );
                             })}
-                        </div>
-                    )}
-                </Section>
-
-                {/* Trigger */}
-                <Section title={t('Trigger')} sub={t('Decide what kicks this flow off.')}>
-                    <div className="grid grid-cols-2 gap-3">
-                        {TRIGGERS.map((tr) => (
-                            <OptionCard key={tr.key} selected={trigger === tr.key} icon={tr.icon} title={t(tr.title)} desc={t(tr.desc)} onClick={() => setTrigger(tr.key)} />
-                        ))}
-                    </div>
-
-                    {trigger === 'event' && (
-                        <Field label={t('Run when…')}>
-                            <select value={event} onChange={(e) => setEvent(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
-                                {EVENTS.map((ev) => <option key={ev} value={ev}>{t(ev)}</option>)}
-                            </select>
-                        </Field>
-                    )}
-
-                    {trigger === 'schedule' && (
-                        <div className="flex flex-wrap items-end gap-4">
-                            <Field label={t('Frequency')}>
-                                <div className="flex gap-2">
-                                    {['Daily', 'Weekly', 'Monthly'].map((f) => (
-                                        <button key={f} onClick={() => setFrequency(f)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${frequency === f ? COLORS.text : COLORS.cardBorder}`, background: frequency === f ? COLORS.text : '#fff', color: frequency === f ? '#fff' : COLORS.text }}>{t(f)}</button>
-                                    ))}
-                                </div>
-                            </Field>
-                            <Field label={t('At')}>
-                                <input value={time} onChange={(e) => setTime(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 100 }} />
-                            </Field>
                         </div>
                     )}
                 </Section>
@@ -969,7 +1001,123 @@ function FlowDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => v
             )}
 
             {testOpen && <TestRunModal skill={skill} onClose={() => setTestOpen(false)} />}
+            {picker && (
+                <StepPicker
+                    mode={picker}
+                    installed={installed}
+                    onPickStarter={(id) => { setStarter(id); setPicker(null); }}
+                    onPickStep={(s) => { addStep(s); setPicker(null); }}
+                    onClose={() => setPicker(null)}
+                />
+            )}
         </div>
+    );
+}
+
+// ---- Step / starter picker (the right-hand "Add step" panel, as a modal) ----
+function StepPicker({ mode, installed, onPickStarter, onPickStep, onClose }: {
+    mode: 'starter' | 'step';
+    installed: Set<string>;
+    onPickStarter: (id: string) => void;
+    onPickStep: (s: FlowStep) => void;
+    onClose: () => void;
+}) {
+    const { t } = useLang();
+    const tile = (icon: string, tint: string, color: string) => (
+        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: tint, color }}>
+            <Icon name={icon as never} />
+        </span>
+    );
+    const partners = CAPABILITIES.filter((c) => !c.native);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(620px, 94vw)', maxHeight: '86vh', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
+                <header className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <div>
+                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{mode === 'starter' ? t('Choose a starter') : t('Add a step')}</h2>
+                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{mode === 'starter' ? t('This event or schedule launches your flow.') : t('e-conomic and partner steps Eva can run.')}</p>
+                    </div>
+                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                </header>
+
+                <div className="overflow-y-auto p-5 flex flex-col gap-5">
+                    {mode === 'starter' ? (
+                        <div className="grid grid-cols-2 gap-2.5">
+                            {FLOW_STARTERS.map((s) => (
+                                <button key={s.id} onClick={() => onPickStarter(s.id)} className="flex items-center gap-3 rounded-xl p-3 text-left" style={{ border: `1px solid ${COLORS.cardBorder}` }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}>
+                                    {tile(s.icon, '#f1f1f3', '#52525b')}
+                                    <span className="text-sm font-medium" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <>
+                            <StepGroup label={t('e-conomic')}>
+                                {ECONOMIC_STEPS.map((s) => (
+                                    <StepOption key={s.id} step={s} icon={tile(s.icon, '#fff7ed', '#b9842b')} onClick={() => onPickStep(s)} />
+                                ))}
+                            </StepGroup>
+                            <StepGroup label={t('Eva AI')}>
+                                {AI_STEPS.map((s) => (
+                                    <StepOption key={s.id} step={s} icon={tile(s.icon, '#eef2ff', '#4456c7')} onClick={() => onPickStep(s)} />
+                                ))}
+                            </StepGroup>
+                            {partners.map((c) => {
+                                const has = installed.has(c.id);
+                                return (
+                                    <StepGroup key={c.id} label={c.name} locked={!has} lockedNote={t('Add the {p} capability to use these steps.').replace('{p}', c.name)}>
+                                        {c.skills.map((sk, i) => (
+                                            <StepOption
+                                                key={i}
+                                                step={{ id: `${c.id}-${i}`, icon: 'connection-enable', label: sk, capId: c.id }}
+                                                icon={tile('connection-enable', '#f3f0fb', '#7c3aed')}
+                                                locked={!has}
+                                                onClick={() => has && onPickStep({ id: `${c.id}-${i}`, icon: 'connection-enable', label: sk, capId: c.id })}
+                                            />
+                                        ))}
+                                    </StepGroup>
+                                );
+                            })}
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function StepGroup({ label, locked, lockedNote, children }: { label: string; locked?: boolean; lockedNote?: string; children: ReactNode }) {
+    const { t } = useLang();
+    return (
+        <div>
+            <div className="flex items-center gap-2 mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{label}</p>
+                {locked && <span className="inline-flex items-center gap-1 text-xs" style={{ color: '#a8a8b0' }}><Icon name="lock" /> {t('Not installed')}</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">{children}</div>
+            {locked && lockedNote && <p className="text-xs mt-2" style={{ color: COLORS.textMuted }}>{lockedNote}</p>}
+        </div>
+    );
+}
+
+function StepOption({ step, icon, locked, onClick }: { step: FlowStep; icon: ReactNode; locked?: boolean; onClick: () => void }) {
+    const { t } = useLang();
+    return (
+        <button
+            onClick={onClick}
+            disabled={locked}
+            className="flex items-center gap-3 rounded-xl p-3 text-left"
+            style={{ border: `1px solid ${COLORS.cardBorder}`, opacity: locked ? 0.55 : 1, cursor: locked ? 'not-allowed' : 'pointer' }}
+            onMouseEnter={(e) => { if (!locked) { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; } }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}
+        >
+            {icon}
+            <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(step.label)}</span>
+            {locked && <Icon name="lock" style={{ color: '#c4c4cc' }} />}
+        </button>
     );
 }
 
