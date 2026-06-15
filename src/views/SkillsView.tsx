@@ -58,7 +58,31 @@ const CAPABILITIES: Capability[] = [
         skills: ['Sync inventory & stock levels', 'Create purchase orders', 'Book cost of goods sold'] },
 ];
 
+// ---- Performance tab — how much Eva is automating, time saved, breakdown by job ----
+const PERF = {
+    automatedPct: 82,
+    hoursSaved: 148,
+    actions: 1240,
+    reviewRate: 8,
+    // Core jobs to be done — actions handled, hours saved, share fully automated.
+    jobs: [
+        { name: 'Bank reconciliation', actions: 612, hours: 71, pct: 94 },
+        { name: 'Payment reminders', actions: 318, hours: 22, pct: 99 },
+        { name: 'Document collection', actions: 142, hours: 18, pct: 78 },
+        { name: 'Client monitoring', actions: 96, hours: 24, pct: 61 },
+        { name: 'Anomaly detection', actions: 48, hours: 9, pct: 42 },
+        { name: 'Period close', actions: 24, hours: 4, pct: 70 },
+    ],
+    extra: [
+        { label: 'Avg. confidence', value: '91%' },
+        { label: 'Auto-resolved', value: '1,032' },
+        { label: 'Active flows', value: '4' },
+        { label: 'Clients covered', value: '8' },
+    ],
+};
+
 const AUTO_TABS = [
+    { k: 'performance', label: 'Performance' },
     { k: 'flows', label: 'Flows' },
     { k: 'capabilities', label: 'Capabilities' },
 ] as const;
@@ -66,9 +90,12 @@ type AutoTab = (typeof AUTO_TABS)[number]['k'];
 
 export default function AutomationsView({ skills, onEnable }: Props) {
     const { t } = useLang();
-    const [tab, setTab] = useState<AutoTab>('flows');
+    const [tab, setTab] = useState<AutoTab>('performance');
     const [openId, setOpenId] = useState<string | null>(null);
     const [gallery, setGallery] = useState(false);
+    // Installed partner capabilities (e-conomic native is always present).
+    const [installedCaps, setInstalledCaps] = useState<Set<string>>(new Set());
+    const [capGallery, setCapGallery] = useState(false);
 
     const flowTemplates: Template[] = skills
         .filter((s) => s.state === 'locked')
@@ -96,7 +123,11 @@ export default function AutomationsView({ skills, onEnable }: Props) {
             <PageHeader
                 title={t('Automations')}
                 showScope={false}
-                right={tab === 'flows' ? <Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New flow')}</Button> : undefined}
+                right={
+                    tab === 'flows' ? <Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New flow')}</Button>
+                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('New capability')}</Button>
+                    : undefined
+                }
             />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 {/* top-level tabs */}
@@ -134,7 +165,8 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     </>
                 )}
 
-                {tab === 'capabilities' && <CapabilitiesMarket />}
+                {tab === 'performance' && <PerformanceView />}
+                {tab === 'capabilities' && <CapabilitiesMarket installed={installedCaps} onAdd={() => setCapGallery(true)} />}
             </div>
 
             {gallery && (
@@ -146,16 +178,23 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     onEnableSkill={(tpl) => onEnable(tpl.id)}
                 />
             )}
+
+            {capGallery && (
+                <CapabilityGallery
+                    installed={installedCaps}
+                    onInstall={(id) => setInstalledCaps((prev) => new Set(prev).add(id))}
+                    onClose={() => setCapGallery(false)}
+                />
+            )}
         </div>
     );
 }
 
-// ---- Capabilities tab — e-conomic native + partner skills, all as cards ----
-function CapabilitiesMarket() {
+// ---- Capabilities tab — installed capabilities (e-conomic native + any installed partners) ----
+function CapabilitiesMarket({ installed, onAdd }: { installed: Set<string>; onAdd: () => void }) {
     const { t } = useLang();
-    const [installed, setInstalled] = useState<Set<string>>(new Set());
     const native = CAPABILITIES.filter((c) => c.native);
-    const partners = CAPABILITIES.filter((c) => !c.native);
+    const partners = CAPABILITIES.filter((c) => !c.native && installed.has(c.id));
     return (
         <div className="pb-10">
             <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Everything Eva can do — built in with e-conomic, plus skills you install from partners. Your flows draw on whatever is installed here.')}</p>
@@ -166,9 +205,107 @@ function CapabilitiesMarket() {
             </div>
 
             <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('From e-conomic partners')}</p>
-            <div className="grid grid-cols-2 gap-4">
-                {partners.map((c) => (
-                    <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => setInstalled((prev) => new Set(prev).add(c.id))} />
+            {partners.length === 0 ? (
+                <button
+                    onClick={onAdd}
+                    className="w-full rounded-xl p-6 flex flex-col items-center gap-1.5 text-center"
+                    style={{ border: `1.5px dashed ${COLORS.cardBorder}`, background: '#fafafa' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#c4c4cc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
+                >
+                    <Icon name="circle-plus" style={{ color: COLORS.textMuted }} />
+                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a capability')}</p>
+                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install skills from e-conomic partners to extend what Eva can do.')}</p>
+                </button>
+            ) : (
+                <div className="grid grid-cols-2 gap-4">
+                    {partners.map((c) => <CapabilityCard key={c.id} cap={c} installed onInstall={() => {}} />)}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ---- "New capability" marketplace gallery (install partner capabilities) ----
+function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<string>; onInstall: (id: string) => void; onClose: () => void }) {
+    const { t } = useLang();
+    const partners = CAPABILITIES.filter((c) => !c.native);
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div
+                className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in"
+                style={{ width: 'min(840px, 94vw)', maxHeight: '88vh', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <header className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <div>
+                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Add a capability')}</h2>
+                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Install skills from the e-conomic partner marketplace.')}</p>
+                    </div>
+                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                </header>
+                <div className="overflow-y-auto p-5">
+                    <div className="grid grid-cols-2 gap-4">
+                        {partners.map((c) => <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => onInstall(c.id)} />)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ---- Performance tab ----
+function PerformanceView() {
+    const { t, lang } = useLang();
+    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
+    const kpis = [
+        { value: `${PERF.automatedPct}%`, label: t('Automated'), sub: t('of all actions handled without you'), accent: '#16a34a' },
+        { value: `${PERF.hoursSaved} ${t('hrs')}`, label: t('Time saved'), sub: t('this quarter · ≈ 4 working weeks'), accent: '#6366f1' },
+        { value: nf(PERF.actions), label: t('Actions taken'), sub: t('across 8 clients'), accent: COLORS.text },
+        { value: `${PERF.reviewRate}%`, label: t('Flagged for review'), sub: t('needed your input'), accent: '#b9842b' },
+    ];
+    return (
+        <div className="pb-10">
+            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('How much Eva is handling for you — this quarter, across every flow.')}</p>
+
+            {/* headline KPIs */}
+            <div className="grid grid-cols-4 gap-3 mb-7">
+                {kpis.map((k) => (
+                    <Card key={k.label} className="p-4">
+                        <p className="text-2xl font-semibold leading-none" style={{ color: k.accent }}>{k.value}</p>
+                        <p className="text-sm font-medium mt-2" style={{ color: COLORS.text }}>{k.label}</p>
+                        <p className="text-xs mt-0.5 leading-snug" style={{ color: COLORS.textMuted }}>{k.sub}</p>
+                    </Card>
+                ))}
+            </div>
+
+            {/* breakdown by core job to be done */}
+            <h2 className="text-base font-semibold mb-1" style={{ color: COLORS.text }}>{t('By job to be done')}</h2>
+            <p className="text-sm mb-3" style={{ color: COLORS.textMuted }}>{t('Where Eva is saving the most time, and how much runs hands-off.')}</p>
+            <Card className="overflow-hidden mb-7">
+                {PERF.jobs.map((j, i) => (
+                    <div key={j.name} className="flex items-center gap-4 px-4 py-3.5" style={{ borderTop: i ? `1px solid ${COLORS.cardBorder}` : 'none' }}>
+                        <div style={{ width: 190 }}>
+                            <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(j.name)}</p>
+                            <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{nf(j.actions)} {t('actions')} · {j.hours} {t('hrs')}</p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="rounded-full" style={{ height: 8, background: '#f1f1f3' }}>
+                                <div className="rounded-full" style={{ height: 8, width: `${j.pct}%`, background: j.pct >= 80 ? '#16a34a' : j.pct >= 60 ? '#6366f1' : '#b9842b' }} />
+                            </div>
+                        </div>
+                        <span className="text-sm font-medium shrink-0" style={{ width: 92, textAlign: 'right', color: COLORS.text }}>{j.pct}% {t('automated')}</span>
+                    </div>
+                ))}
+            </Card>
+
+            {/* other stats */}
+            <div className="grid grid-cols-4 gap-3">
+                {PERF.extra.map((s) => (
+                    <Card key={s.label} className="p-4">
+                        <p className="text-lg font-semibold leading-none" style={{ color: COLORS.text }}>{s.value}</p>
+                        <p className="text-xs mt-1.5" style={{ color: COLORS.textMuted }}>{t(s.label)}</p>
+                    </Card>
                 ))}
             </div>
         </div>
