@@ -4350,6 +4350,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
 }
+.py-3\.5 {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+}
 .py-4 {
   padding-top: 1rem;
   padding-bottom: 1rem;
