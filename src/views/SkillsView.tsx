@@ -90,7 +90,6 @@ const PERF = {
 };
 
 const AUTO_TABS = [
-    { k: 'performance', label: 'Performance' },
     { k: 'flows', label: 'Flows' },
     { k: 'capabilities', label: 'Capabilities' },
 ] as const;
@@ -98,7 +97,7 @@ type AutoTab = (typeof AUTO_TABS)[number]['k'];
 
 export default function AutomationsView({ skills, onEnable }: Props) {
     const { t } = useLang();
-    const [tab, setTab] = useState<AutoTab>('performance');
+    const [tab, setTab] = useState<AutoTab>('flows');
     const [openId, setOpenId] = useState<string | null>(null);
     const [gallery, setGallery] = useState(false);
     // Installed partner capabilities (e-conomic native is always present).
@@ -180,7 +179,6 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     </>
                 )}
 
-                {tab === 'performance' && <PerformanceView onSetUpFlow={() => setTab('flows')} onAddCapability={() => { setTab('capabilities'); setCapGallery(true); }} />}
                 {tab === 'capabilities' && <CapabilitiesMarket installed={installedCaps} onAdd={() => setCapGallery(true)} onOpen={(id) => setOpenCapId(id)} />}
             </div>
 
@@ -208,34 +206,24 @@ export default function AutomationsView({ skills, onEnable }: Props) {
 // ---- Capabilities tab — installed capabilities (e-conomic native + any installed partners) ----
 function CapabilitiesMarket({ installed, onAdd, onOpen }: { installed: Set<string>; onAdd: () => void; onOpen: (id: string) => void }) {
     const { t } = useLang();
-    const native = CAPABILITIES.filter((c) => c.native);
-    const partners = CAPABILITIES.filter((c) => !c.native && installed.has(c.id));
+    // One merged grid: e-conomic native + any installed partners, no section split.
+    const installedCaps = CAPABILITIES.filter((c) => c.native || installed.has(c.id));
     return (
         <div className="pb-10">
-
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Built in')}</p>
-            <div className="grid grid-cols-2 gap-4 mb-7">
-                {native.map((c) => <CapabilityCard key={c.id} cap={c} installed onInstall={() => {}} onOpen={() => onOpen(c.id)} />)}
-            </div>
-
-            <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('From e-conomic partners')}</p>
-            {partners.length === 0 ? (
+            <div className="grid grid-cols-3 gap-3.5">
+                {installedCaps.map((c) => <CapabilityCard key={c.id} cap={c} installed onInstall={() => {}} onOpen={() => onOpen(c.id)} />)}
                 <button
                     onClick={onAdd}
-                    className="w-full rounded-xl p-6 flex flex-col items-center gap-1.5 text-center"
-                    style={{ border: `1.5px dashed ${COLORS.cardBorder}`, background: '#fafafa' }}
+                    className="rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-center"
+                    style={{ border: `1.5px dashed ${COLORS.cardBorder}`, background: '#fafafa', minHeight: 150 }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#c4c4cc')}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
                 >
                     <Icon name="circle-plus" style={{ color: COLORS.textMuted }} />
                     <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a capability')}</p>
-                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install skills from e-conomic partners to extend what Eva can do.')}</p>
+                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install skills from e-conomic partners.')}</p>
                 </button>
-            ) : (
-                <div className="grid grid-cols-2 gap-4">
-                    {partners.map((c) => <CapabilityCard key={c.id} cap={c} installed onInstall={() => {}} onOpen={() => onOpen(c.id)} />)}
-                </div>
-            )}
+            </div>
         </div>
     );
 }
@@ -301,74 +289,6 @@ function PerfKpis() {
     );
 }
 
-// ---- Performance tab ----
-function PerformanceView({ onSetUpFlow, onAddCapability }: { onSetUpFlow: () => void; onAddCapability: () => void }) {
-    const { t, lang } = useLang();
-    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
-    return (
-        <div className="pb-10">
-
-            {/* headline KPIs */}
-            <div className="mb-7"><PerfKpis /></div>
-
-            {/* breakdown by core job to be done */}
-            <h2 className="text-base font-semibold mb-1" style={{ color: COLORS.text }}>{t('By job to be done')}</h2>
-            <p className="text-sm mb-3" style={{ color: COLORS.textMuted }}>{t('Where Eva is saving the most time, and how much runs hands-off.')}</p>
-            <Card className="overflow-hidden mb-7">
-                {PERF.jobs.map((j, i) => (
-                    <div key={j.name} className="flex items-center gap-4 px-4 py-3.5" style={{ borderTop: i ? `1px solid ${COLORS.cardBorder}` : 'none' }}>
-                        <div style={{ width: 190 }}>
-                            <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(j.name)}</p>
-                            <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{nf(j.actions)} {t('actions')} · {j.hours} {t('hrs')}</p>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="rounded-full" style={{ height: 8, background: '#f1f1f3' }}>
-                                <div className="rounded-full" style={{ height: 8, width: `${j.pct}%`, background: j.pct >= 80 ? '#16a34a' : j.pct >= 60 ? '#6366f1' : '#b9842b' }} />
-                            </div>
-                        </div>
-                        <span className="text-sm font-medium shrink-0" style={{ width: 92, textAlign: 'right', color: COLORS.text }}>{j.pct}% {t('automated')}</span>
-                    </div>
-                ))}
-            </Card>
-
-            {/* other stats */}
-            <div className="grid grid-cols-4 gap-3 mb-7">
-                {PERF.extra.map((s) => (
-                    <Card key={s.label} className="p-4">
-                        <p className="text-lg font-semibold leading-none" style={{ color: COLORS.text }}>{s.value}</p>
-                        <p className="text-xs mt-1.5" style={{ color: COLORS.textMuted }}>{t(s.label)}</p>
-                    </Card>
-                ))}
-            </div>
-
-            {/* what's still on the table — drive automation adoption */}
-            <h2 className="text-base font-semibold mb-1" style={{ color: COLORS.text }}>{t('Ready to automate')}</h2>
-            <p className="text-sm mb-3" style={{ color: COLORS.textMuted }}>
-                {lang === 'da'
-                    ? `Cirka ${PERF.untappedHours} timer om måneden gøres stadig manuelt — det kan Eva tage over.`
-                    : `Around ${PERF.untappedHours} hours a month are still done by hand — Eva could take these over.`}
-            </p>
-            <div className="flex flex-col gap-2">
-                {PERF.opportunities.map((o) => (
-                    <Card key={o.name} className="p-4 flex items-center gap-3" style={{ borderLeft: '3px solid #b9842b' }}>
-                        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#fbf3e0', color: '#b9842b' }}>
-                            <Icon name="ai-stars" />
-                        </span>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(o.name)}</p>
-                            <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(o.note)}</p>
-                        </div>
-                        <span className="text-sm font-semibold shrink-0" style={{ color: '#15803d' }}>{t(o.saving)}</span>
-                        <Button onClick={o.kind === 'capability' ? onAddCapability : onSetUpFlow}>
-                            {o.kind === 'capability' ? t('Add capability') : t('Set it up')}
-                        </Button>
-                    </Card>
-                ))}
-            </div>
-        </div>
-    );
-}
-
 function CapabilityLogo({ cap, size = 40 }: { cap: Capability; size?: number }) {
     return (
         <span className="flex items-center justify-center shrink-0 rounded-xl overflow-hidden" style={{ width: size, height: size, background: cap.bg, border: `1px solid ${COLORS.cardBorder}` }}>
@@ -381,34 +301,22 @@ function CapabilityCard({ cap, installed, onInstall, onOpen }: { cap: Capability
     const { t } = useLang();
     const clickable = !!onOpen && installed;
     return (
-        <Card className="p-5 flex flex-col" hover={clickable} onClick={clickable ? onOpen : undefined} style={{ minHeight: 236 }}>
-            <div className="flex items-start gap-3">
-                <CapabilityLogo cap={cap} />
+        <Card className="p-4 flex flex-col" hover={clickable} onClick={clickable ? onOpen : undefined} style={{ minHeight: 150 }}>
+            <div className="flex items-start gap-2.5">
+                <CapabilityLogo cap={cap} size={32} />
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{cap.name}</p>
-                        <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(cap.category)}</span>
-                    </div>
-                    <p className="text-sm mt-1 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(cap.desc)}</p>
+                    <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{cap.name}</p>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(cap.category)} · {cap.skills.length} {t('skills')}</span>
                 </div>
             </div>
-            <div className="mt-3.5">
-                <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{cap.native ? t('Includes') : t('Adds these skills')}</p>
-                <div className="flex flex-col gap-1.5">
-                    {cap.skills.map((sk) => (
-                        <div key={sk} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
-                            <Icon name="circle-tick" style={{ color: '#16a34a' }} /> {t(sk)}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="mt-auto pt-4 flex items-center justify-between">
+            <p className="text-xs mt-2 leading-snug" style={{ color: COLORS.textMuted }}>{t(cap.desc)}</p>
+            <div className="mt-auto pt-3 flex items-center justify-between">
                 {cap.native ? (
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: COLORS.textMuted }}>
-                        <Icon name="lock" /> {t('Built in · always on')}
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: COLORS.textMuted }}>
+                        <Icon name="lock" /> {t('Built in')}
                     </span>
                 ) : installed ? (
-                    <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: '#15803d' }}>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: '#15803d' }}>
                         <Icon name="circle-tick" /> {t('Installed')}
                     </span>
                 ) : (
@@ -416,7 +324,7 @@ function CapabilityCard({ cap, installed, onInstall, onOpen }: { cap: Capability
                         <Icon name="circle-plus" /> {t('Install')}
                     </Button>
                 )}
-                {clickable && <span className="flex items-center gap-1 text-sm font-medium" style={{ color: COLORS.text }}>{t('Configure')} <Icon name="chevron-right" /></span>}
+                {clickable && <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />}
             </div>
         </Card>
     );

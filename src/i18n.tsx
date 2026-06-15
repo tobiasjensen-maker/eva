@@ -138,6 +138,8 @@ const DA: Record<string, string> = {
     'New capability': 'Ny kapabilitet',
     'Add a capability': 'Tilføj en kapabilitet',
     'Install skills from e-conomic partners to extend what Eva can do.': 'Installér handlinger fra e-conomic-partnere for at udvide, hvad Eva kan.',
+    'Install skills from e-conomic partners.': 'Installér handlinger fra e-conomic-partnere.',
+    'skills': 'handlinger',
     'Install skills from the e-conomic partner marketplace.': 'Installér handlinger fra e-conomic-partnermarkedet.',
     // Performance tab
     'Performance': 'Performance',
