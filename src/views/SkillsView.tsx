@@ -100,63 +100,156 @@ interface FlowTemplate {
     steps: FlowStep[];
 }
 
+// Step factory — picks an icon from the approach (rule / eva / review). LLM steps are Eva's.
+let stSeq = 0;
+function st(label: string, approach: StepApproach, capId?: string): FlowStep {
+    const icon = capId ? 'connection-enable' : approach === 'eva' ? 'ai-stars' : approach === 'review' ? 'person' : 'settings';
+    return { id: `st-${stSeq++}`, icon, label, approach, capId };
+}
+
 const FLOW_TEMPLATES: FlowTemplate[] = [
-    { id: 't-recon', title: 'Finalise bank reconciliation', emoji: '🏦', category: 'Bookkeeping', price: 399, trialDays: 30,
-        desc: 'Match incoming and outgoing payments to invoices and bills, and book them automatically.',
-        starter: 'bank', steps: [
-            { id: 'match', icon: 'transfer', label: 'Match a bank transaction' },
-            { id: 'entry', icon: 'plus-minus', label: 'Create the journal entry' },
-            { id: 'flag', icon: 'circle-warning', label: 'Flag anything unmatched for review' },
+    // ---- Accounting & bookkeeping ----
+    { id: 't-voucher', title: 'Smart voucher creation', emoji: '🧾', category: 'Bookkeeping', price: 399, trialDays: 30,
+        desc: 'Turn scanned and electronic documents into booked vouchers automatically.',
+        starter: 'document', steps: [
+            st('Receive document in Smart Inbox', 'rule'),
+            st('Classify document type', 'eva'),
+            st('Extract key data', 'eva'),
+            st('Determine correct accounts', 'eva'),
+            st('Apply VAT codes', 'eva'),
+            st('Determine contra account', 'rule'),
+            st('Create draft voucher', 'rule'),
+            st('Auto-book or route for review', 'review'),
         ] },
-    { id: 't-reminders', title: 'Send payment reminders', emoji: '🔔', category: 'Receivables', price: 199, trialDays: 30,
-        desc: 'Chase overdue invoices with the right reminder per customer and follow up automatically.',
-        starter: 'overdue', steps: [
-            { id: 'find', icon: 'document', label: 'Find invoices 30+ days overdue' },
-            { id: 'draft', icon: 'envelope', label: 'Draft a reminder per customer' },
-            { id: 'send', icon: 'envelope', label: 'Send & log a note on the invoice' },
-        ] },
-    { id: 't-docs', title: 'Collect missing documents', emoji: '📎', category: 'Documents', price: 149, trialDays: 30,
-        desc: 'Detect entries without documentation and request the receipts from clients.',
+    { id: 't-bulk', title: 'Bulk import & booking', emoji: '📚', category: 'Bookkeeping', price: 349, trialDays: 30,
+        desc: 'Clear large batches of Inbox items at period-end, hands-off where confident.',
         starter: 'schedule', steps: [
-            { id: 'detect', icon: 'attach', label: 'Detect entries missing a document' },
-            { id: 'request', icon: 'attach', label: 'Request the document from the client' },
-            { id: 'file', icon: 'circle-tick', label: 'File it against the entry' },
+            st('Identify batch need', 'rule'),
+            st('Prioritise by urgency', 'eva'),
+            st('Process each via Smart voucher creation', 'rule'),
+            st('Batch review summary', 'eva'),
+            st('Present review queue', 'review'),
         ] },
-    { id: 't-close', title: 'Run month-end close', emoji: '📚', category: 'Bookkeeping', price: 499, trialDays: 30,
-        desc: 'Reconcile control accounts and prepare a closing report for your review.',
+    { id: 't-recon', title: 'AI bank reconciliation', emoji: '🏦', category: 'Bookkeeping', price: 399, trialDays: 30,
+        desc: 'Match bank transactions to entries — exact, fuzzy, and missing entries handled.',
+        starter: 'bank', steps: [
+            st('Import bank statement', 'rule'),
+            st('Exact-match on amount, date & reference', 'rule'),
+            st('Fuzzy-match ambiguous transactions', 'eva'),
+            st('Create missing entries', 'eva'),
+            st('Handle partial matches', 'eva'),
+            st('Review and confirm', 'review'),
+        ] },
+    { id: 't-supplier', title: 'Supplier invoice processor', emoji: '📨', category: 'Suppliers', price: 349, trialDays: 30,
+        desc: 'Read, validate and book supplier invoices, with duplicate detection.',
+        starter: 'document', steps: [
+            st('Receive supplier invoice', 'rule'),
+            st('Identify & validate supplier', 'eva'),
+            st('Extract & validate amounts', 'eva'),
+            st('Determine booking accounts', 'eva'),
+            st('Check for duplicates', 'rule'),
+            st('Create voucher', 'rule'),
+            st('Route for approval', 'review'),
+        ] },
+    { id: 't-payrun', title: 'Payment run optimiser', emoji: '💸', category: 'Suppliers', price: 299, trialDays: 30,
+        desc: 'Select, time and export supplier payments to capture early-payment discounts.',
+        starter: 'schedule', steps: [
+            st('Gather open creditor entries', 'rule'),
+            st('Optimise payment timing', 'eva'),
+            st('Group by bank & method', 'rule'),
+            st('Generate payment file', 'rule'),
+            st('Book payment entries', 'rule'),
+        ] },
+    { id: 't-close', title: 'Period close checklist', emoji: '✅', category: 'Period close', price: 399, trialDays: 30,
+        desc: 'Track period-end tasks, surface risks, and auto-resolve what it can.',
         starter: 'monthend', steps: [
-            { id: 'reconcile', icon: 'plus-minus', label: 'Reconcile control accounts' },
-            { id: 'report', icon: 'chart-bar', label: 'Generate the closing report' },
-            { id: 'adjust', icon: 'circle-warning', label: 'Flag adjustments for review' },
+            st('Determine period-end date', 'rule'),
+            st('Run completeness checks', 'rule'),
+            st('Identify risk areas', 'eva'),
+            st('Generate checklist', 'eva'),
+            st('Auto-resolve where possible', 'rule'),
+            st('Route remaining items', 'review'),
+        ] },
+    { id: 't-yearend', title: 'Year-end automation', emoji: '📆', category: 'Period close', price: 499, trialDays: 30,
+        desc: 'Run the årsafslutning — closing entries, primo, lock and validation.',
+        starter: 'monthend', steps: [
+            st('Verify year-end readiness', 'rule'),
+            st('Generate closing entries', 'eva'),
+            st('Create primo entries', 'rule'),
+            st('Lock completed year', 'rule'),
+            st('Validate transition', 'eva'),
+            st('Final review', 'review'),
+        ] },
+    // ---- Expense management ----
+    { id: 't-firmakort', title: 'Firmakort auto-booking', emoji: '💳', category: 'Expenses', price: 349, trialDays: 30,
+        desc: 'Match Firmakort transactions to receipts, classify and book them.',
+        starter: 'bank', steps: [
+            st('Import Firmakort transaction', 'rule'),
+            st('Request receipt if missing', 'rule'),
+            st('Match receipt to transaction', 'eva'),
+            st('Classify expense', 'eva'),
+            st('Policy check', 'eva'),
+            st('Create & book entry', 'rule'),
+            st('Route violations', 'review'),
+        ] },
+    { id: 't-receipts', title: 'Missing receipt chaser', emoji: '📎', category: 'Expenses', price: 149, trialDays: 30,
+        desc: 'Chase cardholders for missing receipts and escalate when ignored.',
+        starter: 'schedule', steps: [
+            st('Detect unmatched transactions', 'rule'),
+            st('Send first reminder', 'rule'),
+            st('Follow up', 'eva'),
+            st('Escalate to manager', 'rule'),
+            st('Auto-categorise without receipt', 'eva'),
+        ] },
+    // ---- VAT & tax ----
+    { id: 't-vatfile', title: 'VAT return auto-filing', emoji: '🧮', category: 'VAT & Tax', price: 449, trialDays: 30,
+        desc: 'Calculate, reconcile, validate and file the VAT return to SKAT.',
+        starter: 'schedule', steps: [
+            st('Calculate VAT return', 'rule'),
+            st('Perform momsafstemning', 'eva'),
+            st('Validate before filing', 'eva'),
+            st('Mark as indberettet', 'rule'),
+            st('File to SKAT', 'rule'),
+            st('Book VAT payment / repayment', 'rule'),
+        ] },
+    { id: 't-vatrecon', title: 'VAT reconciliation', emoji: '🔍', category: 'VAT & Tax', price: 299, trialDays: 30,
+        desc: 'Reconcile VAT account balances against the calculation before filing.',
+        starter: 'schedule', steps: [
+            st('Pull VAT account balances', 'rule'),
+            st('Pull VAT calculation', 'rule'),
+            st('Compare per VAT code', 'rule'),
+            st('Investigate discrepancies', 'eva'),
+            st('Suggest corrections', 'eva'),
+            st('Present report', 'review'),
         ] },
     // ---- Partner-capability flows (upsell) ----
     { id: 't-likvido', title: 'Automated debt collection', emoji: '💸', category: 'Receivables', capId: 'likvido', price: 299, trialDays: 30,
         desc: 'Escalate overdue invoices to Likvido collection and reconcile the payouts automatically.',
         starter: 'overdue', steps: [
-            { id: 'pastdue', icon: 'document', label: 'Find invoices past the dunning limit' },
-            { id: 'escalate', icon: 'connection-enable', label: 'Escalate to collection', capId: 'likvido' },
-            { id: 'recon', icon: 'connection-enable', label: 'Reconcile Likvido payouts', capId: 'likvido' },
+            st('Find invoices past the dunning limit', 'rule'),
+            st('Escalate to collection', 'rule', 'likvido'),
+            st('Reconcile Likvido payouts', 'rule', 'likvido'),
         ] },
     { id: 't-budget123', title: 'Liquidity forecast & alerts', emoji: '📈', category: 'Planning', capId: 'budget123', price: 249, trialDays: 30,
         desc: 'Project client liquidity with Budget123 and alert you when runway drops.',
         starter: 'schedule', steps: [
-            { id: 'actuals', icon: 'chart-bar', label: 'Pull the latest actuals' },
-            { id: 'forecast', icon: 'connection-enable', label: 'Build a liquidity forecast', capId: 'budget123' },
-            { id: 'alert', icon: 'circle-warning', label: 'Alert when runway is under 2 months' },
+            st('Pull the latest actuals', 'rule'),
+            st('Build a liquidity forecast', 'eva', 'budget123'),
+            st('Alert when runway is under 2 months', 'eva'),
         ] },
     { id: 't-creditro', title: 'Client KYC & onboarding', emoji: '🛡️', category: 'Compliance', capId: 'creditro', price: 349, trialDays: 30,
         desc: 'Run KYC and AML checks with Creditro when onboarding a new client.',
         starter: 'chat', steps: [
-            { id: 'kyc', icon: 'connection-enable', label: 'Run KYC & AML checks', capId: 'creditro' },
-            { id: 'rating', icon: 'connection-enable', label: 'Check the credit rating', capId: 'creditro' },
-            { id: 'risk', icon: 'circle-warning', label: 'Flag compliance risks for review' },
+            st('Run KYC & AML checks', 'rule', 'creditro'),
+            st('Check the credit rating', 'rule', 'creditro'),
+            st('Flag compliance risks for review', 'review'),
         ] },
     { id: 't-rackbeat', title: 'Stock-aware reordering', emoji: '📦', category: 'Inventory', capId: 'rackbeat', price: 279, trialDays: 30,
         desc: 'Keep stock in sync with RackBeat and raise purchase orders before you run out.',
         starter: 'schedule', steps: [
-            { id: 'sync', icon: 'connection-enable', label: 'Sync stock levels', capId: 'rackbeat' },
-            { id: 'po', icon: 'connection-enable', label: 'Create a purchase order', capId: 'rackbeat' },
-            { id: 'cogs', icon: 'plus-minus', label: 'Book cost of goods' },
+            st('Sync stock levels', 'rule', 'rackbeat'),
+            st('Create a purchase order', 'rule', 'rackbeat'),
+            st('Book cost of goods', 'rule'),
         ] },
 ];
 
@@ -564,7 +657,9 @@ const AUTONOMY = [
 ];
 
 // Flow builder primitives — a starter (trigger) and a library of steps.
-interface FlowStep { id: string; icon: string; label: string; capId?: string }
+// approach: how the step runs — a deterministic rule, Eva (the AI), or human-in-the-loop review.
+type StepApproach = 'rule' | 'eva' | 'review';
+interface FlowStep { id: string; icon: string; label: string; capId?: string; approach?: StepApproach }
 
 const FLOW_STARTERS = [
     { id: 'schedule', icon: 'time', label: 'On a schedule' },
@@ -760,6 +855,18 @@ function dayLabel(daysAgo: number, locale = 'en-GB'): string {
     return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
+// Small tag showing how a step runs — Eva (AI), a deterministic rule, or human review.
+function ApproachTag({ approach }: { approach?: StepApproach }) {
+    const { t } = useLang();
+    if (!approach) return null;
+    const s = approach === 'eva'
+        ? { label: 'Eva', bg: '#f3f0fb', fg: '#7c3aed' }
+        : approach === 'review'
+            ? { label: 'Review', bg: '#fbf3e0', fg: '#b9842b' }
+            : { label: 'Rule', bg: '#f1f1f3', fg: '#6b6b76' };
+    return <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: s.bg, color: s.fg }}>{t(s.label)}</span>;
+}
+
 function seedStarter(cfg: SkillConfig): string {
     if (cfg.trigger === 'schedule' || cfg.trigger === 'continuous') return 'schedule';
     if (cfg.trigger === 'manual') return 'chat';
@@ -937,6 +1044,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                                 </span>
                                 <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
                                 {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
+                                <ApproachTag approach={s.approach} />
                                 <Icon name="settings" style={{ color: '#c4c4cc' }} />
                                 <button onClick={(e) => { e.stopPropagation(); removeStep(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                                     <Icon name="close" />
@@ -1100,6 +1208,7 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                                                 <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 28, height: 28, background: s.capId ? '#f3f0fb' : '#f1f1f3', color: s.capId ? '#7c3aed' : '#52525b' }}><Icon name={s.icon as never} /></span>
                                                 <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
                                                 {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partnerOf(s.capId)?.name}</span>}
+                                                <ApproachTag approach={s.approach} />
                                             </div>
                                         ))}
                                     </div>
