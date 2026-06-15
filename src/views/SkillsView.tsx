@@ -164,7 +164,6 @@ export default function AutomationsView({ skills, onEnable }: Props) {
 
                 {tab === 'flows' && (
                     <>
-                        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('A flow is a job Eva runs for you — when to act, how autonomously, and which skills it uses.')}</p>
                         {enabled.length === 0 ? (
                             <Card className="p-10 text-center">
                                 <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No flows set up yet. Start one from a template.')}</p>
@@ -211,7 +210,6 @@ function CapabilitiesMarket({ installed, onAdd, onOpen }: { installed: Set<strin
     const partners = CAPABILITIES.filter((c) => !c.native && installed.has(c.id));
     return (
         <div className="pb-10">
-            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Everything Eva can do — built in with e-conomic, plus skills you install from partners. Your flows draw on whatever is installed here.')}</p>
 
             <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Built in')}</p>
             <div className="grid grid-cols-2 gap-4 mb-7">
@@ -280,7 +278,6 @@ function PerformanceView({ onSetUpFlow, onAddCapability }: { onSetUpFlow: () => 
     ];
     return (
         <div className="pb-10">
-            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('How much Eva is handling for you — this quarter, across every flow.')}</p>
 
             {/* headline KPIs */}
             <div className="grid grid-cols-4 gap-3 mb-7">
