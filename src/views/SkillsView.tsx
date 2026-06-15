@@ -1,7 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
 import { Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
-import { TemplateGallery, type Template } from '../TemplateGallery';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import { AGREEMENTS } from '../data';
 import { useLang } from '../i18n';
@@ -11,8 +10,6 @@ interface Props {
     skills: Skill[];
     onEnable: (id: string) => void;
 }
-
-const SKILL_CATEGORIES = ['Accounting', 'Invoicing', 'Insights', 'Compliance', 'Payroll'];
 
 const SKILL_META: Record<string, { category: string; features: string[] }> = {
     reconciliation: { category: 'Accounting', features: ['Matches each bank payment to its open invoice', 'Creates the accounting entry on the right account', 'Books matched transactions automatically', 'Flags anything it can’t match for your review'] },
@@ -89,6 +86,83 @@ const PERF = {
     ],
 };
 
+// ---- Flow templates shown in the "Create New Flow" modal ----
+interface FlowTemplate {
+    id: string;
+    title: string;
+    emoji: string;
+    category: string;
+    capId?: string; // partner capability required (upsell)
+    price: number; // kr / month after the trial
+    trialDays: number;
+    desc: string;
+    starter: string; // FLOW_STARTERS id
+    steps: FlowStep[];
+}
+
+const FLOW_TEMPLATES: FlowTemplate[] = [
+    { id: 't-recon', title: 'Finalise bank reconciliation', emoji: '🏦', category: 'Bookkeeping', price: 399, trialDays: 30,
+        desc: 'Match incoming and outgoing payments to invoices and bills, and book them automatically.',
+        starter: 'bank', steps: [
+            { id: 'match', icon: 'transfer', label: 'Match a bank transaction' },
+            { id: 'entry', icon: 'plus-minus', label: 'Create the journal entry' },
+            { id: 'flag', icon: 'circle-warning', label: 'Flag anything unmatched for review' },
+        ] },
+    { id: 't-reminders', title: 'Send payment reminders', emoji: '🔔', category: 'Receivables', price: 199, trialDays: 30,
+        desc: 'Chase overdue invoices with the right reminder per customer and follow up automatically.',
+        starter: 'overdue', steps: [
+            { id: 'find', icon: 'document', label: 'Find invoices 30+ days overdue' },
+            { id: 'draft', icon: 'envelope', label: 'Draft a reminder per customer' },
+            { id: 'send', icon: 'envelope', label: 'Send & log a note on the invoice' },
+        ] },
+    { id: 't-docs', title: 'Collect missing documents', emoji: '📎', category: 'Documents', price: 149, trialDays: 30,
+        desc: 'Detect entries without documentation and request the receipts from clients.',
+        starter: 'schedule', steps: [
+            { id: 'detect', icon: 'attach', label: 'Detect entries missing a document' },
+            { id: 'request', icon: 'attach', label: 'Request the document from the client' },
+            { id: 'file', icon: 'circle-tick', label: 'File it against the entry' },
+        ] },
+    { id: 't-close', title: 'Run month-end close', emoji: '📚', category: 'Bookkeeping', price: 499, trialDays: 30,
+        desc: 'Reconcile control accounts and prepare a closing report for your review.',
+        starter: 'monthend', steps: [
+            { id: 'reconcile', icon: 'plus-minus', label: 'Reconcile control accounts' },
+            { id: 'report', icon: 'chart-bar', label: 'Generate the closing report' },
+            { id: 'adjust', icon: 'circle-warning', label: 'Flag adjustments for review' },
+        ] },
+    // ---- Partner-capability flows (upsell) ----
+    { id: 't-likvido', title: 'Automated debt collection', emoji: '💸', category: 'Receivables', capId: 'likvido', price: 299, trialDays: 30,
+        desc: 'Escalate overdue invoices to Likvido collection and reconcile the payouts automatically.',
+        starter: 'overdue', steps: [
+            { id: 'pastdue', icon: 'document', label: 'Find invoices past the dunning limit' },
+            { id: 'escalate', icon: 'connection-enable', label: 'Escalate to collection', capId: 'likvido' },
+            { id: 'recon', icon: 'connection-enable', label: 'Reconcile Likvido payouts', capId: 'likvido' },
+        ] },
+    { id: 't-budget123', title: 'Liquidity forecast & alerts', emoji: '📈', category: 'Planning', capId: 'budget123', price: 249, trialDays: 30,
+        desc: 'Project client liquidity with Budget123 and alert you when runway drops.',
+        starter: 'schedule', steps: [
+            { id: 'actuals', icon: 'chart-bar', label: 'Pull the latest actuals' },
+            { id: 'forecast', icon: 'connection-enable', label: 'Build a liquidity forecast', capId: 'budget123' },
+            { id: 'alert', icon: 'circle-warning', label: 'Alert when runway is under 2 months' },
+        ] },
+    { id: 't-creditro', title: 'Client KYC & onboarding', emoji: '🛡️', category: 'Compliance', capId: 'creditro', price: 349, trialDays: 30,
+        desc: 'Run KYC and AML checks with Creditro when onboarding a new client.',
+        starter: 'chat', steps: [
+            { id: 'kyc', icon: 'connection-enable', label: 'Run KYC & AML checks', capId: 'creditro' },
+            { id: 'rating', icon: 'connection-enable', label: 'Check the credit rating', capId: 'creditro' },
+            { id: 'risk', icon: 'circle-warning', label: 'Flag compliance risks for review' },
+        ] },
+    { id: 't-rackbeat', title: 'Stock-aware reordering', emoji: '📦', category: 'Inventory', capId: 'rackbeat', price: 279, trialDays: 30,
+        desc: 'Keep stock in sync with RackBeat and raise purchase orders before you run out.',
+        starter: 'schedule', steps: [
+            { id: 'sync', icon: 'connection-enable', label: 'Sync stock levels', capId: 'rackbeat' },
+            { id: 'po', icon: 'connection-enable', label: 'Create a purchase order', capId: 'rackbeat' },
+            { id: 'cogs', icon: 'plus-minus', label: 'Book cost of goods' },
+        ] },
+];
+
+interface LocalFlow { skill: Skill; seed: { starter: string; steps: FlowStep[] } }
+let flowSeq = 100;
+
 const AUTO_TABS = [
     { k: 'flows', label: 'Flows' },
     { k: 'capabilities', label: 'Capabilities' },
@@ -99,36 +173,58 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     const { t } = useLang();
     const [tab, setTab] = useState<AutoTab>('flows');
     const [openId, setOpenId] = useState<string | null>(null);
-    const [gallery, setGallery] = useState(false);
+    const [newFlow, setNewFlow] = useState(false);
     // Installed partner capabilities (e-conomic native is always present).
     const [installedCaps, setInstalledCaps] = useState<Set<string>>(new Set());
     const [capGallery, setCapGallery] = useState(false);
     const [openCapId, setOpenCapId] = useState<string | null>(null);
+    // Flows created in this session (from scratch or a template), plus which are on trial.
+    const [localFlows, setLocalFlows] = useState<LocalFlow[]>([]);
+    const [trials, setTrials] = useState<Set<string>>(new Set());
 
-    const flowTemplates: Template[] = skills
-        .filter((s) => s.state === 'locked')
-        .map((s) => ({
-            id: s.id,
-            title: s.title,
-            description: s.description,
-            category: SKILL_META[s.id]?.category ?? 'Insights',
-            color: s.color,
-            emoji: s.emoji,
-            price: s.price,
-            features: SKILL_META[s.id]?.features ?? [],
-        }));
+    const enabled = skills.filter((s) => s.state !== 'locked');
+    const allFlows = [...enabled, ...localFlows.map((f) => f.skill)];
 
-    const openFlow = openId ? skills.find((s) => s.id === openId) ?? null : null;
+    function createScratch() {
+        const id = `flow-${flowSeq++}`;
+        const skill: Skill = { id, title: 'Untitled flow', description: 'A custom flow you built from scratch.', emoji: '🛠️', color: '#7c6cf6', state: 'active', stat: 'Just created' };
+        setLocalFlows((prev) => [{ skill, seed: { starter: 'schedule', steps: [] } }, ...prev]);
+        setNewFlow(false);
+        setOpenId(id);
+    }
+    function startTrial(tpl: FlowTemplate) {
+        const id = `flow-${flowSeq++}`;
+        const skill: Skill = { id, title: tpl.title, description: tpl.desc, emoji: tpl.emoji, color: '#7c6cf6', state: 'active', stat: 'Trial' };
+        setLocalFlows((prev) => [{ skill, seed: { starter: tpl.starter, steps: tpl.steps } }, ...prev]);
+        setTrials((prev) => new Set(prev).add(id));
+        if (tpl.capId) setInstalledCaps((prev) => new Set(prev).add(tpl.capId!)); // the trial includes the partner capability
+        setNewFlow(false);
+        setOpenId(id);
+    }
+    function upgradeFlow(id: string) {
+        setTrials((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
+
+    const openFlow = openId ? allFlows.find((s) => s.id === openId) ?? null : null;
     if (openFlow) {
-        return <FlowDetail skill={openFlow} onBack={() => setOpenId(null)} onEnable={() => onEnable(openFlow.id)} installed={installedCaps} />;
+        const seed = localFlows.find((f) => f.skill.id === openFlow.id)?.seed;
+        return (
+            <FlowDetail
+                skill={openFlow}
+                seed={seed}
+                trial={trials.has(openFlow.id)}
+                onUpgrade={() => upgradeFlow(openFlow.id)}
+                onBack={() => setOpenId(null)}
+                onEnable={() => onEnable(openFlow.id)}
+                installed={installedCaps}
+            />
+        );
     }
 
     const openCap = openCapId ? CAPABILITIES.find((c) => c.id === openCapId) ?? null : null;
     if (openCap) {
         return <CapabilityDetail cap={openCap} onBack={() => setOpenCapId(null)} />;
     }
-
-    const enabled = skills.filter((s) => s.state !== 'locked');
 
     return (
         <div className="h-full overflow-y-auto">
@@ -137,7 +233,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 title={t('Automations')}
                 showScope={false}
                 right={
-                    tab === 'flows' ? <Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New flow')}</Button>
+                    tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New flow')}</Button>
                     : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('New capability')}</Button>
                     : undefined
                 }
@@ -165,14 +261,14 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     <>
                         <div className="mb-6"><PerfKpis /></div>
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Your flows')}</p>
-                        {enabled.length === 0 ? (
+                        {allFlows.length === 0 ? (
                             <Card className="p-10 text-center">
                                 <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No flows set up yet. Start one from a template.')}</p>
                             </Card>
                         ) : (
                             <div className="flex flex-col gap-3 pb-10">
-                                {enabled.map((s) => (
-                                    <FlowRow key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
+                                {allFlows.map((s) => (
+                                    <FlowRow key={s.id} skill={s} trial={trials.has(s.id)} onOpen={() => setOpenId(s.id)} />
                                 ))}
                             </div>
                         )}
@@ -182,13 +278,12 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 {tab === 'capabilities' && <CapabilitiesMarket installed={installedCaps} onAdd={() => setCapGallery(true)} onOpen={(id) => setOpenCapId(id)} />}
             </div>
 
-            {gallery && (
-                <TemplateGallery
-                    kind="skill"
-                    templates={flowTemplates}
-                    categories={SKILL_CATEGORIES}
-                    onClose={() => setGallery(false)}
-                    onEnableSkill={(tpl) => onEnable(tpl.id)}
+            {newFlow && (
+                <NewFlowModal
+                    installed={installedCaps}
+                    onScratch={createScratch}
+                    onStartTrial={startTrial}
+                    onClose={() => setNewFlow(false)}
                 />
             )}
 
@@ -425,7 +520,7 @@ function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void
 }
 
 // Full-width flow row: icon, title, its own automation stat, status, open.
-function FlowRow({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
+function FlowRow({ skill, trial, onOpen }: { skill: Skill; trial?: boolean; onOpen: () => void }) {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const active = skill.state === 'active';
@@ -447,10 +542,14 @@ function FlowRow({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
                     <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{perfLine}</p>
                 </div>
             </div>
-            <span className="flex items-center gap-1.5 text-sm shrink-0" style={{ color: active ? COLORS.text : COLORS.textMuted }}>
-                <Dot color={active ? '#16a34a' : '#a8a8b0'} />
-                {active ? t('Active') : t('Idle')}
-            </span>
+            {trial ? (
+                <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#fbf3e0', color: '#b9842b' }}>{t('Trial')}</span>
+            ) : (
+                <span className="flex items-center gap-1.5 text-sm shrink-0" style={{ color: active ? COLORS.text : COLORS.textMuted }}>
+                    <Dot color={active ? '#16a34a' : '#a8a8b0'} />
+                    {active ? t('Active') : t('Idle')}
+                </span>
+            )}
             <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
         </Card>
     );
@@ -669,7 +768,7 @@ function seedStarter(cfg: SkillConfig): string {
     return 'bank';
 }
 
-function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBack: () => void; onEnable: () => void; installed: Set<string> }) {
+function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade }: { skill: Skill; onBack: () => void; onEnable: () => void; installed: Set<string>; seed?: { starter: string; steps: FlowStep[] }; trial?: boolean; onUpgrade?: () => void }) {
     const { t, lang } = useLang();
     const locked = skill.state === 'locked';
     const cfg = SKILL_CONFIG[skill.id] ?? DEFAULT_CONFIG;
@@ -681,10 +780,16 @@ function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBa
     const [notify, setNotify] = useState(cfg.notify);
     const [guardrail, setGuardrail] = useState(cfg.guardrail);
     const [threshold, setThreshold] = useState(cfg.threshold ?? '10.000');
-    // Flow builder: a starter (trigger) + an ordered list of steps.
-    const [starter, setStarter] = useState<string>(() => seedStarter(cfg));
-    const [steps, setSteps] = useState<FlowStep[]>(() => (SKILL_META[skill.id]?.features ?? []).map((f, i) => ({ id: `${skill.id}-${i}`, icon: 'workflow', label: f })));
+    // Flow builder: a starter (trigger) + an ordered list of steps. Seeded from a
+    // template when one was used, otherwise from the skill's default steps.
+    const [starter, setStarter] = useState<string>(() => (seed ? seed.starter : seedStarter(cfg)));
+    const [steps, setSteps] = useState<FlowStep[]>(() =>
+        seed
+            ? seed.steps.map((s, i) => ({ ...s, id: `${s.id}-${i}` }))
+            : (SKILL_META[skill.id]?.features ?? []).map((f, i) => ({ id: `${skill.id}-${i}`, icon: 'workflow', label: f })),
+    );
     const [picker, setPicker] = useState<'starter' | 'step' | null>(null);
+    const [settingStep, setSettingStep] = useState<{ index: number; step: FlowStep } | null>(null);
     // The flow is set up once for the practice; it can run on all clients or a subset.
     const [clientMode, setClientMode] = useState<'all' | 'selected'>('all');
     const [clientSel, setClientSel] = useState<Set<string>>(() => new Set(AGREEMENTS.slice(0, 3).map((a) => a.id)));
@@ -736,6 +841,19 @@ function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBa
                     </div>
                 )}
 
+                {/* Trial banner — test for 30 days, then upgrade to the paid version */}
+                {trial && (
+                    <div className="rounded-xl p-4 mb-6 flex items-center gap-3" style={{ border: '1px solid #efddc0', background: '#fff7ed' }}>
+                        <Icon name="time" style={{ color: '#b9842b' }} />
+                        <p className="text-sm flex-1" style={{ color: COLORS.text }}>
+                            {lang === 'da'
+                                ? <>Gratis prøveperiode · 30 dage tilbage. Opgradér for at beholde dette flow, når prøveperioden slutter.</>
+                                : <>Free trial · 30 days left. Upgrade to keep this flow running after the trial.</>}
+                        </p>
+                        <Button appearance="primary" onClick={onUpgrade}>{lang === 'da' ? 'Opgradér' : 'Upgrade'}</Button>
+                    </div>
+                )}
+
                 {/* Configuration / Activity tabs */}
                 <div className="flex items-center gap-7 mb-6" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     {([
@@ -767,7 +885,7 @@ function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBa
                 ) : (
                 <>
                 {/* Flow builder — a starter (trigger) and an ordered list of steps */}
-                <Section title={t('Build the flow')} sub={t('Pick what starts the flow, then add the steps Eva runs in order.')}>
+                <Section title={t('Flow steps')}>
                     {/* Starter */}
                     <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Starter')}</p>
                     <button
@@ -802,17 +920,25 @@ function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBa
                         </div>
                     )}
 
-                    {/* Steps */}
-                    <p className="text-xs font-semibold uppercase tracking-wide mt-5 mb-2" style={{ color: COLORS.textMuted }}>{t('Steps')}</p>
+                    {/* Steps — click a step to change its settings */}
+                    <div className="mt-4" />
                     <div className="flex flex-col gap-2">
                         {steps.map((s, i) => (
-                            <div key={s.id} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
+                            <div
+                                key={s.id}
+                                onClick={() => setSettingStep({ index: i, step: s })}
+                                className="flex items-center gap-3 rounded-xl p-3 cursor-pointer"
+                                style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                            >
                                 <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: s.capId ? '#f3f0fb' : '#f1f1f3', color: s.capId ? '#7c3aed' : '#52525b' }}>
                                     <Icon name={s.icon as never} />
                                 </span>
                                 <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
                                 {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
-                                <button onClick={() => removeStep(i)} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                <Icon name="settings" style={{ color: '#c4c4cc' }} />
+                                <button onClick={(e) => { e.stopPropagation(); removeStep(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                                     <Icon name="close" />
                                 </button>
                             </div>
@@ -918,6 +1044,171 @@ function FlowDetail({ skill, onBack, onEnable, installed }: { skill: Skill; onBa
                     onClose={() => setPicker(null)}
                 />
             )}
+            {settingStep && <StepSettings step={settingStep.step} onClose={() => setSettingStep(null)} />}
+        </div>
+    );
+}
+
+// ---- "Create New Flow" modal: start from scratch or from a template (with step preview + trial) ----
+function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { installed: Set<string>; onScratch: () => void; onStartTrial: (tpl: FlowTemplate) => void; onClose: () => void }) {
+    const { t, lang } = useLang();
+    const [sel, setSel] = useState<FlowTemplate | null>(null);
+    const partnerOf = (id?: string) => (id ? CAPABILITIES.find((c) => c.id === id) : undefined);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(840px, 94vw)', maxHeight: '88vh', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
+                <header className="flex items-center gap-2 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    {sel && (
+                        <button onClick={() => setSel(null)} className="rounded-md p-1 -ml-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                            <Icon name="arrow-left" />
+                        </button>
+                    )}
+                    <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Create New Flow')}</h2>
+                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                </header>
+
+                {sel ? (
+                    // ---- template preview ----
+                    (() => {
+                        const partner = partnerOf(sel.capId);
+                        const needsInstall = partner && !installed.has(partner.id);
+                        const starterDef = FLOW_STARTERS.find((s) => s.id === sel.starter);
+                        return (
+                            <>
+                                <div className="overflow-y-auto p-5">
+                                    <div className="flex items-start gap-3 mb-5">
+                                        <span className="flex items-center justify-center shrink-0 rounded-xl" style={{ width: 44, height: 44, background: '#f1f1f3', fontSize: 22 }}>{sel.emoji}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-lg font-semibold" style={{ color: COLORS.text }}>{t(sel.title)}</h3>
+                                                <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(sel.category)}</span>
+                                                {partner && <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partner.name}</span>}
+                                            </div>
+                                            <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>{t(sel.desc)}</p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Flow steps')}</p>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
+                                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 28, height: 28, background: '#ececed', color: '#52525b' }}><Icon name={(starterDef?.icon ?? 'time') as never} /></span>
+                                            <span className="text-sm" style={{ color: COLORS.text }}><b>{t('Starter')}:</b> {t(starterDef?.label ?? '')}</span>
+                                        </div>
+                                        {sel.steps.map((s) => (
+                                            <div key={s.id} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 28, height: 28, background: s.capId ? '#f3f0fb' : '#f1f1f3', color: s.capId ? '#7c3aed' : '#52525b' }}><Icon name={s.icon as never} /></span>
+                                                <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partnerOf(s.capId)?.name}</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {needsInstall && (
+                                        <p className="text-xs mt-3 flex items-center gap-1.5" style={{ color: '#7c3aed' }}>
+                                            <Icon name="connection-enable" /> {(lang === 'da' ? 'Inkluderer en prøveperiode af {p}-kapabiliteten.' : 'Includes a free trial of the {p} capability.').replace('{p}', partner!.name)}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>{lang === 'da' ? `Derefter ${sel.price} kr/md.` : `Then ${sel.price} kr/month`}</span>
+                                    <Button appearance="primary" onClick={() => onStartTrial(sel)}>{lang === 'da' ? 'Start 30-dages gratis prøve' : 'Start 30-day free trial'}</Button>
+                                </div>
+                            </>
+                        );
+                    })()
+                ) : (
+                    // ---- list: from scratch + templates ----
+                    <div className="overflow-y-auto p-5">
+                        <button
+                            onClick={onScratch}
+                            className="w-full flex items-center gap-3 rounded-xl p-4 mb-5 text-left"
+                            style={{ border: `1.5px dashed ${COLORS.cardBorder}`, background: '#fafafa' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a9b6cf')}
+                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
+                        >
+                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 36, height: 36, background: '#eef2ff', color: '#4456c7' }}><Icon name="circle-plus" /></span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Start from scratch')}</p>
+                                <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Build your own flow step by step.')}</p>
+                            </div>
+                            <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
+                        </button>
+
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Start from a template')}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {FLOW_TEMPLATES.map((tpl) => {
+                                const partner = partnerOf(tpl.capId);
+                                return (
+                                    <button key={tpl.id} onClick={() => setSel(tpl)} className="flex flex-col text-left rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, minHeight: 132 }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}>
+                                        <div className="flex items-start gap-2.5">
+                                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: '#f1f1f3', fontSize: 17 }}>{tpl.emoji}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{t(tpl.title)}</p>
+                                                <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(tpl.category)}</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs mt-2 leading-snug flex-1" style={{ color: COLORS.textMuted }}>{t(tpl.desc)}</p>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <span className="text-xs font-medium" style={{ color: COLORS.text }}>{lang === 'da' ? `${tpl.price} kr/md.` : `${tpl.price} kr/mo`}</span>
+                                            {partner && <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partner.name}</span>}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ---- Per-step settings (opened by clicking a step in the builder) ----
+function StepSettings({ step, onClose }: { step: FlowStep; onClose: () => void }) {
+    const { t } = useLang();
+    const [name, setName] = useState(t(step.label));
+    const [onFail, setOnFail] = useState('flag');
+    const [notify, setNotify] = useState(false);
+    const FAIL_OPTS = [
+        { v: 'stop', label: t('Stop the flow') },
+        { v: 'skip', label: t('Skip & continue') },
+        { v: 'flag', label: t('Flag for review') },
+    ];
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full anim-in" style={{ maxWidth: 460, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: step.capId ? '#f3f0fb' : '#f1f1f3', color: step.capId ? '#7c3aed' : '#52525b' }}>
+                            <Icon name={step.icon as never} />
+                        </span>
+                        <h2 className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Step settings')}</h2>
+                    </div>
+                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                </div>
+                <div className="px-5 py-4">
+                    <Field label={t('Step name')}>
+                        <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                    </Field>
+                    <Field label={t('If this step fails')}>
+                        <div className="flex gap-2">
+                            {FAIL_OPTS.map((o) => (
+                                <button key={o.v} onClick={() => setOnFail(o.v)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${onFail === o.v ? COLORS.text : COLORS.cardBorder}`, background: onFail === o.v ? COLORS.text : '#fff', color: onFail === o.v ? '#fff' : COLORS.text }}>{o.label}</button>
+                            ))}
+                        </div>
+                    </Field>
+                    <div className="mt-4">
+                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this step runs')} desc={t('Get a notification each time Eva completes this step.')} />
+                    </div>
+                </div>
+                <div className="px-5 py-4 flex justify-end gap-2" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                    <Button onClick={onClose}>{t('Cancel')}</Button>
+                    <Button appearance="primary" onClick={onClose}>{t('Save changes')}</Button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -1225,11 +1516,11 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
     );
 }
 
-function Section({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
+function Section({ title, sub, children }: { title: string; sub?: string; children: ReactNode }) {
     return (
         <div className="mb-7">
             <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{title}</h2>
-            <p className="text-sm mb-3" style={{ color: COLORS.textMuted }}>{sub}</p>
+            {sub ? <p className="text-sm mb-3" style={{ color: COLORS.textMuted }}>{sub}</p> : <div className="mb-3" />}
             {children}
         </div>
     );
