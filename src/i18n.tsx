@@ -158,6 +158,8 @@ const DA: Record<string, string> = {
     'Active flows': 'Aktive flows',
     'Clients covered': 'Klienter dækket',
     'Configure': 'Konfigurér',
+    'Your flows': 'Dine flows',
+    'No runs yet': 'Ingen kørsler endnu',
     'Ready to automate': 'Klar til at automatisere',
     'Add capability': 'Tilføj kapabilitet',
     'Match supplier payments': 'Match leverandørbetalinger',

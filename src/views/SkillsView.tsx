@@ -164,14 +164,16 @@ export default function AutomationsView({ skills, onEnable }: Props) {
 
                 {tab === 'flows' && (
                     <>
+                        <div className="mb-6"><PerfKpis /></div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Your flows')}</p>
                         {enabled.length === 0 ? (
                             <Card className="p-10 text-center">
                                 <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No flows set up yet. Start one from a template.')}</p>
                             </Card>
                         ) : (
-                            <div className="grid grid-cols-3 gap-4 pb-10">
+                            <div className="flex flex-col gap-3 pb-10">
                                 {enabled.map((s) => (
-                                    <FlowCard key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
+                                    <FlowRow key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
                                 ))}
                             </div>
                         )}
@@ -266,8 +268,18 @@ function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<s
     );
 }
 
-// ---- Performance tab ----
-function PerformanceView({ onSetUpFlow, onAddCapability }: { onSetUpFlow: () => void; onAddCapability: () => void }) {
+// Per-flow performance (keyed by skill id) — ties each flow to its own automation stats.
+const FLOW_PERF: Record<string, { actions: number; hours: number; pct: number }> = {
+    reconciliation: { actions: 612, hours: 71, pct: 94 },
+    reminders: { actions: 318, hours: 22, pct: 99 },
+    documents: { actions: 142, hours: 18, pct: 78 },
+    monitor: { actions: 96, hours: 24, pct: 61 },
+    'close-books': { actions: 24, hours: 4, pct: 70 },
+    anomalies: { actions: 48, hours: 9, pct: 42 },
+};
+
+// Headline KPI cards, shared by the Performance tab and the top of Flows.
+function PerfKpis() {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const kpis = [
@@ -277,18 +289,27 @@ function PerformanceView({ onSetUpFlow, onAddCapability }: { onSetUpFlow: () => 
         { value: `${PERF.reviewRate}%`, label: t('Flagged for review'), sub: t('needed your input'), accent: '#b9842b' },
     ];
     return (
+        <div className="grid grid-cols-4 gap-3">
+            {kpis.map((k) => (
+                <Card key={k.label} className="p-4">
+                    <p className="text-2xl font-semibold leading-none" style={{ color: k.accent }}>{k.value}</p>
+                    <p className="text-sm font-medium mt-2" style={{ color: COLORS.text }}>{k.label}</p>
+                    <p className="text-xs mt-0.5 leading-snug" style={{ color: COLORS.textMuted }}>{k.sub}</p>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
+// ---- Performance tab ----
+function PerformanceView({ onSetUpFlow, onAddCapability }: { onSetUpFlow: () => void; onAddCapability: () => void }) {
+    const { t, lang } = useLang();
+    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
+    return (
         <div className="pb-10">
 
             {/* headline KPIs */}
-            <div className="grid grid-cols-4 gap-3 mb-7">
-                {kpis.map((k) => (
-                    <Card key={k.label} className="p-4">
-                        <p className="text-2xl font-semibold leading-none" style={{ color: k.accent }}>{k.value}</p>
-                        <p className="text-sm font-medium mt-2" style={{ color: COLORS.text }}>{k.label}</p>
-                        <p className="text-xs mt-0.5 leading-snug" style={{ color: COLORS.textMuted }}>{k.sub}</p>
-                    </Card>
-                ))}
-            </div>
+            <div className="mb-7"><PerfKpis /></div>
 
             {/* breakdown by core job to be done */}
             <h2 className="text-base font-semibold mb-1" style={{ color: COLORS.text }}>{t('By job to be done')}</h2>
@@ -495,33 +516,34 @@ function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void
     );
 }
 
-function FlowCard({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
-    const { t } = useLang();
-    const locked = skill.state === 'locked';
+// Full-width flow row: icon, title, its own automation stat, status, open.
+function FlowRow({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
+    const { t, lang } = useLang();
+    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
+    const active = skill.state === 'active';
+    const p = FLOW_PERF[skill.id];
+    const perfLine = p
+        ? `${p.pct}% ${t('automated')} · ${nf(p.actions)} ${t('actions')} · ${p.hours} ${t('hrs')} ${t('saved')}`
+        : t('No runs yet');
     return (
-        <Card className="p-5 flex flex-col" hover onClick={onOpen} style={{ minHeight: 168 }}>
-            <div className="flex items-start gap-3">
-                <EmojiTile emoji={skill.emoji} size={30} />
-                <p className="text-sm font-semibold leading-snug flex-1" style={{ color: COLORS.text }}>{t(skill.title)}</p>
-                {locked && <Icon name="lock" style={{ color: '#a8a8b0' }} />}
-            </div>
-            <p className="text-sm mt-3 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(skill.description)}</p>
-            <div className="flex items-center justify-between mt-auto pt-4">
-                {locked ? (
-                    <>
-                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{`${t('From')} ${skill.price} DKK/${t('month')}`}</span>
-                        <span className="flex items-center gap-1 text-sm font-medium" style={{ color: COLORS.text }}>{t('Set up')} <Icon name="chevron-right" /></span>
-                    </>
-                ) : (
-                    <>
-                        <span className="text-sm" style={{ color: COLORS.textMuted }}>{t(skill.stat ?? '')}</span>
-                        <span className="flex items-center gap-1.5 text-sm" style={{ color: COLORS.text }}>
-                            <Dot color={skill.state === 'active' ? '#16a34a' : '#a8a8b0'} />
-                            {skill.state === 'active' ? t('Active') : t('Idle')}
+        <Card className="px-4 py-3.5 flex items-center gap-4" hover onClick={onOpen}>
+            <EmojiTile emoji={skill.emoji} size={36} />
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{t(skill.title)}</p>
+                <div className="flex items-center gap-2.5 mt-1">
+                    {p && (
+                        <span className="rounded-full" style={{ width: 64, height: 6, background: '#f1f1f3', display: 'inline-block', position: 'relative' }}>
+                            <span className="rounded-full" style={{ position: 'absolute', left: 0, top: 0, height: 6, width: `${p.pct}%`, background: p.pct >= 80 ? '#16a34a' : p.pct >= 60 ? '#6366f1' : '#b9842b' }} />
                         </span>
-                    </>
-                )}
+                    )}
+                    <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{perfLine}</p>
+                </div>
             </div>
+            <span className="flex items-center gap-1.5 text-sm shrink-0" style={{ color: active ? COLORS.text : COLORS.textMuted }}>
+                <Dot color={active ? '#16a34a' : '#a8a8b0'} />
+                {active ? t('Active') : t('Idle')}
+            </span>
+            <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
         </Card>
     );
 }
