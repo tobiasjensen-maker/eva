@@ -1388,7 +1388,7 @@ function AssistantBubble({
                                     <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t(sk.description)}</p>
                                     <div className="flex items-center gap-2 mt-3">
                                         <Button appearance="primary" onClick={() => onEnableSkill(sk.id)}>{lang === 'da' ? `Aktivér for ${sk.price} DKK/md.` : `Enable for ${sk.price} DKK/month`}</Button>
-                                        <Button onClick={() => onNavigate('skills')}>{t('View in Skills')}</Button>
+                                        <Button onClick={() => onNavigate('skills')}>{t('View in Automations')}</Button>
                                     </div>
                                 </div>
                             </div>
@@ -1662,8 +1662,8 @@ function WorkflowSuggestion({
         return (
             <div className="mt-3 anim-in">
                 <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm" style={{ background: '#e9f7ef', color: '#15803d' }}>
-                    <Icon name="circle-tick" /> {t('Skill created')}
-                    <button onClick={() => onNavigate('skills')} className="font-semibold underline" style={{ color: '#15803d' }}>{t('View in Skills')}</button>
+                    <Icon name="circle-tick" /> {t('Flow created')}
+                    <button onClick={() => onNavigate('skills')} className="font-semibold underline" style={{ color: '#15803d' }}>{t('View in Automations')}</button>
                 </span>
             </div>
         );
@@ -1672,9 +1672,9 @@ function WorkflowSuggestion({
     if (phase === 'form') {
         return (
             <div className="rounded-xl p-4 mt-3 anim-in" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
-                <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a skill from this action')}</p>
+                <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a flow from this action')}</p>
                 <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('Eva will run this for you on a schedule and flag anything notable to Review.')}</p>
-                <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Skill name')}</label>
+                <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Flow name')}</label>
                 <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -1704,7 +1704,7 @@ function WorkflowSuggestion({
                             setPhase('created');
                         }}
                     >
-                        <Icon name="ai-stars" /> {t('Create skill')}
+                        <Icon name="ai-stars" /> {t('Create flow')}
                     </Button>
                 </div>
             </div>

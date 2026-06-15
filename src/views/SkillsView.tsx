@@ -26,12 +26,65 @@ const SKILL_META: Record<string, { category: string; features: string[] }> = {
     anomalies: { category: 'Insights', features: ['Detects unusual transactions', 'Explains why they stand out', 'Suggests how to handle them'] },
 };
 
-export default function SkillsView({ skills, onEnable }: Props) {
+// ---- Skills tab: what Eva can do directly through the e-conomic APIs, grouped ----
+const ECONOMIC_SKILLS: { group: string; icon: string; skills: { name: string; desc: string }[] }[] = [
+    { group: 'Bookkeeping', icon: 'plus-minus', skills: [
+        { name: 'Read & search entries', desc: 'Look up booked entries, journals and account balances.' },
+        { name: 'Create & post journal entries', desc: 'Draft and book entries to the right accounts.' },
+        { name: 'Reconcile bank transactions', desc: 'Match imported bank lines to invoices and bills.' },
+        { name: 'Manage the chart of accounts', desc: 'Read accounts and apply posting rules.' },
+    ] },
+    { group: 'Invoicing & receivables', icon: 'document', skills: [
+        { name: 'Read invoices & customers', desc: 'Access open, paid and overdue invoices.' },
+        { name: 'Send payment reminders', desc: 'Issue reminders and log a note on each invoice.' },
+        { name: 'Create & send invoices', desc: 'Draft invoices and send them to customers.' },
+    ] },
+    { group: 'Suppliers & expenses', icon: 'transfer', skills: [
+        { name: 'Read bills & suppliers', desc: 'Access supplier bills and their payment status.' },
+        { name: 'Register supplier payments', desc: 'Match and book outgoing payments.' },
+    ] },
+    { group: 'Documents', icon: 'attach', skills: [
+        { name: 'Read & attach documents', desc: 'Pull receipts and attach them to the right entry.' },
+        { name: 'Request missing documents', desc: 'Ask clients for receipts and supplier invoices.' },
+        { name: 'OCR & extract receipt data', desc: 'Read totals, dates and VAT from scans.' },
+    ] },
+    { group: 'Reporting & VAT', icon: 'chart-bar', skills: [
+        { name: 'Generate P&L & balance', desc: 'Build financial statements for any period.' },
+        { name: 'Prepare VAT settlement', desc: 'Calculate VAT and prepare the SKAT filing.' },
+        { name: 'Run period & year-end close', desc: 'Reconcile control accounts and close the books.' },
+    ] },
+];
+
+// ---- Integrations tab: 3rd-party skills installable from e-conomic partners ----
+const PARTNER_INTEGRATIONS: { id: string; name: string; initials: string; color: string; category: string; desc: string; skills: string[] }[] = [
+    { id: 'likvido', name: 'Likvido', initials: 'L', color: '#1f9d6b', category: 'Receivables',
+        desc: 'Automated debtor management, reminders and debt collection.',
+        skills: ['Escalate overdue invoices to collection', 'Offer invoice financing', 'Reconcile Likvido payouts'] },
+    { id: 'budget123', name: 'Budget123', initials: 'B', color: '#3b6fe0', category: 'Planning',
+        desc: 'Budgeting, forecasting and liquidity planning on top of your books.',
+        skills: ['Build budgets & forecasts', 'Project liquidity', 'Track budget variance'] },
+    { id: 'creditro', name: 'Creditro', initials: 'C', color: '#7c3aed', category: 'Compliance',
+        desc: 'Automated KYC, AML and credit checks for client onboarding.',
+        skills: ['Run KYC & AML checks', 'Monitor credit ratings', 'Flag compliance risks'] },
+    { id: 'rackbeat', name: 'RackBeat', initials: 'R', color: '#e0782f', category: 'Inventory',
+        desc: 'Inventory and warehouse management synced with your ledger.',
+        skills: ['Sync inventory & stock levels', 'Create purchase orders', 'Book cost of goods sold'] },
+];
+
+const AUTO_TABS = [
+    { k: 'flows', label: 'Flows' },
+    { k: 'skills', label: 'Skills' },
+    { k: 'integrations', label: 'Integrations' },
+] as const;
+type AutoTab = (typeof AUTO_TABS)[number]['k'];
+
+export default function AutomationsView({ skills, onEnable }: Props) {
     const { t } = useLang();
+    const [tab, setTab] = useState<AutoTab>('flows');
     const [openId, setOpenId] = useState<string | null>(null);
     const [gallery, setGallery] = useState(false);
 
-    const skillTemplates: Template[] = skills
+    const flowTemplates: Template[] = skills
         .filter((s) => s.state === 'locked')
         .map((s) => ({
             id: s.id,
@@ -44,47 +97,172 @@ export default function SkillsView({ skills, onEnable }: Props) {
             features: SKILL_META[s.id]?.features ?? [],
         }));
 
-    const openSkill = openId ? skills.find((s) => s.id === openId) ?? null : null;
-    if (openSkill) {
-        return <SkillDetail skill={openSkill} onBack={() => setOpenId(null)} onEnable={() => onEnable(openSkill.id)} />;
+    const openFlow = openId ? skills.find((s) => s.id === openId) ?? null : null;
+    if (openFlow) {
+        return <FlowDetail skill={openFlow} onBack={() => setOpenId(null)} onEnable={() => onEnable(openFlow.id)} />;
     }
 
     const enabled = skills.filter((s) => s.state !== 'locked');
 
     return (
         <div className="h-full overflow-y-auto">
-            {/* Skills are bought for the practice, not per client — no scope pill here. */}
-            <PageHeader title={t('Skills')} showScope={false} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('Add new skill')}</Button>} />
+            {/* Automations are set up for the practice, not per client — no scope pill here. */}
+            <PageHeader
+                title={t('Automations')}
+                showScope={false}
+                right={tab === 'flows' ? <Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New flow')}</Button> : undefined}
+            />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
-                {enabled.length === 0 ? (
-                    <Card className="p-10 text-center">
-                        <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                            {t('No skills enabled yet. Browse the library to add one.')}
-                        </p>
-                    </Card>
-                ) : (
-                    <div className="grid grid-cols-3 gap-4 pb-10">
-                        {enabled.map((s) => (
-                            <SkillCard key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
-                        ))}
-                    </div>
+                {/* top-level tabs */}
+                <div className="flex items-center gap-7 mb-6" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    {AUTO_TABS.map((tb) => {
+                        const on = tab === tb.k;
+                        return (
+                            <button
+                                key={tb.k}
+                                onClick={() => setTab(tb.k)}
+                                className="relative"
+                                style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}
+                            >
+                                {t(tb.label)}
+                                {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {tab === 'flows' && (
+                    <>
+                        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('A flow is a job Eva runs for you — when to act, how autonomously, and which skills it uses.')}</p>
+                        {enabled.length === 0 ? (
+                            <Card className="p-10 text-center">
+                                <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No flows set up yet. Start one from a template.')}</p>
+                            </Card>
+                        ) : (
+                            <div className="grid grid-cols-3 gap-4 pb-10">
+                                {enabled.map((s) => (
+                                    <FlowCard key={s.id} skill={s} onOpen={() => setOpenId(s.id)} />
+                                ))}
+                            </div>
+                        )}
+                    </>
                 )}
+
+                {tab === 'skills' && <SkillsCatalog />}
+                {tab === 'integrations' && <IntegrationsMarket />}
             </div>
 
             {gallery && (
                 <TemplateGallery
                     kind="skill"
-                    templates={skillTemplates}
+                    templates={flowTemplates}
                     categories={SKILL_CATEGORIES}
                     onClose={() => setGallery(false)}
-                    onEnableSkill={(t) => onEnable(t.id)}
+                    onEnableSkill={(tpl) => onEnable(tpl.id)}
                 />
             )}
         </div>
     );
 }
 
-function SkillCard({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
+// ---- Skills tab — grouped e-conomic API capabilities ----
+function SkillsCatalog() {
+    const { t } = useLang();
+    const [off, setOff] = useState<Set<string>>(new Set());
+    const toggle = (name: string) =>
+        setOff((prev) => {
+            const next = new Set(prev);
+            if (next.has(name)) next.delete(name);
+            else next.add(name);
+            return next;
+        });
+    return (
+        <div className="pb-10">
+            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('What Eva can do directly with your e-conomic data. Turn a skill off to put it out of reach.')}</p>
+            <div className="flex flex-col gap-6">
+                {ECONOMIC_SKILLS.map((g) => (
+                    <div key={g.group}>
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: '#f1f1f3', color: '#52525b' }}>
+                                <Icon name={g.icon as never} />
+                            </span>
+                            <h2 className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(g.group)}</h2>
+                            <span className="text-xs" style={{ color: COLORS.textMuted }}>· {g.skills.length}</span>
+                        </div>
+                        <Card className="overflow-hidden">
+                            {g.skills.map((s, i) => {
+                                const on = !off.has(s.name);
+                                return (
+                                    <div key={s.name} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: i ? `1px solid ${COLORS.cardBorder}` : 'none' }}>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(s.name)}</p>
+                                            <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(s.desc)}</p>
+                                        </div>
+                                        <span className="text-xs font-medium shrink-0" style={{ color: on ? '#15803d' : COLORS.textMuted }}>{on ? t('On') : t('Off')}</span>
+                                        <Switch checked={on} onChange={() => toggle(s.name)} />
+                                    </div>
+                                );
+                            })}
+                        </Card>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ---- Integrations tab — marketplace of installable partner skills ----
+function IntegrationsMarket() {
+    const { t } = useLang();
+    const [installed, setInstalled] = useState<Set<string>>(new Set());
+    return (
+        <div className="pb-10">
+            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Extend Eva with skills from e-conomic partners. Once installed, a partner’s skills are available to your flows.')}</p>
+            <div className="grid grid-cols-2 gap-4">
+                {PARTNER_INTEGRATIONS.map((p) => {
+                    const on = installed.has(p.id);
+                    return (
+                        <Card key={p.id} className="p-5 flex flex-col" style={{ minHeight: 232 }}>
+                            <div className="flex items-start gap-3">
+                                <span className="flex items-center justify-center shrink-0 rounded-xl text-white font-semibold" style={{ width: 40, height: 40, background: p.color, fontSize: 16 }}>{p.initials}</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{p.name}</p>
+                                        <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(p.category)}</span>
+                                    </div>
+                                    <p className="text-sm mt-1 leading-relaxed" style={{ color: COLORS.textMuted }}>{t(p.desc)}</p>
+                                </div>
+                            </div>
+                            <div className="mt-3.5">
+                                <p className="text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('Adds these skills')}</p>
+                                <div className="flex flex-col gap-1.5">
+                                    {p.skills.map((sk) => (
+                                        <div key={sk} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
+                                            <Icon name="circle-tick" style={{ color: '#16a34a' }} /> {t(sk)}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="mt-auto pt-4">
+                                {on ? (
+                                    <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: '#15803d' }}>
+                                        <Icon name="circle-tick" /> {t('Installed')}
+                                    </span>
+                                ) : (
+                                    <Button appearance="primary" onClick={() => setInstalled((prev) => new Set(prev).add(p.id))}>
+                                        <Icon name="circle-plus" /> {t('Install')}
+                                    </Button>
+                                )}
+                            </div>
+                        </Card>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function FlowCard({ skill, onOpen }: { skill: Skill; onOpen: () => void }) {
     const { t } = useLang();
     const locked = skill.state === 'locked';
     return (
@@ -299,7 +477,7 @@ function dayLabel(daysAgo: number, locale = 'en-GB'): string {
     return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => void; onEnable: () => void }) {
+function FlowDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => void; onEnable: () => void }) {
     const { t, lang } = useLang();
     const locked = skill.state === 'locked';
     const actions = SKILL_META[skill.id]?.features ?? [];
@@ -314,10 +492,21 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
     const [notify, setNotify] = useState(cfg.notify);
     const [guardrail, setGuardrail] = useState(cfg.guardrail);
     const [threshold, setThreshold] = useState(cfg.threshold ?? '10.000');
-    // The skill is bought once for the practice; it can run on all clients or a subset.
+    // Each step is a block that can be toggled out of the flow.
+    const [blocksOff, setBlocksOff] = useState<Set<number>>(new Set());
+    // The flow is set up once for the practice; it can run on all clients or a subset.
     const [clientMode, setClientMode] = useState<'all' | 'selected'>('all');
     const [clientSel, setClientSel] = useState<Set<string>>(() => new Set(AGREEMENTS.slice(0, 3).map((a) => a.id)));
     const [testOpen, setTestOpen] = useState(false);
+
+    function toggleBlock(i: number) {
+        setBlocksOff((prev) => {
+            const next = new Set(prev);
+            if (next.has(i)) next.delete(i);
+            else next.add(i);
+            return next;
+        });
+    }
 
     function toggleClient(id: string) {
         setClientSel((prev) => {
@@ -334,7 +523,7 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
             <PageHeader
                 title={t(skill.title)}
                 onBack={onBack}
-                backLabel={t('Skills')}
+                backLabel={t('Flows')}
                 showScope={false}
                 right={!locked ? (
                     <div className="flex items-center gap-2">
@@ -355,8 +544,8 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                         <Icon name="lock" style={{ color: '#8b46d6' }} />
                         <p className="text-sm flex-1" style={{ color: COLORS.text }}>
                             {lang === 'da'
-                                ? <>Denne handling er ikke aktiveret endnu. Konfigurér den nedenfor, og aktivér den for hele din praksis for <b>{skill.price} DKK/md.</b></>
-                                : <>This skill isn’t enabled yet. Configure it below, then enable it for your whole practice for <b>{skill.price} DKK/month</b>.</>}
+                                ? <>Dette flow er ikke sat op endnu. Konfigurér det nedenfor, og aktivér det for hele din praksis for <b>{skill.price} DKK/md.</b></>
+                                : <>This flow isn’t set up yet. Configure it below, then enable it for your whole practice for <b>{skill.price} DKK/month</b>.</>}
                         </p>
                     </div>
                 )}
@@ -391,25 +580,33 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                     <ActivityTab skill={skill} locked={locked} />
                 ) : (
                 <>
-                {/* What's done with this skill */}
+                {/* Blocks — the skills this flow strings together; toggle any off to skip it */}
                 {actions.length > 0 && (
-                    <Section title={t("What's done with this skill")} sub={t('These steps run automatically each time the skill takes effect.')}>
-                        <div className="rounded-xl p-4 flex flex-col gap-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                            {actions.map((a, i) => (
-                                <div key={a} className="flex items-start gap-3">
-                                    <span className="flex items-center justify-center shrink-0 rounded-full text-xs font-semibold" style={{ width: 22, height: 22, background: '#ececed', color: COLORS.text }}>{i + 1}</span>
-                                    <span className="text-sm" style={{ color: COLORS.text }}>{t(a)}</span>
-                                </div>
-                            ))}
+                    <Section title={t('Blocks')} sub={t('The skills this flow runs in order. Turn a block off to skip it.')}>
+                        <div className="flex flex-col gap-2">
+                            {actions.map((a, i) => {
+                                const on = !blocksOff.has(i);
+                                return (
+                                    <div
+                                        key={a}
+                                        className="flex items-center gap-3 rounded-xl p-3"
+                                        style={{ border: `1px solid ${COLORS.cardBorder}`, background: on ? '#fff' : '#fafafa' }}
+                                    >
+                                        <span className="flex items-center justify-center shrink-0 rounded-full text-xs font-semibold" style={{ width: 22, height: 22, background: on ? '#ececed' : '#f1f1f3', color: on ? COLORS.text : '#a8a8b0' }}>{i + 1}</span>
+                                        <span className="flex-1 text-sm" style={{ color: on ? COLORS.text : '#a8a8b0', textDecoration: on ? 'none' : 'line-through' }}>{t(a)}</span>
+                                        <Switch checked={on} onChange={() => toggleBlock(i)} />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </Section>
                 )}
 
                 {/* Applies to — the skill is practice-level; choose where it runs */}
-                <Section title={t('Applies to')} sub={t('This skill is enabled for your whole practice — choose which clients it runs on.')}>
+                <Section title={t('Applies to')} sub={t('This flow runs across your whole practice — choose which clients it acts on.')}>
                     <div className="grid grid-cols-2 gap-3">
                         <OptionCard selected={clientMode === 'all'} icon="contacts" title={t('All clients')} desc={t('Runs across every client agreement, including new ones.')} onClick={() => setClientMode('all')} />
-                        <OptionCard selected={clientMode === 'selected'} icon="person" title={t('Selected clients')} desc={t('Pick the agreements this skill should work on.')} onClick={() => setClientMode('selected')} />
+                        <OptionCard selected={clientMode === 'selected'} icon="person" title={t('Selected clients')} desc={t('Pick the agreements this flow should work on.')} onClick={() => setClientMode('selected')} />
                     </div>
                     {clientMode === 'selected' && (
                         <div className="flex flex-wrap gap-2 mt-3">
@@ -436,7 +633,7 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                 </Section>
 
                 {/* Trigger */}
-                <Section title={t('Trigger')} sub={t('Decide what kicks this skill off.')}>
+                <Section title={t('Trigger')} sub={t('Decide what kicks this flow off.')}>
                     <div className="grid grid-cols-2 gap-3">
                         {TRIGGERS.map((tr) => (
                             <OptionCard key={tr.key} selected={trigger === tr.key} icon={tr.icon} title={t(tr.title)} desc={t(tr.desc)} onClick={() => setTrigger(tr.key)} />
@@ -468,7 +665,7 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                 </Section>
 
                 {/* Autonomy */}
-                <Section title={t('Level of autonomy')} sub={t('Decide how much the skill can do on its own.')}>
+                <Section title={t('Level of autonomy')} sub={t('Decide how much the flow can do on its own.')}>
                     <div className="flex flex-col gap-3">
                         {AUTONOMY.map((a) => (
                             <OptionCard key={a.key} selected={autonomy === a.key} icon={a.icon} title={t(a.title)} desc={t(a.desc)} onClick={() => setAutonomy(a.key)} wide />
@@ -493,7 +690,7 @@ function SkillDetail({ skill, onBack, onEnable }: { skill: Skill; onBack: () => 
                                 </div>
                             )}
                         </ToggleRow>
-                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this skill acts')} desc={t('Get a notification and a Review entry each time it runs.')} />
+                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this flow acts')} desc={t('Get a notification and a Review entry each time it runs.')} />
                     </div>
                 </Section>
 
@@ -548,7 +745,7 @@ function TestRunModal({ skill, onClose }: { skill: Skill; onClose: () => void })
                 {phase === 'intro' && (
                     <>
                         <p className="text-sm leading-relaxed mb-4" style={{ color: COLORS.text }}>
-                            This will run the skill against your data from the <b>past 30 days</b>. It's a dry run — nothing is booked, sent or changed. You'll see exactly what the skill would do, so you can be sure it works as intended.
+                            This will run the flow against your data from the <b>past 30 days</b>. It's a dry run — nothing is booked, sent or changed. You'll see exactly what the flow would do, so you can be sure it works as intended.
                         </p>
                         <div className="flex justify-end gap-2">
                             <Button onClick={onClose}>Cancel</Button>
@@ -606,7 +803,7 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
         return (
             <Card className="p-10 text-center mb-10">
                 <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                    {locked ? t('No activity yet — enable this skill to let Eva start working.') : t('No activity recorded for this skill yet.')}
+                    {locked ? t('No activity yet — enable this flow to let Eva start working.') : t('No activity recorded for this flow yet.')}
                 </p>
             </Card>
         );

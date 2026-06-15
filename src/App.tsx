@@ -31,7 +31,7 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Review', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
-    { id: 'skills', label: 'Skills', Icon: SkillsIcon },
+    { id: 'skills', label: 'Automations', Icon: SkillsIcon },
     { id: 'spaces', label: 'Artifacts', Icon: SpacesIcon },
 ];
 
@@ -137,10 +137,10 @@ export default function App() {
         const s = q.toLowerCase();
         const active = skills.filter((x) => x.state === 'active').length;
         const da = lang === 'da';
-        if (/which|enable|recommend|should|next|hvilke|aktiver|anbefal/.test(s))
+        if (/which|enable|recommend|should|next|flow|hvilke|aktiver|anbefal/.test(s))
             return da
-                ? `Du har ${active} aktive handlinger. Ud fra dine bøger ville jeg aktivere “Indsaml manglende bilag” og “Afslut bøgerne” som de næste — de sparer mest manuelt arbejde.`
-                : `You have ${active} skills active. Based on your books I'd enable “Collect missing documents” and “Close the books” next — they'd save the most manual work.`;
+                ? `Du har ${active} aktive flows. Ud fra dine bøger ville jeg sætte “Indsaml manglende bilag” og “Afslut bøgerne” op som de næste — de sparer mest manuelt arbejde.`
+                : `You have ${active} flows running. Based on your books I'd set up “Collect missing documents” and “Close the books” next — they'd save the most manual work.`;
         if (/reconcil|bank|afstem/.test(s))
             return da
                 ? 'Bankafstemning matcher ind- og udbetalinger med fakturaer og regninger og bogfører dem på den rigtige konto — du gennemgår kun det, der har lav sikkerhed.'
@@ -192,9 +192,9 @@ export default function App() {
               }
             : view === 'skills'
             ? {
-                  subtitle: 'skills assistant',
-                  intro: "I'm Eva. I can help you pick the right skills, explain what each automates, or set one up. What are you trying to automate?",
-                  chips: ['Which skills should I enable?', 'What does reconciliation automate?', 'Help me set up reminders'],
+                  subtitle: 'automations assistant',
+                  intro: "I'm Eva. I can help you set up a flow, explain what each one does, or show what I can do with your data and partner integrations. What are you trying to automate?",
+                  chips: ['Which flows should I set up?', 'What does reconciliation automate?', 'Help me set up reminders'],
                   respond: skillsAnswer,
               }
             : view === 'spaces'
@@ -246,7 +246,7 @@ export default function App() {
             state: 'active',
             stat: t('Just created'),
         }]);
-        toast.success(lang === 'da' ? `Handling “${title}” oprettet` : `Created skill “${title}”`);
+        toast.success(lang === 'da' ? `Flow “${title}” oprettet` : `Created flow “${title}”`);
     }
 
     function addSpace(title: string, description: string) {
