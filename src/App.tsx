@@ -521,7 +521,7 @@ export default function App() {
                         onSelectClient={applyScope}
                     />
                 )}
-                {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} pro={insightsPro} onUpgrade={upgradeInsights} />}
+                {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} />}
                 {view === 'activity' && (
                     <ActivityView
                         entries={activity}

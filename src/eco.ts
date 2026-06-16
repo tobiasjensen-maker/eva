@@ -51,6 +51,7 @@ export interface EcoInvoice {
     customerNumber?: number;
     recipientName: string;
     grossAmount: number;
+    netAmount: number; // ex-VAT
     remainder?: number; // outstanding amount (booked only)
     currency: string;
 }
@@ -74,6 +75,23 @@ export async function getCustomers(): Promise<EcoCustomer[]> {
     }));
 }
 
+export interface EcoAccount {
+    accountNumber: number;
+    name: string;
+    accountType: string; // 'profitAndLoss' | 'status' | 'heading' | …
+    balance: number;
+}
+
+export async function getAccounts(): Promise<EcoAccount[]> {
+    const data = await ecoFetch<Paged<Record<string, unknown>>>('/accounts?pagesize=1000');
+    return (data.collection ?? []).map((a) => ({
+        accountNumber: a.accountNumber as number,
+        name: (a.name as string) ?? '—',
+        accountType: (a.accountType as string) ?? '',
+        balance: (a.balance as number) ?? 0,
+    }));
+}
+
 export async function getInvoices(): Promise<EcoInvoice[]> {
     const [booked, drafts] = await Promise.all([
         ecoFetch<Paged<Record<string, any>>>('/invoices/booked?pagesize=1000').catch(() => ({ collection: [] })),
@@ -87,6 +105,7 @@ export async function getInvoices(): Promise<EcoInvoice[]> {
         customerNumber: i.customer?.customerNumber,
         recipientName: i.recipient?.name ?? '—',
         grossAmount: i.grossAmount ?? 0,
+        netAmount: i.netAmount ?? 0,
         remainder: i.remainder,
         currency: i.currency ?? 'DKK',
     }));
@@ -98,6 +117,7 @@ export async function getInvoices(): Promise<EcoInvoice[]> {
         customerNumber: i.customer?.customerNumber,
         recipientName: i.recipient?.name ?? '—',
         grossAmount: i.grossAmount ?? 0,
+        netAmount: i.netAmount ?? 0,
         currency: i.currency ?? 'DKK',
     }));
     return [...b, ...d];

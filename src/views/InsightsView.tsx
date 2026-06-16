@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
 import { Card, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
+import { getAccounts, getCustomers, getInvoices } from '../eco';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
 interface Props {
     scope?: string;
     scopeName?: string;
+    live?: boolean; // true when the connected e-conomic agreement is the active scope
     pro: boolean;
     onUpgrade: () => void;
 }
@@ -18,6 +20,7 @@ const MONTHS12 = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar',
 
 interface Profile {
     monthly: number[];
+    monthLabels?: string[]; // overrides the fixed fiscal MONTHS12 labels (used for live data)
     margin: number;
     net: number;
     marginDelta: string;
@@ -144,6 +147,7 @@ interface PeriodData {
 
 function getPeriodData(profile: Profile, periodKey: string, t: (s: string) => string = (s) => s): PeriodData {
     const m = profile.monthly;
+    const labels = profile.monthLabels ?? MONTHS12;
     let revenue: number;
     let revDelta: string;
     let chart: { month: string; revenue: number }[];
@@ -157,16 +161,16 @@ function getPeriodData(profile: Profile, periodKey: string, t: (s: string) => st
         const w = m.slice(9, 12);
         revenue = sum(w);
         revDelta = pct(deltaPct(revenue, sum(m.slice(6, 9))));
-        chart = w.map((v, i) => ({ month: MONTHS12[9 + i], revenue: v }));
+        chart = w.map((v, i) => ({ month: labels[9 + i], revenue: v }));
     } else if (periodKey === '6m') {
         const w = m.slice(6, 12);
         revenue = sum(w);
         revDelta = pct(deltaPct(revenue, sum(m.slice(0, 6))));
-        chart = w.map((v, i) => ({ month: MONTHS12[6 + i], revenue: v }));
+        chart = w.map((v, i) => ({ month: labels[6 + i], revenue: v }));
     } else {
         revenue = sum(m);
         revDelta = profile.yoy;
-        chart = m.map((v, i) => ({ month: MONTHS12[i], revenue: v }));
+        chart = m.map((v, i) => ({ month: labels[i], revenue: v }));
     }
 
     const periodLabel = PERIODS.find((p) => p.key === periodKey)!.label;
@@ -286,12 +290,91 @@ function renderPremium(key: string, p: Profile, t: (s: string) => string = (s) =
     );
 }
 
-export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', pro, onUpgrade }: Props) {
+// ---- Live insights, computed from the connected e-conomic agreement ----
+interface LiveCard { label: string; icon: string; value: string; delta: string; positive: boolean }
+interface LiveInsights { chartProfile: Profile; cards: LiveCard[] }
+
+function kr(amount: number) {
+    try {
+        return new Intl.NumberFormat('da-DK', { style: 'currency', currency: 'DKK', maximumFractionDigits: 0 }).format(amount);
+    } catch {
+        return `${Math.round(amount).toLocaleString('da-DK')} kr`;
+    }
+}
+
+// Builds the live overview cards + revenue trend from real invoices, accounts and customers.
+function useLiveInsights(enabled: boolean): LiveInsights | null | 'loading' {
+    const [state, setState] = useState<LiveInsights | null | 'loading'>(enabled ? 'loading' : null);
+    useEffect(() => {
+        if (!enabled) { setState(null); return; }
+        let alive = true;
+        setState('loading');
+        Promise.all([getInvoices(), getAccounts(), getCustomers()])
+            .then(([invoices, accounts, customers]) => {
+                if (!alive) return;
+                const now = new Date();
+                // 24 trailing month buckets (YYYY-M) of booked-invoice net revenue.
+                const keys: string[] = [];
+                const labels: string[] = [];
+                for (let i = 23; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    keys.push(`${d.getFullYear()}-${d.getMonth()}`);
+                    labels.push(d.toLocaleDateString('en', { month: 'short' }));
+                }
+                const byMonth: Record<string, number> = {};
+                invoices.filter((iv) => iv.kind === 'booked').forEach((iv) => {
+                    const d = new Date(iv.date);
+                    if (isNaN(d.getTime())) return;
+                    const k = `${d.getFullYear()}-${d.getMonth()}`;
+                    byMonth[k] = (byMonth[k] ?? 0) + (iv.netAmount || 0);
+                });
+                const series = keys.map((k) => byMonth[k] ?? 0); // kr per month, 24 entries
+                const last12 = series.slice(12);
+                const prev12 = series.slice(0, 12);
+                const rev12 = last12.reduce((a, b) => a + b, 0);
+                const prevSum = prev12.reduce((a, b) => a + b, 0);
+                const yoyPct = prevSum > 0 ? Math.round(((rev12 - prevSum) / prevSum) * 100) : null;
+                const yoy = yoyPct === null ? '—' : `${yoyPct >= 0 ? '+' : ''}${yoyPct}%`;
+
+                // Net result (YTD): P&L revenue accounts are credit (negative), costs positive.
+                const netResult = -accounts.filter((a) => a.accountType === 'profitAndLoss').reduce((s, a) => s + (a.balance || 0), 0);
+                // Receivables / overdue from customers + invoices.
+                const receivables = customers.reduce((s, c) => s + (c.balance || 0), 0);
+                const withBalance = customers.filter((c) => (c.balance || 0) > 0).length;
+                const booked = invoices.filter((iv) => iv.kind === 'booked');
+                const overdueInv = booked.filter((iv) => (iv.remainder ?? 0) > 0 && iv.dueDate && new Date(iv.dueDate) < now);
+                const overdueSum = overdueInv.reduce((s, iv) => s + (iv.remainder || 0), 0);
+
+                const chartProfile: Profile = {
+                    ...PROFILES.portfolio,
+                    monthly: last12.map((v) => Math.round(v / 1000)), // k DKK
+                    monthLabels: labels.slice(12),
+                    yoy,
+                };
+                const cards: LiveCard[] = [
+                    { label: 'Revenue', icon: 'chart-bar', value: kr(rev12), delta: `${yoy} YoY`, positive: !yoy.startsWith('-') },
+                    { label: 'Result (YTD)', icon: 'chart-pie', value: kr(netResult), delta: netResult >= 0 ? 'Profit' : 'Loss', positive: netResult >= 0 },
+                    { label: 'Receivables', icon: 'wallet', value: kr(receivables), delta: `${withBalance} customers`, positive: true },
+                    { label: 'Overdue receivables', icon: 'circle-warning', value: kr(overdueSum), delta: `${overdueInv.length} invoices`, positive: false },
+                ];
+                setState({ chartProfile, cards });
+            })
+            .catch(() => alive && setState(null));
+        return () => { alive = false; };
+    }, [enabled]);
+    return state;
+}
+
+export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', live = false, pro, onUpgrade }: Props) {
     const { t, lang } = useLang();
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
+    const liveData = useLiveInsights(live);
+    // Mock profile drives the (blurred) Deep-analysis section; live data, when present, drives the overview + chart.
     const profile = PROFILES[scope] ?? PROFILES.portfolio;
+    const chartProfile = liveData && liveData !== 'loading' ? liveData.chartProfile : profile;
     const [period, setPeriod] = useState('6m');
-    const pd = getPeriodData(profile, period, t);
+    const pd = getPeriodData(chartProfile, period, t);
+    const liveLoading = liveData === 'loading';
 
     return (
         <div className="h-full overflow-y-auto">
@@ -316,34 +399,49 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                     )}
 
                     {/* basic insights — always visible (free preview) */}
-                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Overview')}</p>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        {KPI_META.map((k, i) => {
-                            const data = pd.kpis[i];
-                            return (
-                                <Card key={k.label} className="p-4">
-                                    <div className="flex items-start justify-between">
-                                        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', color: '#52525b' }}>
-                                            <Icon name={k.icon as never} />
-                                        </span>
-                                        <span className="text-xs font-medium" style={{ color: data.positive ? '#2f7d54' : '#b9842b' }}>{t(data.delta)}</span>
-                                    </div>
-                                    <p className="text-xl font-semibold mt-2.5" style={{ color: COLORS.text }}>{data.value}</p>
-                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(k.label)}</p>
-                                </Card>
-                            );
-                        })}
-                    </div>
-
-                    <Card className="p-5 mb-7">
-                        <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('Revenue trend')}</p>
-                        <p className="text-xs mb-4" style={{ color: COLORS.textMuted }}>{pd.chartSub}</p>
-                        <div className="va-chart" style={{ width: '100%', maxWidth: 760 }}>
-                            <BarChart data={pd.chart} dataKey="month" showYAxis yAxisTickFormatter={(v) => `${(v as number) / 1000}M`} tooltipTitle={t('Revenue')}>
-                                <BarChart.Bar dataKey="revenue" label={t('Revenue')} color="orange" formatter={(v) => `${v}k DKK`} />
-                            </BarChart>
+                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5 flex items-center gap-2" style={{ color: COLORS.textMuted }}>
+                        {t('Overview')}
+                        {live && !liveLoading && liveData && (
+                            <span className="inline-flex items-center gap-1 normal-case tracking-normal" style={{ color: '#2f7d54' }}>
+                                <span className="rounded-full" style={{ width: 6, height: 6, background: '#22c55e' }} /> {t('Live · e-conomic')}
+                            </span>
+                        )}
+                    </p>
+                    {liveLoading ? (
+                        <div className="flex items-center gap-2 py-12 justify-center text-sm mb-4" style={{ color: COLORS.textMuted }}>
+                            <Icon name="refresh" className="animate-spin" /> {t('Loading from e-conomic…')}
                         </div>
-                    </Card>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                {(liveData
+                                    ? liveData.cards
+                                    : KPI_META.map((k, i) => ({ label: k.label, icon: k.icon, value: pd.kpis[i].value, delta: pd.kpis[i].delta, positive: pd.kpis[i].positive }))
+                                ).map((c) => (
+                                    <Card key={c.label} className="p-4">
+                                        <div className="flex items-start justify-between">
+                                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', color: '#52525b' }}>
+                                                <Icon name={c.icon as never} />
+                                            </span>
+                                            <span className="text-xs font-medium" style={{ color: c.positive ? '#2f7d54' : '#b9842b' }}>{t(c.delta)}</span>
+                                        </div>
+                                        <p className="text-xl font-semibold mt-2.5" style={{ color: COLORS.text }}>{c.value}</p>
+                                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(c.label)}</p>
+                                    </Card>
+                                ))}
+                            </div>
+
+                            <Card className="p-5 mb-7">
+                                <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('Revenue trend')}</p>
+                                <p className="text-xs mb-4" style={{ color: COLORS.textMuted }}>{pd.chartSub}</p>
+                                <div className="va-chart" style={{ width: '100%', maxWidth: 760 }}>
+                                    <BarChart data={pd.chart} dataKey="month" showYAxis yAxisTickFormatter={(v) => `${(v as number) / 1000}M`} tooltipTitle={t('Revenue')}>
+                                        <BarChart.Bar dataKey="revenue" label={t('Revenue')} color="orange" formatter={(v) => `${v}k DKK`} />
+                                    </BarChart>
+                                </div>
+                            </Card>
+                        </>
+                    )}
 
                     {/* premium insights */}
                     <div className="flex items-center justify-between mb-2.5">
