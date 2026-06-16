@@ -36,12 +36,24 @@ export interface EvaConfig {
 
 // Build the config posted into the island iframe. userId scopes the Durable Object
 // (one chat thread per connected agreement).
+// A stable, per-browser id so we don't all share (and wedge) one "prototype"
+// Assistant Durable Object. Resets only if localStorage is cleared.
+function browserUid(): string {
+    try {
+        let id = localStorage.getItem('va-eva-uid');
+        if (!id) { id = `u-${Math.random().toString(36).slice(2, 10)}`; localStorage.setItem('va-eva-uid', id); }
+        return id;
+    } catch {
+        return `u-${Math.random().toString(36).slice(2, 10)}`;
+    }
+}
+
 export function evaConfig(ctx: { agreementNumber?: number; companyName?: string; page?: string }): EvaConfig {
     return {
         token: evaToken(),
         host: EVA_HOST,
         agentName: EVA_AGENT,
-        userId: ctx.agreementNumber ? `agreement-${ctx.agreementNumber}` : 'prototype',
+        userId: ctx.agreementNumber ? `agreement-${ctx.agreementNumber}` : browserUid(),
         context: {
             agreementNumber: ctx.agreementNumber,
             companyName: ctx.companyName,
