@@ -274,8 +274,26 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
         ] },
 ];
 
-interface LocalFlow { skill: Skill; seed: { starter: string; conditions: string[]; steps: FlowStep[] } }
+interface LocalFlow { skill: Skill; seed: { starter: string; conditions: string[]; steps: FlowStep[] }; capId?: string }
 let flowSeq = 100;
+
+// Build a flow (skill + seed) from a template.
+function flowFromTemplate(tpl: FlowTemplate, id: string, stat: string): LocalFlow {
+    return {
+        skill: { id, title: tpl.title, description: tpl.desc, emoji: tpl.emoji, color: '#7c6cf6', state: 'active', stat },
+        seed: { starter: tpl.starter, conditions: tpl.conditions ?? [], steps: tpl.steps },
+        capId: tpl.capId,
+    };
+}
+
+// Doc-based flows that ship already installed and running (keep their template ids so perf maps).
+const PREINSTALLED_FLOW_IDS = ['t-voucher', 't-recon', 't-supplier', 't-vatfile'];
+function preinstalledFlows(): LocalFlow[] {
+    return PREINSTALLED_FLOW_IDS
+        .map((id) => FLOW_TEMPLATES.find((tpl) => tpl.id === id))
+        .filter((tpl): tpl is FlowTemplate => !!tpl)
+        .map((tpl) => flowFromTemplate(tpl, tpl.id, 'Active'));
+}
 
 const AUTO_TABS = [
     { k: 'flows', label: 'Flows' },
@@ -292,12 +310,16 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     const [installedCaps, setInstalledCaps] = useState<Set<string>>(new Set());
     const [capGallery, setCapGallery] = useState(false);
     const [openCapId, setOpenCapId] = useState<string | null>(null);
-    // Flows created in this session (from scratch or a template), plus which are on trial.
-    const [localFlows, setLocalFlows] = useState<LocalFlow[]>([]);
+    // Installed flows: the doc-based pre-installed set, plus anything created/trialled this session.
+    const [localFlows, setLocalFlows] = useState<LocalFlow[]>(() => preinstalledFlows());
     const [trials, setTrials] = useState<Set<string>>(new Set());
 
-    const enabled = skills.filter((s) => s.state !== 'locked');
-    const allFlows = [...enabled, ...localFlows.map((f) => f.skill)];
+    // Flows created from chat ("Automate this") arrive as custom-* skills on the App.
+    const customFlows: LocalFlow[] = skills
+        .filter((s) => s.id.startsWith('custom-') && s.state !== 'locked')
+        .map((s) => ({ skill: s, seed: { starter: 'schedule', conditions: [], steps: [] } }));
+    const flows = [...localFlows, ...customFlows];
+    const allFlows = flows.map((f) => f.skill);
 
     function createScratch() {
         const id = `flow-${flowSeq++}`;
@@ -308,8 +330,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     }
     function startTrial(tpl: FlowTemplate) {
         const id = `flow-${flowSeq++}`;
-        const skill: Skill = { id, title: tpl.title, description: tpl.desc, emoji: tpl.emoji, color: '#7c6cf6', state: 'active', stat: 'Trial' };
-        setLocalFlows((prev) => [{ skill, seed: { starter: tpl.starter, conditions: tpl.conditions ?? [], steps: tpl.steps } }, ...prev]);
+        setLocalFlows((prev) => [{ ...flowFromTemplate(tpl, id, 'Trial') }, ...prev]);
         setTrials((prev) => new Set(prev).add(id));
         if (tpl.capId) setInstalledCaps((prev) => new Set(prev).add(tpl.capId!)); // the trial includes the partner capability
         setNewFlow(false);
@@ -321,7 +342,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
 
     const openFlow = openId ? allFlows.find((s) => s.id === openId) ?? null : null;
     if (openFlow) {
-        const seed = localFlows.find((f) => f.skill.id === openFlow.id)?.seed;
+        const seed = flows.find((f) => f.skill.id === openFlow.id)?.seed;
         return (
             <FlowDetail
                 skill={openFlow}
@@ -381,8 +402,14 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                             </Card>
                         ) : (
                             <div className="flex flex-col gap-3 pb-10">
-                                {allFlows.map((s) => (
-                                    <FlowRow key={s.id} skill={s} trial={trials.has(s.id)} onOpen={() => setOpenId(s.id)} />
+                                {flows.map((f) => (
+                                    <FlowRow
+                                        key={f.skill.id}
+                                        skill={f.skill}
+                                        trial={trials.has(f.skill.id)}
+                                        capLabel={f.capId ? CAPABILITIES.find((c) => c.id === f.capId)?.name ?? '' : 'e-conomic'}
+                                        onOpen={() => setOpenId(f.skill.id)}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -440,7 +467,14 @@ function CapabilitiesMarket({ installed, onAdd, onOpen }: { installed: Set<strin
 // ---- "New capability" marketplace gallery (install partner capabilities) ----
 function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<string>; onInstall: (id: string) => void; onClose: () => void }) {
     const { t } = useLang();
+    const [query, setQuery] = useState('');
+    const [cat, setCat] = useState('All');
     const partners = CAPABILITIES.filter((c) => !c.native);
+    const categories = Array.from(new Set(partners.map((c) => c.category)));
+    const q = query.trim().toLowerCase();
+    const filtered = partners.filter((c) =>
+        (cat === 'All' || c.category === cat) && (!q || c.name.toLowerCase().includes(q) || t(c.desc).toLowerCase().includes(q)),
+    );
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div
@@ -456,9 +490,14 @@ function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<s
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </header>
                 <div className="overflow-y-auto p-5">
-                    <div className="grid grid-cols-2 gap-4">
-                        {partners.map((c) => <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => onInstall(c.id)} />)}
-                    </div>
+                    <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search capabilities…')} />
+                    {filtered.length === 0 ? (
+                        <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No capabilities match your search.')}</p>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                            {filtered.map((c) => <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => onInstall(c.id)} />)}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -467,12 +506,11 @@ function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<s
 
 // Per-flow performance (keyed by skill id) — ties each flow to its own automation stats.
 const FLOW_PERF: Record<string, { actions: number; hours: number; pct: number }> = {
-    reconciliation: { actions: 612, hours: 71, pct: 94 },
-    reminders: { actions: 318, hours: 22, pct: 99 },
-    documents: { actions: 142, hours: 18, pct: 78 },
-    monitor: { actions: 96, hours: 24, pct: 61 },
-    'close-books': { actions: 24, hours: 4, pct: 70 },
-    anomalies: { actions: 48, hours: 9, pct: 42 },
+    // pre-installed doc-based flows
+    't-voucher': { actions: 612, hours: 71, pct: 96 },
+    't-recon': { actions: 318, hours: 44, pct: 94 },
+    't-supplier': { actions: 240, hours: 33, pct: 90 },
+    't-vatfile': { actions: 18, hours: 12, pct: 80 },
 };
 
 // Headline KPI cards, shared by the Performance tab and the top of Flows.
@@ -634,10 +672,11 @@ function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void
 }
 
 // Full-width flow row: icon, title, its own automation stat, status, open.
-function FlowRow({ skill, trial, onOpen }: { skill: Skill; trial?: boolean; onOpen: () => void }) {
+function FlowRow({ skill, trial, capLabel, onOpen }: { skill: Skill; trial?: boolean; capLabel?: string; onOpen: () => void }) {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const active = skill.state === 'active';
+    const partner = capLabel && capLabel !== 'e-conomic';
     const p = FLOW_PERF[skill.id];
     const perfLine = p
         ? `${p.pct}% ${t('automated')} · ${nf(p.actions)} ${t('actions')} · ${p.hours} ${t('hrs')} ${t('saved')}`
@@ -656,6 +695,9 @@ function FlowRow({ skill, trial, onOpen }: { skill: Skill; trial?: boolean; onOp
                     <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{perfLine}</p>
                 </div>
             </div>
+            {capLabel && (
+                <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: partner ? '#f3f0fb' : '#fff7ed', color: partner ? '#7c3aed' : '#b9842b' }}>{capLabel}</span>
+            )}
             {trial ? (
                 <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#fbf3e0', color: '#b9842b' }}>{t('Trial')}</span>
             ) : (
@@ -1248,10 +1290,47 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
 }
 
 // ---- "Create New Flow" modal: start from scratch or from a template (with step preview + trial) ----
+// Reusable search box + category chips for the marketplace modals.
+function MarketFilters({ query, onQuery, cat, onCat, categories, placeholder }: { query: string; onQuery: (v: string) => void; cat: string; onCat: (c: string) => void; categories: string[]; placeholder: string }) {
+    const { t } = useLang();
+    const all = ['All', ...categories];
+    return (
+        <div className="mb-4">
+            <div className="relative mb-3">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
+                <input value={query} onChange={(e) => onQuery(e.target.value)} placeholder={placeholder} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+                {all.map((c) => {
+                    const on = cat === c;
+                    return (
+                        <button key={c} onClick={() => onCat(c)} className="rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? COLORS.text : COLORS.cardBorder}`, background: on ? COLORS.text : '#fff', color: on ? '#fff' : COLORS.text }}>
+                            {c === 'All' ? t('All') : t(c)}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { installed: Set<string>; onScratch: () => void; onStartTrial: (tpl: FlowTemplate) => void; onClose: () => void }) {
     const { t, lang } = useLang();
     const [sel, setSel] = useState<FlowTemplate | null>(null);
+    const [query, setQuery] = useState('');
+    const [cat, setCat] = useState('All');
     const partnerOf = (id?: string) => (id ? CAPABILITIES.find((c) => c.id === id) : undefined);
+    const capTag = (capId?: string) => {
+        const partner = partnerOf(capId);
+        return partner
+            ? { name: partner.name, bg: '#f3f0fb', fg: '#7c3aed' }
+            : { name: 'e-conomic', bg: '#fff7ed', fg: '#b9842b' };
+    };
+    const categories = Array.from(new Set(FLOW_TEMPLATES.map((tpl) => tpl.category)));
+    const q = query.trim().toLowerCase();
+    const filtered = FLOW_TEMPLATES.filter((tpl) =>
+        (cat === 'All' || tpl.category === cat) && (!q || t(tpl.title).toLowerCase().includes(q) || t(tpl.desc).toLowerCase().includes(q)),
+    );
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
@@ -1280,7 +1359,7 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                                             <div className="flex items-center gap-2">
                                                 <h3 className="text-lg font-semibold" style={{ color: COLORS.text }}>{t(sel.title)}</h3>
                                                 <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(sel.category)}</span>
-                                                {partner && <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partner.name}</span>}
+                                                {(() => { const tag = capTag(sel.capId); return <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: tag.bg, color: tag.fg }}>{tag.name}</span>; })()}
                                             </div>
                                             <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>{t(sel.desc)}</p>
                                         </div>
@@ -1321,9 +1400,13 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                         </button>
 
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Start from a template')}</p>
+                        <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search flows…')} />
+                        {filtered.length === 0 ? (
+                            <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No flows match your search.')}</p>
+                        ) : (
                         <div className="grid grid-cols-2 gap-3">
-                            {FLOW_TEMPLATES.map((tpl) => {
-                                const partner = partnerOf(tpl.capId);
+                            {filtered.map((tpl) => {
+                                const tag = capTag(tpl.capId);
                                 return (
                                     <button key={tpl.id} onClick={() => setSel(tpl)} className="flex flex-col text-left rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, minHeight: 132 }}
                                         onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
@@ -1338,12 +1421,13 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                                         <p className="text-xs mt-2 leading-snug flex-1" style={{ color: COLORS.textMuted }}>{t(tpl.desc)}</p>
                                         <div className="flex items-center justify-between mt-2">
                                             <span className="text-xs font-medium" style={{ color: COLORS.text }}>{lang === 'da' ? `${tpl.price} kr/md.` : `${tpl.price} kr/mo`}</span>
-                                            {partner && <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partner.name}</span>}
+                                            <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: tag.bg, color: tag.fg }}>{tag.name}</span>
                                         </div>
                                     </button>
                                 );
                             })}
                         </div>
+                        )}
                     </div>
                 )}
             </div>

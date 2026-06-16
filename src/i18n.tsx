@@ -209,6 +209,12 @@ const DA: Record<string, string> = {
     'VAT zone is domestic': 'Momszonen er indenlandsk',
     'Document type is a supplier invoice': 'Dokumenttypen er en leverandørfaktura',
     'Receipt is still missing after 3 days': 'Kvitteringen mangler stadig efter 3 dage',
+    // Marketplace filters
+    'All': 'Alle',
+    'Search flows…': 'Søg i flows…',
+    'Search capabilities…': 'Søg i kapabiliteter…',
+    'No flows match your search.': 'Ingen flows matcher din søgning.',
+    'No capabilities match your search.': 'Ingen kapabiliteter matcher din søgning.',
     // Create New Flow modal
     'Create New Flow': 'Opret nyt flow',
     'Start from scratch': 'Start fra bunden',
