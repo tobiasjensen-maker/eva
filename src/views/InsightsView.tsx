@@ -290,9 +290,93 @@ function renderPremium(key: string, p: Profile, t: (s: string) => string = (s) =
     );
 }
 
+// Deep-analysis cards for the connected agreement. Peer benchmarking has no live
+// source, so it's replaced by customer concentration + key ratios (both derivable).
+const LIVE_PREMIUM_META = [
+    { key: 'margins', title: 'Profitability', icon: 'chart-pie', desc: 'Net result and margin from the ledger.' },
+    { key: 'expenses', title: 'Expense breakdown', icon: 'list', desc: 'Largest cost accounts as a share of total costs.' },
+    { key: 'concentration', title: 'Customer concentration', icon: 'contacts', desc: 'Revenue share of your largest customers.' },
+    { key: 'risks', title: 'Risk flags', icon: 'experiment', desc: 'Concentration, overdue and cost risks from live data.' },
+    { key: 'forecast', title: 'Revenue forecast', icon: 'chart-line', desc: 'Projected revenue next quarter from the run rate.' },
+    { key: 'ratios', title: 'Key ratios', icon: 'transfer', desc: 'Net margin, days-sales-outstanding and result.' },
+];
+
+function BarList({ rows, color }: { rows: [string, number][]; color: string }) {
+    return (
+        <div className="flex flex-col gap-2">
+            {rows.map(([l, v]) => (
+                <div key={l}>
+                    <div className="flex justify-between text-xs mb-1 gap-2" style={{ color: COLORS.textMuted }}><span className="truncate">{l}</span><span className="shrink-0">{v}%</span></div>
+                    <div className="rounded-full" style={{ height: 6, background: '#eee' }}>
+                        <div className="rounded-full" style={{ height: 6, width: `${Math.min(100, v)}%`, background: color }} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function renderLivePremium(key: string, lp: LivePremium, t: (s: string) => string = (s) => s): JSX.Element {
+    if (key === 'margins') {
+        return (
+            <div>
+                <BarsRow values={lp.monthlyProfit.map((v) => Math.max(1, v))} color="#6366f1" />
+                <div className="mt-3">
+                    <StatLine label={t('Net result (YTD)')} value={kr(lp.netResult)} accent={lp.netResult >= 0 ? '#2f7d54' : '#dc2626'} />
+                    <StatLine label={t('Net margin')} value={mpct(lp.netMargin)} />
+                </div>
+            </div>
+        );
+    }
+    if (key === 'expenses') return <BarList rows={lp.expenses} color="#ed9b2c" />;
+    if (key === 'concentration') return <BarList rows={lp.concentration} color="#14b8a6" />;
+    if (key === 'risks') {
+        return (
+            <div className="flex flex-col gap-2">
+                {lp.risks.map(([txt, c]) => (
+                    <div key={txt} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
+                        <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: c }} /> {t(txt)}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    if (key === 'forecast') {
+        return (
+            <div>
+                <BarsRow values={lp.forecast.map((v) => Math.max(1, v))} color="#14b8a6" />
+                <div className="mt-3">
+                    <StatLine label={t('Projected next quarter')} value={kr(lp.forecastKr)} accent="#14b8a6" />
+                    <StatLine label={t('Based on')} value={t('trailing 12-month average')} />
+                </div>
+            </div>
+        );
+    }
+    // ratios
+    return (
+        <div>
+            <StatLine label={t('Net margin')} value={mpct(lp.netMargin)} />
+            <StatLine label={t('Days sales outstanding')} value={lp.dso} />
+            <StatLine label={t('Result (YTD)')} value={kr(lp.netResult)} accent={lp.netResult >= 0 ? '#2f7d54' : '#dc2626'} />
+        </div>
+    );
+}
+
 // ---- Live insights, computed from the connected e-conomic agreement ----
 interface LiveCard { label: string; icon: string; value: string; delta: string; positive: boolean }
-interface LiveInsights { chartProfile: Profile; cards: LiveCard[] }
+interface LivePremium {
+    monthlyProfit: number[]; // k DKK, for the profitability bars
+    netMargin: number;
+    netResult: number; // kr
+    revenue: number; // kr (ledger YTD)
+    expenses: [string, number][]; // [account, % of total costs]
+    concentration: [string, number][]; // [customer, % of revenue]
+    risks: [string, string][]; // [text, color]
+    forecast: number[]; // k DKK, [last, +1q projections]
+    forecastKr: number; // projected next-quarter revenue, kr
+    dso: string; // days sales outstanding
+}
+interface LiveInsights { chartProfile: Profile; cards: LiveCard[]; premium: LivePremium }
 
 function kr(amount: number) {
     try {
@@ -336,14 +420,48 @@ function useLiveInsights(enabled: boolean): LiveInsights | null | 'loading' {
                 const yoyPct = prevSum > 0 ? Math.round(((rev12 - prevSum) / prevSum) * 100) : null;
                 const yoy = yoyPct === null ? '—' : `${yoyPct >= 0 ? '+' : ''}${yoyPct}%`;
 
-                // Net result (YTD): P&L revenue accounts are credit (negative), costs positive.
-                const netResult = -accounts.filter((a) => a.accountType === 'profitAndLoss').reduce((s, a) => s + (a.balance || 0), 0);
+                // P&L: revenue accounts are credit (negative), cost accounts debit (positive).
+                const pl = accounts.filter((a) => a.accountType === 'profitAndLoss');
+                const ledgerRevenue = -pl.filter((a) => (a.balance || 0) < 0).reduce((s, a) => s + a.balance, 0);
+                const costAccounts = pl.filter((a) => (a.balance || 0) > 0).sort((a, b) => b.balance - a.balance);
+                const totalCosts = costAccounts.reduce((s, a) => s + a.balance, 0);
+                const netResult = ledgerRevenue - totalCosts;
+                const netMargin = ledgerRevenue > 0 ? Math.round((netResult / ledgerRevenue) * 1000) / 10 : 0;
+
                 // Receivables / overdue from customers + invoices.
                 const receivables = customers.reduce((s, c) => s + (c.balance || 0), 0);
                 const withBalance = customers.filter((c) => (c.balance || 0) > 0).length;
                 const booked = invoices.filter((iv) => iv.kind === 'booked');
                 const overdueInv = booked.filter((iv) => (iv.remainder ?? 0) > 0 && iv.dueDate && new Date(iv.dueDate) < now);
                 const overdueSum = overdueInv.reduce((s, iv) => s + (iv.remainder || 0), 0);
+
+                // ---- Deep analysis (premium) ----
+                const expenses: [string, number][] = costAccounts.slice(0, 5).map((a) => [a.name, totalCosts > 0 ? Math.round((a.balance / totalCosts) * 100) : 0]);
+                // Customer revenue concentration from all booked invoices (net).
+                const byCustomer: Record<string, number> = {};
+                booked.forEach((iv) => { byCustomer[iv.recipientName] = (byCustomer[iv.recipientName] ?? 0) + (iv.netAmount || 0); });
+                const custTotal = Object.values(byCustomer).reduce((a, b) => a + b, 0);
+                const custSorted = Object.entries(byCustomer).sort((a, b) => b[1] - a[1]);
+                const concentration: [string, number][] = custSorted.slice(0, 4).map(([n, v]) => [n, custTotal > 0 ? Math.round((v / custTotal) * 100) : 0]);
+                const topShare = concentration[0]?.[1] ?? 0;
+                // Risk flags from live data.
+                const risks: [string, string][] = [];
+                if (topShare >= 40) risks.push([`${concentration[0][0]} = ${topShare}% of revenue`, '#dc2626']);
+                if (overdueInv.length > 0) risks.push([`${overdueInv.length} invoice(s) overdue · ${kr(overdueSum)}`, overdueSum > 50000 ? '#dc2626' : '#92710f']);
+                if (costAccounts[0] && totalCosts > 0) risks.push([`${costAccounts[0].name} is ${Math.round((costAccounts[0].balance / totalCosts) * 100)}% of costs`, '#92710f']);
+                if (netResult < 0) risks.push(['Operating at a loss this year', '#dc2626']);
+                if (risks.length === 0) risks.push(['No risks flagged from the ledger', '#2f7d54']);
+                // Forecast next quarter from the trailing-12-month monthly average
+                // (steadier than the last 3 months when invoicing is lumpy).
+                const monthlyK = last12.map((v) => Math.round(v / 1000));
+                const avgMonth = monthlyK.length ? Math.round(monthlyK.reduce((a, b) => a + b, 0) / monthlyK.length) : 0;
+                const forecast = [monthlyK[monthlyK.length - 1] || 0, avgMonth, avgMonth, avgMonth];
+                const forecastKr = avgMonth * 3 * 1000;
+                const dso = ledgerRevenue > 0 ? `${Math.round(receivables / (ledgerRevenue / 365))} days` : '—';
+                const premium: LivePremium = {
+                    monthlyProfit: monthlyK.map((v) => Math.round((v * netMargin) / 100)),
+                    netMargin, netResult, revenue: ledgerRevenue, expenses, concentration, risks, forecast, forecastKr, dso,
+                };
 
                 const chartProfile: Profile = {
                     ...PROFILES.portfolio,
@@ -357,7 +475,7 @@ function useLiveInsights(enabled: boolean): LiveInsights | null | 'loading' {
                     { label: 'Receivables', icon: 'wallet', value: kr(receivables), delta: `${withBalance} customers`, positive: true },
                     { label: 'Overdue receivables', icon: 'circle-warning', value: kr(overdueSum), delta: `${overdueInv.length} invoices`, positive: false },
                 ];
-                setState({ chartProfile, cards });
+                setState({ chartProfile, cards, premium });
             })
             .catch(() => alive && setState(null));
         return () => { alive = false; };
@@ -375,6 +493,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
     const [period, setPeriod] = useState('6m');
     const pd = getPeriodData(chartProfile, period, t);
     const liveLoading = liveData === 'loading';
+    const liveReady = liveData && liveData !== 'loading' ? liveData : null;
 
     return (
         <div className="h-full overflow-y-auto">
@@ -459,7 +578,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                             style={!pro ? { filter: 'blur(3.5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.65 } : undefined}
                             aria-hidden={!pro}
                         >
-                            {PREMIUM_META.map((p) => (
+                            {(liveReady ? LIVE_PREMIUM_META : PREMIUM_META).map((p) => (
                                 <Card key={p.key} className="p-5">
                                     <div className="flex items-center gap-2.5 mb-3">
                                         <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: '#f1f1f3', color: '#52525b' }}>
@@ -470,7 +589,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                                             <p className="text-xs leading-tight" style={{ color: COLORS.textMuted }}>{t(p.desc)}</p>
                                         </div>
                                     </div>
-                                    {renderPremium(p.key, profile, t)}
+                                    {liveReady ? renderLivePremium(p.key, liveReady.premium, t) : renderPremium(p.key, profile, t)}
                                 </Card>
                             ))}
                         </div>
