@@ -91,6 +91,7 @@ export default function App() {
     }
     const [accountOpen, setAccountOpen] = useState(false);
     const [, setEvaTick] = useState(0); // bump to re-render after the EVA token changes
+    const [evaInput, setEvaInput] = useState(() => evaToken());
     // Live e-conomic connection — local dev only (the public build has no proxy).
     const ecoEnabled = import.meta.env.DEV;
     const eco = useEcoConnection(ecoEnabled);
@@ -404,25 +405,36 @@ export default function App() {
                                     </div>
                                 </div>
                                 )}
-                                {/* EVA assistant connection (sandbox) — dev only */}
+                                {/* EVA assistant connection (sandbox) — dev only. Inline input (no window.prompt). */}
                                 {ecoEnabled && (
-                                <button
-                                    onClick={() => {
-                                        const current = evaToken();
-                                        const next = window.prompt(current ? 'Update EVA sandbox token (blank to disconnect):' : 'Paste your EVA sandbox token (from Plex):', current);
-                                        if (next !== null) { setEvaToken(next.trim()); setEvaTick((n) => n + 1); toast.information(next.trim() ? 'Eva connected' : 'Eva disconnected'); }
-                                    }}
-                                    className="flex items-start gap-2.5 w-full text-left px-3 py-2.5"
-                                    style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                                >
-                                    <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, marginTop: 4, background: evaConfigured() ? '#22c55e' : '#9ca3af' }} />
-                                    <div className="min-w-0 flex-1">
-                                        <div className="text-sm font-medium" style={{ color: COLORS.text }}>{evaConfigured() ? t('Eva assistant connected') : t('Connect Eva assistant')}</div>
-                                        <div className="text-xs" style={{ color: COLORS.textMuted }}>{evaConfigured() ? t('Sandbox · tap to update token') : t('Sandbox · tap to paste token')}</div>
+                                <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                    <div className="flex items-center gap-2.5 mb-1.5">
+                                        <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: evaConfigured() ? '#22c55e' : '#9ca3af' }} />
+                                        <span className="text-sm font-medium" style={{ color: COLORS.text }}>{evaConfigured() ? t('Eva assistant connected') : t('Connect Eva assistant')}</span>
+                                        {evaConfigured() && (
+                                            <button onClick={() => { setEvaToken(''); setEvaInput(''); setEvaTick((n) => n + 1); toast.information('Eva disconnected'); }} className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t('Disconnect')}</button>
+                                        )}
                                     </div>
-                                </button>
+                                    <div className="flex items-center gap-1.5">
+                                        <input
+                                            type="password"
+                                            value={evaInput}
+                                            onChange={(e) => setEvaInput(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' && evaInput.trim()) { setEvaToken(evaInput.trim()); setEvaTick((n) => n + 1); toast.information('Eva connected'); } }}
+                                            placeholder={t('Paste Plex token')}
+                                            className="flex-1 min-w-0 rounded-md px-2 py-1 text-xs outline-none"
+                                            style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fafafa' }}
+                                        />
+                                        <button
+                                            onClick={() => { if (evaInput.trim()) { setEvaToken(evaInput.trim()); setEvaTick((n) => n + 1); toast.information('Eva connected'); } }}
+                                            disabled={!evaInput.trim()}
+                                            className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
+                                            style={{ background: evaInput.trim() ? '#4c6ef5' : '#e4e4e7', color: evaInput.trim() ? '#fff' : '#b0b0b8', cursor: evaInput.trim() ? 'pointer' : 'not-allowed' }}
+                                        >
+                                            {t('Connect')}
+                                        </button>
+                                    </div>
+                                </div>
                                 )}
                                 {ACCOUNT_ITEMS.map((it) => (
                                     <button
