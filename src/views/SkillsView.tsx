@@ -97,8 +97,21 @@ interface FlowTemplate {
     trialDays: number;
     desc: string;
     starter: string; // FLOW_STARTERS id
-    steps: FlowStep[];
+    conditions?: string[]; // gates that must be true to continue
+    steps: FlowStep[]; // actions
 }
+
+// Common gating conditions offered when building a flow.
+const CONDITION_LIBRARY = [
+    'Confidence is 95% or higher',
+    'Amount is below the auto-booking threshold',
+    'No duplicate is found',
+    'Supplier is already known',
+    'Within the expense policy',
+    'VAT zone is domestic',
+    'Document type is a supplier invoice',
+    'Receipt is still missing after 3 days',
+];
 
 // Step factory — picks an icon from the approach (rule / eva / review). LLM steps are Eva's.
 let stSeq = 0;
@@ -111,6 +124,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
     // ---- Accounting & bookkeeping ----
     { id: 't-voucher', title: 'Smart voucher creation', emoji: '🧾', category: 'Bookkeeping', price: 399, trialDays: 30,
         desc: 'Turn scanned and electronic documents into booked vouchers automatically.',
+        conditions: ['Confidence is 95% or higher', 'Amount is below the auto-booking threshold'],
         starter: 'document', steps: [
             st('Receive document in Smart Inbox', 'rule'),
             st('Classify document type', 'eva'),
@@ -142,6 +156,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
         ] },
     { id: 't-supplier', title: 'Supplier invoice processor', emoji: '📨', category: 'Suppliers', price: 349, trialDays: 30,
         desc: 'Read, validate and book supplier invoices, with duplicate detection.',
+        conditions: ['No duplicate is found'],
         starter: 'document', steps: [
             st('Receive supplier invoice', 'rule'),
             st('Identify & validate supplier', 'eva'),
@@ -172,6 +187,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
         ] },
     { id: 't-yearend', title: 'Year-end automation', emoji: '📆', category: 'Period close', price: 499, trialDays: 30,
         desc: 'Run the årsafslutning — closing entries, primo, lock and validation.',
+        conditions: ['Confidence is 95% or higher'],
         starter: 'monthend', steps: [
             st('Verify year-end readiness', 'rule'),
             st('Generate closing entries', 'eva'),
@@ -183,6 +199,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
     // ---- Expense management ----
     { id: 't-firmakort', title: 'Firmakort auto-booking', emoji: '💳', category: 'Expenses', price: 349, trialDays: 30,
         desc: 'Match Firmakort transactions to receipts, classify and book them.',
+        conditions: ['Within the expense policy'],
         starter: 'bank', steps: [
             st('Import Firmakort transaction', 'rule'),
             st('Request receipt if missing', 'rule'),
@@ -194,6 +211,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
         ] },
     { id: 't-receipts', title: 'Missing receipt chaser', emoji: '📎', category: 'Expenses', price: 149, trialDays: 30,
         desc: 'Chase cardholders for missing receipts and escalate when ignored.',
+        conditions: ['Receipt is still missing after 3 days'],
         starter: 'schedule', steps: [
             st('Detect unmatched transactions', 'rule'),
             st('Send first reminder', 'rule'),
@@ -204,6 +222,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
     // ---- VAT & tax ----
     { id: 't-vatfile', title: 'VAT return auto-filing', emoji: '🧮', category: 'VAT & Tax', price: 449, trialDays: 30,
         desc: 'Calculate, reconcile, validate and file the VAT return to SKAT.',
+        conditions: ['VAT zone is domestic'],
         starter: 'schedule', steps: [
             st('Calculate VAT return', 'rule'),
             st('Perform momsafstemning', 'eva'),
@@ -225,6 +244,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
     // ---- Partner-capability flows (upsell) ----
     { id: 't-likvido', title: 'Automated debt collection', emoji: '💸', category: 'Receivables', capId: 'likvido', price: 299, trialDays: 30,
         desc: 'Escalate overdue invoices to Likvido collection and reconcile the payouts automatically.',
+        conditions: ['Amount is below the auto-booking threshold'],
         starter: 'overdue', steps: [
             st('Find invoices past the dunning limit', 'rule'),
             st('Escalate to collection', 'rule', 'likvido'),
@@ -246,6 +266,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
         ] },
     { id: 't-rackbeat', title: 'Stock-aware reordering', emoji: '📦', category: 'Inventory', capId: 'rackbeat', price: 279, trialDays: 30,
         desc: 'Keep stock in sync with RackBeat and raise purchase orders before you run out.',
+        conditions: ['No duplicate is found'],
         starter: 'schedule', steps: [
             st('Sync stock levels', 'rule', 'rackbeat'),
             st('Create a purchase order', 'rule', 'rackbeat'),
@@ -253,7 +274,7 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
         ] },
 ];
 
-interface LocalFlow { skill: Skill; seed: { starter: string; steps: FlowStep[] } }
+interface LocalFlow { skill: Skill; seed: { starter: string; conditions: string[]; steps: FlowStep[] } }
 let flowSeq = 100;
 
 const AUTO_TABS = [
@@ -281,14 +302,14 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     function createScratch() {
         const id = `flow-${flowSeq++}`;
         const skill: Skill = { id, title: 'Untitled flow', description: 'A custom flow you built from scratch.', emoji: '🛠️', color: '#7c6cf6', state: 'active', stat: 'Just created' };
-        setLocalFlows((prev) => [{ skill, seed: { starter: 'schedule', steps: [] } }, ...prev]);
+        setLocalFlows((prev) => [{ skill, seed: { starter: 'schedule', conditions: [], steps: [] } }, ...prev]);
         setNewFlow(false);
         setOpenId(id);
     }
     function startTrial(tpl: FlowTemplate) {
         const id = `flow-${flowSeq++}`;
         const skill: Skill = { id, title: tpl.title, description: tpl.desc, emoji: tpl.emoji, color: '#7c6cf6', state: 'active', stat: 'Trial' };
-        setLocalFlows((prev) => [{ skill, seed: { starter: tpl.starter, steps: tpl.steps } }, ...prev]);
+        setLocalFlows((prev) => [{ skill, seed: { starter: tpl.starter, conditions: tpl.conditions ?? [], steps: tpl.steps } }, ...prev]);
         setTrials((prev) => new Set(prev).add(id));
         if (tpl.capId) setInstalledCaps((prev) => new Set(prev).add(tpl.capId!)); // the trial includes the partner capability
         setNewFlow(false);
@@ -875,7 +896,116 @@ function seedStarter(cfg: SkillConfig): string {
     return 'bank';
 }
 
-function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade }: { skill: Skill; onBack: () => void; onEnable: () => void; installed: Set<string>; seed?: { starter: string; steps: FlowStep[] }; trial?: boolean; onUpgrade?: () => void }) {
+function SectionLabel({ children }: { children: ReactNode }) {
+    return <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{children}</p>;
+}
+function FlowConnector() {
+    return <div className="flex justify-center py-1.5"><span style={{ width: 2, height: 14, background: COLORS.cardBorder, borderRadius: 2 }} /></div>;
+}
+
+// Reusable flow component: Trigger → Conditions → Actions. Read-only by default;
+// pass the on* callbacks to make a section editable (used by the flow builder).
+function FlowDiagram({
+    starterId, conditions, actions, triggerDetail,
+    onEditTrigger, onAddCondition, onRemoveCondition, onAddAction, onRemoveAction, onEditAction,
+}: {
+    starterId: string;
+    conditions: string[];
+    actions: FlowStep[];
+    triggerDetail?: ReactNode;
+    onEditTrigger?: () => void;
+    onAddCondition?: () => void;
+    onRemoveCondition?: (i: number) => void;
+    onAddAction?: () => void;
+    onRemoveAction?: (i: number) => void;
+    onEditAction?: (i: number, step: FlowStep) => void;
+}) {
+    const { t } = useLang();
+    const starterDef = FLOW_STARTERS.find((s) => s.id === starterId);
+    const addBtn = (label: string, onClick: () => void) => (
+        <button onClick={onClick} className="w-full flex items-center gap-2 rounded-xl p-3 text-sm font-medium" style={{ border: `1.5px dashed ${COLORS.cardBorder}`, color: '#4456c7' }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a9b6cf')} onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}>
+            <Icon name="circle-plus" /> {label}
+        </button>
+    );
+    const tile = (icon: string, tint: string, color: string, size = 30) => (
+        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: size, height: size, background: tint, color }}><Icon name={icon as never} /></span>
+    );
+
+    return (
+        <div>
+            {/* Trigger */}
+            <SectionLabel>{t('Trigger')}</SectionLabel>
+            <button
+                onClick={onEditTrigger}
+                disabled={!onEditTrigger}
+                className="w-full flex items-center gap-3 rounded-xl p-3.5 text-left"
+                style={{ border: `1px solid ${starterDef ? COLORS.cardBorder : '#bcd0f7'}`, background: starterDef ? '#fff' : '#f5f8ff', cursor: onEditTrigger ? 'pointer' : 'default' }}
+            >
+                {tile(starterDef?.icon ?? 'time', '#f1f1f3', '#52525b')}
+                <span className="flex-1 text-sm font-medium" style={{ color: starterDef ? COLORS.text : '#4456c7' }}>{starterDef ? t(starterDef.label) : t('Choose a trigger')}</span>
+                {onEditTrigger && <Icon name="edit" style={{ color: COLORS.textMuted }} />}
+            </button>
+            {triggerDetail}
+
+            <FlowConnector />
+
+            {/* Conditions */}
+            <SectionLabel>{t('Conditions')}</SectionLabel>
+            <div className="flex flex-col gap-2">
+                {conditions.length === 0 && !onAddCondition && (
+                    <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('Runs every time — no conditions.')}</p>
+                )}
+                {conditions.map((c, i) => (
+                    <div key={`${c}-${i}`} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                        {tile('filter', '#eef2ff', '#4456c7')}
+                        <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(c)}</span>
+                        {onRemoveCondition && (
+                            <button onClick={() => onRemoveCondition(i)} title={t('Remove')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                <Icon name="close" />
+                            </button>
+                        )}
+                    </div>
+                ))}
+                {onAddCondition && addBtn(t('Add condition'), onAddCondition)}
+            </div>
+
+            <FlowConnector />
+
+            {/* Actions */}
+            <SectionLabel>{t('Actions')}</SectionLabel>
+            <div className="flex flex-col gap-2">
+                {actions.map((s, i) => {
+                    const clickable = !!onEditAction;
+                    return (
+                        <div
+                            key={s.id}
+                            onClick={clickable ? () => onEditAction!(i, s) : undefined}
+                            className={`flex items-center gap-3 rounded-xl p-3 ${clickable ? 'cursor-pointer' : ''}`}
+                            style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}
+                            onMouseEnter={clickable ? (e) => (e.currentTarget.style.background = '#fafafa') : undefined}
+                            onMouseLeave={clickable ? (e) => (e.currentTarget.style.background = '#fff') : undefined}
+                        >
+                            {tile(s.icon, s.capId ? '#f3f0fb' : '#f1f1f3', s.capId ? '#7c3aed' : '#52525b')}
+                            <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                            {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
+                            <ApproachTag approach={s.approach} />
+                            {clickable && <Icon name="settings" style={{ color: '#c4c4cc' }} />}
+                            {onRemoveAction && (
+                                <button onClick={(e) => { e.stopPropagation(); onRemoveAction(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                    <Icon name="close" />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+                {onAddAction && addBtn(t('Add step'), onAddAction)}
+            </div>
+        </div>
+    );
+}
+
+function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade }: { skill: Skill; onBack: () => void; onEnable: () => void; installed: Set<string>; seed?: { starter: string; conditions: string[]; steps: FlowStep[] }; trial?: boolean; onUpgrade?: () => void }) {
     const { t, lang } = useLang();
     const locked = skill.state === 'locked';
     const cfg = SKILL_CONFIG[skill.id] ?? DEFAULT_CONFIG;
@@ -887,24 +1017,26 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
     const [notify, setNotify] = useState(cfg.notify);
     const [guardrail, setGuardrail] = useState(cfg.guardrail);
     const [threshold, setThreshold] = useState(cfg.threshold ?? '10.000');
-    // Flow builder: a starter (trigger) + an ordered list of steps. Seeded from a
-    // template when one was used, otherwise from the skill's default steps.
+    // Flow builder: a trigger + conditions + actions. Seeded from a template when
+    // one was used, otherwise from the skill's default steps.
     const [starter, setStarter] = useState<string>(() => (seed ? seed.starter : seedStarter(cfg)));
+    const [conditions, setConditions] = useState<string[]>(() => seed?.conditions ?? []);
     const [steps, setSteps] = useState<FlowStep[]>(() =>
         seed
             ? seed.steps.map((s, i) => ({ ...s, id: `${s.id}-${i}` }))
             : (SKILL_META[skill.id]?.features ?? []).map((f, i) => ({ id: `${skill.id}-${i}`, icon: 'workflow', label: f })),
     );
-    const [picker, setPicker] = useState<'starter' | 'step' | null>(null);
+    const [picker, setPicker] = useState<'starter' | 'step' | 'condition' | null>(null);
     const [settingStep, setSettingStep] = useState<{ index: number; step: FlowStep } | null>(null);
     // The flow is set up once for the practice; it can run on all clients or a subset.
     const [clientMode, setClientMode] = useState<'all' | 'selected'>('all');
     const [clientSel, setClientSel] = useState<Set<string>>(() => new Set(AGREEMENTS.slice(0, 3).map((a) => a.id)));
     const [testOpen, setTestOpen] = useState(false);
 
-    const starterDef = FLOW_STARTERS.find((s) => s.id === starter);
     const addStep = (s: FlowStep) => setSteps((prev) => [...prev, { ...s, id: `${s.id}-${prev.length}-${s.label.length}` }]);
     const removeStep = (i: number) => setSteps((prev) => prev.filter((_, x) => x !== i));
+    const addCondition = (c: string) => setConditions((prev) => [...prev, c]);
+    const removeCondition = (i: number) => setConditions((prev) => prev.filter((_, x) => x !== i));
 
     function toggleClient(id: string) {
         setClientSel((prev) => {
@@ -991,76 +1123,33 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                     <ActivityTab skill={skill} locked={locked} />
                 ) : (
                 <>
-                {/* Flow builder — a starter (trigger) and an ordered list of steps */}
-                <Section title={t('Flow steps')}>
-                    {/* Starter */}
-                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Starter')}</p>
-                    <button
-                        onClick={() => setPicker('starter')}
-                        className="w-full flex items-center gap-3 rounded-xl p-3.5 text-left"
-                        style={{ border: `1px solid ${starterDef ? COLORS.cardBorder : '#bcd0f7'}`, background: starterDef ? '#fff' : '#f5f8ff' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a9b6cf')}
-                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = starterDef ? COLORS.cardBorder : '#bcd0f7')}
-                    >
-                        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: '#f1f1f3', color: '#52525b' }}>
-                            <Icon name={(starterDef?.icon ?? 'time') as never} />
-                        </span>
-                        <span className="flex-1 text-sm font-medium" style={{ color: starterDef ? COLORS.text : '#4456c7' }}>
-                            {starterDef ? t(starterDef.label) : t('Choose a starter')}
-                        </span>
-                        <Icon name="edit" style={{ color: COLORS.textMuted }} />
-                    </button>
-
-                    {/* Schedule detail when the starter is a schedule */}
-                    {starter === 'schedule' && (
-                        <div className="flex flex-wrap items-end gap-4 mt-3 pl-1">
-                            <Field label={t('Frequency')}>
-                                <div className="flex gap-2">
-                                    {['Daily', 'Weekly', 'Monthly'].map((f) => (
-                                        <button key={f} onClick={() => setFrequency(f)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${frequency === f ? COLORS.text : COLORS.cardBorder}`, background: frequency === f ? COLORS.text : '#fff', color: frequency === f ? '#fff' : COLORS.text }}>{t(f)}</button>
-                                    ))}
-                                </div>
-                            </Field>
-                            <Field label={t('At')}>
-                                <input value={time} onChange={(e) => setTime(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 100 }} />
-                            </Field>
-                        </div>
-                    )}
-
-                    {/* Steps — click a step to change its settings */}
-                    <div className="mt-4" />
-                    <div className="flex flex-col gap-2">
-                        {steps.map((s, i) => (
-                            <div
-                                key={s.id}
-                                onClick={() => setSettingStep({ index: i, step: s })}
-                                className="flex items-center gap-3 rounded-xl p-3 cursor-pointer"
-                                style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
-                            >
-                                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: s.capId ? '#f3f0fb' : '#f1f1f3', color: s.capId ? '#7c3aed' : '#52525b' }}>
-                                    <Icon name={s.icon as never} />
-                                </span>
-                                <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
-                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
-                                <ApproachTag approach={s.approach} />
-                                <Icon name="settings" style={{ color: '#c4c4cc' }} />
-                                <button onClick={(e) => { e.stopPropagation(); removeStep(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                    <Icon name="close" />
-                                </button>
+                {/* Flow builder — reusable Trigger / Conditions / Actions component */}
+                <Section title={t('Flow')}>
+                    <FlowDiagram
+                        starterId={starter}
+                        conditions={conditions}
+                        actions={steps}
+                        triggerDetail={starter === 'schedule' ? (
+                            <div className="flex flex-wrap items-end gap-4 mt-3 pl-1">
+                                <Field label={t('Frequency')}>
+                                    <div className="flex gap-2">
+                                        {['Daily', 'Weekly', 'Monthly'].map((f) => (
+                                            <button key={f} onClick={() => setFrequency(f)} className="rounded-lg px-3 py-1.5 text-sm" style={{ border: `1px solid ${frequency === f ? COLORS.text : COLORS.cardBorder}`, background: frequency === f ? COLORS.text : '#fff', color: frequency === f ? '#fff' : COLORS.text }}>{t(f)}</button>
+                                        ))}
+                                    </div>
+                                </Field>
+                                <Field label={t('At')}>
+                                    <input value={time} onChange={(e) => setTime(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 100 }} />
+                                </Field>
                             </div>
-                        ))}
-                        <button
-                            onClick={() => setPicker('step')}
-                            className="w-full flex items-center gap-2 rounded-xl p-3 text-sm font-medium"
-                            style={{ border: `1.5px dashed ${COLORS.cardBorder}`, color: '#4456c7' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a9b6cf')}
-                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
-                        >
-                            <Icon name="circle-plus" /> {t('Add step')}
-                        </button>
-                    </div>
+                        ) : undefined}
+                        onEditTrigger={() => setPicker('starter')}
+                        onAddCondition={() => setPicker('condition')}
+                        onRemoveCondition={removeCondition}
+                        onAddAction={() => setPicker('step')}
+                        onRemoveAction={removeStep}
+                        onEditAction={(i, step) => setSettingStep({ index: i, step })}
+                    />
                 </Section>
 
                 {/* Applies to — the skill is practice-level; choose where it runs */}
@@ -1149,6 +1238,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                     installed={installed}
                     onPickStarter={(id) => { setStarter(id); setPicker(null); }}
                     onPickStep={(s) => { addStep(s); setPicker(null); }}
+                    onPickCondition={(c) => { addCondition(c); setPicker(null); }}
                     onClose={() => setPicker(null)}
                 />
             )}
@@ -1181,7 +1271,6 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                     (() => {
                         const partner = partnerOf(sel.capId);
                         const needsInstall = partner && !installed.has(partner.id);
-                        const starterDef = FLOW_STARTERS.find((s) => s.id === sel.starter);
                         return (
                             <>
                                 <div className="overflow-y-auto p-5">
@@ -1197,21 +1286,8 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                                         </div>
                                     </div>
 
-                                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Flow steps')}</p>
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 28, height: 28, background: '#ececed', color: '#52525b' }}><Icon name={(starterDef?.icon ?? 'time') as never} /></span>
-                                            <span className="text-sm" style={{ color: COLORS.text }}><b>{t('Starter')}:</b> {t(starterDef?.label ?? '')}</span>
-                                        </div>
-                                        {sel.steps.map((s) => (
-                                            <div key={s.id} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                                                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 28, height: 28, background: s.capId ? '#f3f0fb' : '#f1f1f3', color: s.capId ? '#7c3aed' : '#52525b' }}><Icon name={s.icon as never} /></span>
-                                                <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
-                                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{partnerOf(s.capId)?.name}</span>}
-                                                <ApproachTag approach={s.approach} />
-                                            </div>
-                                        ))}
-                                    </div>
+                                    {/* same reusable component, read-only */}
+                                    <FlowDiagram starterId={sel.starter} conditions={sel.conditions ?? []} actions={sel.steps} />
 
                                     {needsInstall && (
                                         <p className="text-xs mt-3 flex items-center gap-1.5" style={{ color: '#7c3aed' }}>
@@ -1323,11 +1399,12 @@ function StepSettings({ step, onClose }: { step: FlowStep; onClose: () => void }
 }
 
 // ---- Step / starter picker (the right-hand "Add step" panel, as a modal) ----
-function StepPicker({ mode, installed, onPickStarter, onPickStep, onClose }: {
-    mode: 'starter' | 'step';
+function StepPicker({ mode, installed, onPickStarter, onPickStep, onPickCondition, onClose }: {
+    mode: 'starter' | 'step' | 'condition';
     installed: Set<string>;
     onPickStarter: (id: string) => void;
     onPickStep: (s: FlowStep) => void;
+    onPickCondition: (c: string) => void;
     onClose: () => void;
 }) {
     const { t } = useLang();
@@ -1337,20 +1414,33 @@ function StepPicker({ mode, installed, onPickStarter, onPickStep, onClose }: {
         </span>
     );
     const partners = CAPABILITIES.filter((c) => !c.native);
+    const heading = mode === 'starter' ? t('Choose a trigger') : mode === 'condition' ? t('Add a condition') : t('Add a step');
+    const sub = mode === 'starter' ? t('This event or schedule launches your flow.') : mode === 'condition' ? t('A check that must be true to continue.') : t('e-conomic and partner steps Eva can run.');
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(620px, 94vw)', maxHeight: '86vh', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
                 <header className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <div>
-                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{mode === 'starter' ? t('Choose a starter') : t('Add a step')}</h2>
-                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{mode === 'starter' ? t('This event or schedule launches your flow.') : t('e-conomic and partner steps Eva can run.')}</p>
+                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{heading}</h2>
+                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{sub}</p>
                     </div>
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </header>
 
                 <div className="overflow-y-auto p-5 flex flex-col gap-5">
-                    {mode === 'starter' ? (
+                    {mode === 'condition' ? (
+                        <div className="grid grid-cols-1 gap-2.5">
+                            {CONDITION_LIBRARY.map((c) => (
+                                <button key={c} onClick={() => onPickCondition(c)} className="flex items-center gap-3 rounded-xl p-3 text-left" style={{ border: `1px solid ${COLORS.cardBorder}` }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}>
+                                    {tile('filter', '#eef2ff', '#4456c7')}
+                                    <span className="text-sm font-medium" style={{ color: COLORS.text }}>{t(c)}</span>
+                                </button>
+                            ))}
+                        </div>
+                    ) : mode === 'starter' ? (
                         <div className="grid grid-cols-2 gap-2.5">
                             {FLOW_STARTERS.map((s) => (
                                 <button key={s.id} onClick={() => onPickStarter(s.id)} className="flex items-center gap-3 rounded-xl p-3 text-left" style={{ border: `1px solid ${COLORS.cardBorder}` }}
