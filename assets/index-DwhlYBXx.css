@@ -4579,6 +4579,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .capitalize {
   text-transform: capitalize;
 }
+.normal-case {
+  text-transform: none;
+}
 .italic {
   font-style: italic;
 }
@@ -4622,6 +4625,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .leading-tight {
   line-height: 1.25;
+}
+.tracking-normal {
+  letter-spacing: 0em;
 }
 .tracking-wide {
   letter-spacing: 0.025em;
