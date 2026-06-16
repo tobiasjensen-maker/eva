@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '@economic/taco';
 import { PageHeader, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { getCustomers, getInvoices, type EcoCustomer, type EcoInvoice } from '../eco';
+import { getCustomers, getInvoices, invoicePdfUrl, type EcoCustomer, type EcoInvoice } from '../eco';
 
 // Live view backed by the connected e-conomic agreement: the agreement's customers
 // (debtors) and their sales invoices. Data is read through the dev proxy (see eco.ts).
@@ -42,6 +42,8 @@ export default function CustomersView() {
     const [error, setError] = useState<string | null>(null);
     const [selected, setSelected] = useState<number | null>(null);
     const [reloadKey, setReloadKey] = useState(0);
+    const [query, setQuery] = useState('');
+    const [preview, setPreview] = useState<EcoInvoice | null>(null);
 
     useEffect(() => {
         let alive = true;
@@ -66,6 +68,12 @@ export default function CustomersView() {
         const overdueSum = overdue.reduce((s, i) => s + (i.remainder || 0), 0);
         return { customers: customers.length, outstanding, booked: booked.length, overdue: overdue.length, overdueSum };
     }, [customers, invoices]);
+
+    const filteredCustomers = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return customers;
+        return customers.filter((c) => c.name.toLowerCase().includes(q) || String(c.customerNumber).includes(q));
+    }, [customers, query]);
 
     const selectedCustomer = customers.find((c) => c.customerNumber === selected) ?? null;
     const customerInvoices = useMemo(
@@ -119,9 +127,28 @@ export default function CustomersView() {
                         <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-4">
                             {/* Customer list */}
                             <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                                <div className="px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.cardBorder}` }}>{t('Customers')}</div>
+                                <div className="p-2.5" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                    <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: '#f4f4f5' }}>
+                                        <Icon name="search" style={{ color: COLORS.textMuted }} />
+                                        <input
+                                            value={query}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            placeholder={t('Search customers…')}
+                                            className="flex-1 bg-transparent text-sm outline-none"
+                                            style={{ color: COLORS.text }}
+                                        />
+                                        {query && (
+                                            <button onClick={() => setQuery('')} title={t('Clear')} style={{ color: COLORS.textMuted }} className="shrink-0 rounded p-0.5 hover:bg-black/5">
+                                                <Icon name="close" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                                 <div className="max-h-[520px] overflow-y-auto">
-                                    {customers.map((c) => {
+                                    {filteredCustomers.length === 0 && (
+                                        <div className="px-3.5 py-8 text-center text-sm" style={{ color: COLORS.textMuted }}>{t('No customers match your search.')}</div>
+                                    )}
+                                    {filteredCustomers.map((c) => {
                                         const sel = c.customerNumber === selected;
                                         return (
                                             <button
@@ -166,6 +193,7 @@ export default function CustomersView() {
                                                 <th className="text-left font-medium px-4 py-2">{t('Due')}</th>
                                                 <th className="text-right font-medium px-4 py-2">{t('Amount')}</th>
                                                 <th className="text-right font-medium px-4 py-2">{t('Status')}</th>
+                                                <th className="px-4 py-2" />
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -180,6 +208,18 @@ export default function CustomersView() {
                                                         <td className="px-4 py-2.5 text-right">
                                                             <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}>{t(st.label)}</span>
                                                         </td>
+                                                        <td className="px-4 py-2.5 text-right">
+                                                            <button
+                                                                onClick={() => setPreview(inv)}
+                                                                title={t('Preview invoice')}
+                                                                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium"
+                                                                style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
+                                                                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                                            >
+                                                                <Icon name="document-preview" /> {t('Preview')}
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 );
                                             })}
@@ -190,6 +230,33 @@ export default function CustomersView() {
                         </div>
                     </>
                 )}
+            </div>
+
+            {preview && <InvoicePreview invoice={preview} onClose={() => setPreview(null)} />}
+        </div>
+    );
+}
+
+function InvoicePreview({ invoice, onClose }: { invoice: EcoInvoice; onClose: () => void }) {
+    const { t } = useLang();
+    const url = invoicePdfUrl(invoice);
+    const title = invoice.kind === 'draft' ? t('Draft') : `${t('Invoice')} #${invoice.number}`;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(880px, 94vw)', height: 'min(88vh, 1000px)', boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+                <header className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Icon name="document-preview" style={{ color: COLORS.textMuted }} />
+                        <span className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{title} · {invoice.recipientName}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                            <Icon name="link-external" /> {t('Open in new tab')}
+                        </a>
+                        <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1.5 hover:bg-black/5"><Icon name="close" /></button>
+                    </div>
+                </header>
+                <iframe title={title} src={url} className="flex-1 w-full" style={{ border: 'none', background: '#f1f1f3' }} />
             </div>
         </div>
     );

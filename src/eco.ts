@@ -57,6 +57,12 @@ export interface EcoInvoice {
 
 interface Paged<T> { collection: T[]; pagination?: { results: number } }
 
+// Same-origin PDF URL (served through the dev proxy) — can be used directly as an
+// <iframe>/<a> src. Booked and draft invoices have separate endpoints.
+export function invoicePdfUrl(inv: Pick<EcoInvoice, 'kind' | 'number'>): string {
+    return `${BASE}/invoices/${inv.kind === 'draft' ? 'drafts' : 'booked'}/${inv.number}/pdf`;
+}
+
 export async function getCustomers(): Promise<EcoCustomer[]> {
     const data = await ecoFetch<Paged<Record<string, unknown>>>('/customers?pagesize=1000');
     return (data.collection ?? []).map((c) => ({
