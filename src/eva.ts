@@ -10,8 +10,9 @@
 
 const TOKEN_KEY = 'va-eva-token';
 
-// EVA sandbox (Plex staging). Production is eva-agent.e-conomic.com.
-export const EVA_HOST = 'eva-agent-plex.e-conomic.dev';
+// EVA production. (Sandbox eva-agent-plex.e-conomic.dev exists but staging is flaky,
+// so we point at production — token comes from a logged-in e-conomic agreement.)
+export const EVA_HOST = 'eva-agent.e-conomic.com';
 export const EVA_AGENT = 'eva-assistant';
 
 export function evaToken(): string {
