@@ -3677,6 +3677,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .\!auto-rows-fr {
   grid-auto-rows: minmax(0, 1fr) !important;
 }
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
 .grid-cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
