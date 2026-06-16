@@ -101,9 +101,11 @@ function Connected({ config }: { config: EvaConfig }) {
                             <div style={{ background: '#f1f1f3', color: COLORS.text, borderRadius: 16, padding: '8px 14px', fontSize: 14, maxWidth: '85%' }}>{text}</div>
                         </div>
                     ) : (
-                        <div key={m.id} style={{ fontSize: 14, lineHeight: 1.55, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{text || (busy ? '…' : '')}</div>
+                        <div key={m.id} style={{ fontSize: 14, lineHeight: 1.55, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{text || (busy ? <TypingDots /> : null)}</div>
                     )
                 })}
+                {/* Waiting on the first token (no assistant bubble yet). */}
+                {busy && messages[messages.length - 1]?.role !== 'assistant' && <TypingDots />}
             </div>
             <div style={{ padding: 12, borderTop: `1px solid ${COLORS.border}` }}>
                 <div style={{ display: 'flex', gap: 8, border: `1px solid ${COLORS.border}`, borderRadius: 14, background: '#fafafa', padding: 6 }}>
@@ -124,6 +126,16 @@ function Connected({ config }: { config: EvaConfig }) {
                     </button>
                 </div>
             </div>
+        </div>
+    )
+}
+
+function TypingDots() {
+    return (
+        <div aria-label="Eva is thinking" style={{ display: 'flex', gap: 4, alignItems: 'center', height: 18 }}>
+            {[0, 1, 2].map((i) => (
+                <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#9aa0aa', display: 'inline-block', animation: 'evaDot 1.2s infinite ease-in-out', animationDelay: `${i * 0.16}s` }} />
+            ))}
         </div>
     )
 }
