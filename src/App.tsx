@@ -29,7 +29,7 @@ import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
 import { useEcoConnection } from './eco';
-import { streamEva, evaConfigured, evaToken, setEvaToken } from './eva';
+import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from './eva';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
@@ -566,12 +566,8 @@ export default function App() {
                     intro={chatPanel.intro}
                     chips={chatPanel.chips}
                     respond={chatPanel.respond}
-                    streamRespond={
-                        evaConfigured()
-                            ? (_q, history, onDelta) =>
-                                  streamEva(history, { agreementNumber: liveAgreement?.number, companyName: ecoCompany, page: view }, onDelta).then(() => {})
-                            : undefined
-                    }
+                    evaConfig={evaConfigured() ? evaConfig({ agreementNumber: liveAgreement?.number, companyName: ecoCompany, page: view }) : null}
+                    evaSrc={evaIslandSrc()}
                     collapsed={chatCollapsed}
                     onToggleCollapsed={() => setChatCollapsed((c) => !c)}
                     pendingAsk={pendingAsk}

@@ -1,0 +1,22 @@
+{
+  "name": "eva-island",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@economic/agents-react": "^1.3.7",
+    "@cloudflare/ai-chat": "^0.8.5",
+    "agents": "^0.16.0",
+    "ai": "^6.0.180",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
+  }
+}

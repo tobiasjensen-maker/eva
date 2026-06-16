@@ -17,6 +17,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# EVA island build output (generated locally via `npm run build:eva`)
+public/eva-island
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

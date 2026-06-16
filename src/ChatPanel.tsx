@@ -2,6 +2,21 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Icon } from '@economic/taco';
 import { Orb, MicIcon, EvaChip, COLORS } from './ui';
 import { useLang } from './i18n';
+import { type EvaConfig } from './eva';
+
+// The live EVA chat runs in an isolated React-19 iframe (eva-island). We post the
+// config (token + agreement context) once the island signals it's ready.
+function EvaIframe({ src, config }: { src: string; config: EvaConfig }) {
+    const ref = useRef<HTMLIFrameElement>(null);
+    useEffect(() => {
+        const post = () => ref.current?.contentWindow?.postMessage({ type: 'eva-config', ...config }, '*');
+        const onMsg = (e: MessageEvent) => { if (e.data?.type === 'eva-ready') post(); };
+        window.addEventListener('message', onMsg);
+        const id = setTimeout(post, 600); // fallback if the ready signal was missed
+        return () => { window.removeEventListener('message', onMsg); clearTimeout(id); };
+    }, [config]);
+    return <iframe ref={ref} src={src} title="Eva" style={{ flex: 1, width: '100%', border: 'none' }} />;
+}
 
 const PANEL_SHADOW = '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)';
 const SIDEBAR_BORDER = '#e9e9ec';
@@ -50,14 +65,15 @@ function Thinking() {
 export interface PendingAsk { user: string; answer: string }
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, streamRespond, collapsed, onToggleCollapsed, pendingAsk, onPendingConsumed,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, pendingAsk, onPendingConsumed,
 }: {
     subtitle: string;
     intro: string;
     chips: string[];
     respond: (q: string) => string;
-    // When provided (EVA connected), answers stream in live; onDelta receives the cumulative text.
-    streamRespond?: (q: string, history: { role: 'user' | 'assistant'; text: string }[], onDelta: (full: string) => void) => Promise<void>;
+    // When set (EVA connected), the panel body is the live EVA chat island (an iframe).
+    evaConfig?: EvaConfig | null;
+    evaSrc?: string;
     collapsed: boolean;
     onToggleCollapsed: () => void;
     pendingAsk: PendingAsk | null;
@@ -81,27 +97,10 @@ export function ChatPanel({
             setMsgs((m) => m.map((x) => (x.id === tid ? { id: tid, role: 'assistant', text: answerText } : x)));
         }, 1100);
     }
-    // Streamed delivery via the real assistant: tokens land in the bubble as they arrive.
-    function deliverStream(userText: string) {
-        const tid = nid();
-        const history = msgs.filter((m) => !m.thinking && m.text).map((m) => ({ role: m.role, text: m.text }));
-        history.push({ role: 'user', text: userText });
-        setMsgs((m) => [...m, { id: nid(), role: 'user', text: userText }, { id: tid, role: 'assistant', text: '', thinking: true }]);
-        setInput('');
-        streamRespond!(userText, history, (full) => {
-            setMsgs((m) => m.map((x) => (x.id === tid ? { ...x, text: full, thinking: false, instant: true } : x)));
-        }).catch((e) => {
-            setMsgs((m) => m.map((x) => (x.id === tid ? { ...x, text: `Couldn't reach Eva: ${e instanceof Error ? e.message : String(e)}`, thinking: false, instant: true } : x)));
-        });
-    }
-    function ask(text: string) {
-        if (streamRespond) deliverStream(text);
-        else deliver(text, respond(text));
-    }
     function send(text: string) {
         const t = text.trim();
         if (!t) return;
-        ask(t);
+        deliver(t, respond(t));
         requestAnimationFrame(() => taRef.current?.focus());
     }
 
@@ -154,6 +153,10 @@ export function ChatPanel({
                 </button>
             </div>
 
+            {evaConfig && evaSrc ? (
+                <EvaIframe src={evaSrc} config={evaConfig} />
+            ) : (
+            <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
                 {msgs.map((m) =>
                     m.role === 'user' ? (
@@ -176,7 +179,7 @@ export function ChatPanel({
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {chips.map((c) => (
                             // Display the translated chip, but match the canned answer on the English key.
-                            <EvaChip key={c} label={t(c)} onClick={() => (streamRespond ? deliverStream(t(c)) : deliver(t(c), respond(c)))} />
+                            <EvaChip key={c} label={t(c)} onClick={() => deliver(t(c), respond(c))} />
                         ))}
                     </div>
                 )}
@@ -204,6 +207,8 @@ export function ChatPanel({
                     </div>
                 </div>
             </div>
+            </>
+            )}
         </aside>
     );
 }
