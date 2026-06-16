@@ -10,6 +10,7 @@ import {
     InsightsIcon,
     SkillsIcon,
     SpacesIcon,
+    CustomersIcon,
     SidebarTooltip,
     ScopeContext,
 } from './ui';
@@ -23,6 +24,7 @@ import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsCh
 import ActivityView, { ACTIVITY_ENTRIES, reviewAnswer } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
+import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
@@ -32,16 +34,18 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Review', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
+    // Live e-conomic data — only reachable when the dev proxy is available.
+    ...(import.meta.env.DEV ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
     { id: 'skills', label: 'Automations', Icon: SkillsIcon },
     { id: 'spaces', label: 'Artifacts', Icon: SpacesIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces'];
+const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'skills', spaces: 'artifacts' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', skills: 'skills', artifacts: 'spaces', spaces: 'spaces' };
+const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'skills', spaces: 'artifacts', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', skills: 'skills', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -523,6 +527,7 @@ export default function App() {
                         onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }}
                     />
                 )}
+                {view === 'customers' && <CustomersView />}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>

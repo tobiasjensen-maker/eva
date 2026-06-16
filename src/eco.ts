@@ -33,6 +33,70 @@ export type EcoConnection =
     | { status: 'connected'; company: string; agreementNumber: number; userName?: string }
     | { status: 'error'; error: string };
 
+// ---- Customers & invoices ----
+
+export interface EcoCustomer {
+    customerNumber: number;
+    name: string;
+    email?: string;
+    currency: string;
+    balance: number;
+}
+
+export interface EcoInvoice {
+    kind: 'booked' | 'draft';
+    number: number;
+    date: string;
+    dueDate?: string;
+    customerNumber?: number;
+    recipientName: string;
+    grossAmount: number;
+    remainder?: number; // outstanding amount (booked only)
+    currency: string;
+}
+
+interface Paged<T> { collection: T[]; pagination?: { results: number } }
+
+export async function getCustomers(): Promise<EcoCustomer[]> {
+    const data = await ecoFetch<Paged<Record<string, unknown>>>('/customers?pagesize=1000');
+    return (data.collection ?? []).map((c) => ({
+        customerNumber: c.customerNumber as number,
+        name: (c.name as string) ?? '—',
+        email: c.email as string | undefined,
+        currency: (c.currency as string) ?? 'DKK',
+        balance: (c.balance as number) ?? 0,
+    }));
+}
+
+export async function getInvoices(): Promise<EcoInvoice[]> {
+    const [booked, drafts] = await Promise.all([
+        ecoFetch<Paged<Record<string, any>>>('/invoices/booked?pagesize=1000').catch(() => ({ collection: [] })),
+        ecoFetch<Paged<Record<string, any>>>('/invoices/drafts?pagesize=1000').catch(() => ({ collection: [] })),
+    ]);
+    const b: EcoInvoice[] = (booked.collection ?? []).map((i) => ({
+        kind: 'booked',
+        number: i.bookedInvoiceNumber,
+        date: i.date,
+        dueDate: i.dueDate,
+        customerNumber: i.customer?.customerNumber,
+        recipientName: i.recipient?.name ?? '—',
+        grossAmount: i.grossAmount ?? 0,
+        remainder: i.remainder,
+        currency: i.currency ?? 'DKK',
+    }));
+    const d: EcoInvoice[] = (drafts.collection ?? []).map((i) => ({
+        kind: 'draft',
+        number: i.draftInvoiceNumber,
+        date: i.date,
+        dueDate: i.dueDate,
+        customerNumber: i.customer?.customerNumber,
+        recipientName: i.recipient?.name ?? '—',
+        grossAmount: i.grossAmount ?? 0,
+        currency: i.currency ?? 'DKK',
+    }));
+    return [...b, ...d];
+}
+
 // Calls /self once on mount to verify the App + Agreement tokens and read the
 // connected company. Drives the connection indicator in the sidebar.
 export function useEcoConnection(enabled = true): EcoConnection {

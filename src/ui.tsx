@@ -592,6 +592,16 @@ export function SpacesIcon({ active }: { active: boolean }) {
     );
 }
 
+export function CustomersIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M16 5.5a3 3 0 0 1 0 5.4M17.5 14c2.2.4 3.9 2.2 3.9 4.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 // Resolve a file in /public against the app's base path (so it works under /eva/ on GitHub Pages).
 export const asset = (file: string) => `${import.meta.env.BASE_URL}${file}`;
 
