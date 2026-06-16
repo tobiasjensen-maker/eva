@@ -26,6 +26,7 @@ import SpacesView from './views/SpacesView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
+import { useEcoConnection } from './eco';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
@@ -84,6 +85,11 @@ export default function App() {
         toast.success(`Financial Insights unlocked · ${INSIGHTS_PRICE} kr/month`);
     }
     const [accountOpen, setAccountOpen] = useState(false);
+    // Live e-conomic connection — local dev only (the public build has no proxy).
+    const ecoEnabled = import.meta.env.DEV;
+    const eco = useEcoConnection(ecoEnabled);
+    const ecoCompany = ecoEnabled && eco.status === 'connected' ? eco.company : 'e-conomic Topco';
+    const ecoDot = eco.status === 'connected' ? '#22c55e' : eco.status === 'connecting' ? '#d4a72c' : '#9ca3af';
     const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('va-lang') === 'da' ? 'da' : 'en'));
     useEffect(() => {
         localStorage.setItem('va-lang', lang);
@@ -369,6 +375,24 @@ export default function App() {
                                         : { left: 12, right: 12, bottom: 58, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.14)' }
                                 }
                             >
+                                {/* Live e-conomic connection status (via the dev proxy) — dev only */}
+                                {ecoEnabled && (
+                                <div className="flex items-start gap-2.5 px-3 py-2.5" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                    <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, marginTop: 4, background: ecoDot }} />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-medium" style={{ color: COLORS.text }}>
+                                            {eco.status === 'connected' ? t('Connected to e-conomic') : eco.status === 'connecting' ? t('Connecting to e-conomic…') : t('Not connected')}
+                                        </div>
+                                        <div className="text-xs truncate" style={{ color: COLORS.textMuted }} title={eco.status === 'error' ? eco.error : undefined}>
+                                            {eco.status === 'connected'
+                                                ? `${eco.company} · ${t('Agreement')} ${eco.agreementNumber}`
+                                                : eco.status === 'error'
+                                                    ? eco.error
+                                                    : t('Verifying tokens…')}
+                                        </div>
+                                    </div>
+                                </div>
+                                )}
                                 {ACCOUNT_ITEMS.map((it) => (
                                     <button
                                         key={it.label}
@@ -453,7 +477,9 @@ export default function App() {
                             <>
                                 <span className="flex-1 min-w-0 text-xs truncate text-left">
                                     <span className="font-medium" style={{ color: '#ffffff' }}>Tobias Holm Jensen</span>
-                                    <span style={{ color: 'rgba(255,255,255,0.5)' }}> · e-conomic Topco</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.5)' }}> · </span>
+                                    {ecoEnabled && <span className="inline-block rounded-full align-middle" style={{ width: 6, height: 6, background: ecoDot, marginRight: 4 }} />}
+                                    <span style={{ color: 'rgba(255,255,255,0.5)' }}>{ecoCompany}</span>
                                 </span>
                                 <Icon name={accountOpen ? 'chevron-up' : 'chevron-down'} className="shrink-0" style={{ color: 'rgba(255,255,255,0.6)' }} />
                             </>
