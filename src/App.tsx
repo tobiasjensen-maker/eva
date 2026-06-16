@@ -29,6 +29,7 @@ import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
 import { useEcoConnection } from './eco';
+import { streamEva, evaConfigured, evaToken, setEvaToken } from './eva';
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
@@ -89,6 +90,7 @@ export default function App() {
         toast.success(`Financial Insights unlocked · ${INSIGHTS_PRICE} kr/month`);
     }
     const [accountOpen, setAccountOpen] = useState(false);
+    const [, setEvaTick] = useState(0); // bump to re-render after the EVA token changes
     // Live e-conomic connection — local dev only (the public build has no proxy).
     const ecoEnabled = import.meta.env.DEV;
     const eco = useEcoConnection(ecoEnabled);
@@ -402,6 +404,26 @@ export default function App() {
                                     </div>
                                 </div>
                                 )}
+                                {/* EVA assistant connection (sandbox) — dev only */}
+                                {ecoEnabled && (
+                                <button
+                                    onClick={() => {
+                                        const current = evaToken();
+                                        const next = window.prompt(current ? 'Update EVA sandbox token (blank to disconnect):' : 'Paste your EVA sandbox token (from Plex):', current);
+                                        if (next !== null) { setEvaToken(next.trim()); setEvaTick((n) => n + 1); toast.information(next.trim() ? 'Eva connected' : 'Eva disconnected'); }
+                                    }}
+                                    className="flex items-start gap-2.5 w-full text-left px-3 py-2.5"
+                                    style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                >
+                                    <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, marginTop: 4, background: evaConfigured() ? '#22c55e' : '#9ca3af' }} />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-medium" style={{ color: COLORS.text }}>{evaConfigured() ? t('Eva assistant connected') : t('Connect Eva assistant')}</div>
+                                        <div className="text-xs" style={{ color: COLORS.textMuted }}>{evaConfigured() ? t('Sandbox · tap to update token') : t('Sandbox · tap to paste token')}</div>
+                                    </div>
+                                </button>
+                                )}
                                 {ACCOUNT_ITEMS.map((it) => (
                                     <button
                                         key={it.label}
@@ -544,6 +566,12 @@ export default function App() {
                     intro={chatPanel.intro}
                     chips={chatPanel.chips}
                     respond={chatPanel.respond}
+                    streamRespond={
+                        evaConfigured()
+                            ? (_q, history, onDelta) =>
+                                  streamEva(history, { agreementNumber: liveAgreement?.number, companyName: ecoCompany, page: view }, onDelta).then(() => {})
+                            : undefined
+                    }
                     collapsed={chatCollapsed}
                     onToggleCollapsed={() => setChatCollapsed((c) => !c)}
                     pendingAsk={pendingAsk}

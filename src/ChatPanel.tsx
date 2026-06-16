@@ -50,12 +50,14 @@ function Thinking() {
 export interface PendingAsk { user: string; answer: string }
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, collapsed, onToggleCollapsed, pendingAsk, onPendingConsumed,
+    subtitle, intro, chips, respond, streamRespond, collapsed, onToggleCollapsed, pendingAsk, onPendingConsumed,
 }: {
     subtitle: string;
     intro: string;
     chips: string[];
     respond: (q: string) => string;
+    // When provided (EVA connected), answers stream in live; onDelta receives the cumulative text.
+    streamRespond?: (q: string, history: { role: 'user' | 'assistant'; text: string }[], onDelta: (full: string) => void) => Promise<void>;
     collapsed: boolean;
     onToggleCollapsed: () => void;
     pendingAsk: PendingAsk | null;
@@ -79,10 +81,27 @@ export function ChatPanel({
             setMsgs((m) => m.map((x) => (x.id === tid ? { id: tid, role: 'assistant', text: answerText } : x)));
         }, 1100);
     }
+    // Streamed delivery via the real assistant: tokens land in the bubble as they arrive.
+    function deliverStream(userText: string) {
+        const tid = nid();
+        const history = msgs.filter((m) => !m.thinking && m.text).map((m) => ({ role: m.role, text: m.text }));
+        history.push({ role: 'user', text: userText });
+        setMsgs((m) => [...m, { id: nid(), role: 'user', text: userText }, { id: tid, role: 'assistant', text: '', thinking: true }]);
+        setInput('');
+        streamRespond!(userText, history, (full) => {
+            setMsgs((m) => m.map((x) => (x.id === tid ? { ...x, text: full, thinking: false, instant: true } : x)));
+        }).catch((e) => {
+            setMsgs((m) => m.map((x) => (x.id === tid ? { ...x, text: `Couldn't reach Eva: ${e instanceof Error ? e.message : String(e)}`, thinking: false, instant: true } : x)));
+        });
+    }
+    function ask(text: string) {
+        if (streamRespond) deliverStream(text);
+        else deliver(text, respond(text));
+    }
     function send(text: string) {
         const t = text.trim();
         if (!t) return;
-        deliver(t, respond(t));
+        ask(t);
         requestAnimationFrame(() => taRef.current?.focus());
     }
 
@@ -157,7 +176,7 @@ export function ChatPanel({
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {chips.map((c) => (
                             // Display the translated chip, but match the canned answer on the English key.
-                            <EvaChip key={c} label={t(c)} onClick={() => deliver(t(c), respond(c))} />
+                            <EvaChip key={c} label={t(c)} onClick={() => (streamRespond ? deliverStream(t(c)) : deliver(t(c), respond(c)))} />
                         ))}
                     </div>
                 )}
