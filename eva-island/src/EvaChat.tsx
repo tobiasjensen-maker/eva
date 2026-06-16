@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useChat } from '@economic/agents-react'
+import { useAssistant } from '@economic/agents-react'
 
 // Config handed in by the parent app over postMessage (so the token never lives in
 // this bundle). Defaults target the EVA sandbox.
@@ -25,19 +25,18 @@ export function EvaChat() {
             }
         }
         window.addEventListener('message', onMsg)
-        // Tell the parent we're ready to receive config.
         window.parent?.postMessage({ type: 'eva-ready' }, '*')
         return () => window.removeEventListener('message', onMsg)
     }, [])
 
-    if (!config || !config.token) {
-        return <Centered>Waiting for connection…</Centered>
-    }
+    if (!config || !config.token) return <Centered>Waiting for connection…</Centered>
     return <Connected key={config.userId} config={config} />
 }
 
+// EVA is an Assistant (per-user, many chats), so we use useAssistant and auto-open or
+// create a single chat for this embedded panel.
 function Connected({ config }: { config: EvaConfig }) {
-    const { status, chat } = useChat({
+    const { status, assistant, chat, currentChatName } = useAssistant({
         host: config.host,
         agentName: config.agentName,
         name: config.userId,
@@ -51,28 +50,45 @@ function Connected({ config }: { config: EvaConfig }) {
 
     const [input, setInput] = useState('')
     const scrollRef = useRef<HTMLDivElement>(null)
-    const messages = chat?.messages ?? []
-    const busy = chat?.status === 'submitted' || chat?.status === 'streaming'
+    const initRef = useRef(false)
+
+    // Once connected, open the most recent chat or start a new one.
+    useEffect(() => {
+        if (status !== 'connected' || currentChatName || initRef.current) return
+        initRef.current = true
+        void (async () => {
+            try {
+                const list = await assistant.getChats()
+                if (list?.length) assistant.openChat(list[0].name)
+                else await assistant.createChat()
+            } catch {
+                await assistant.createChat().catch(() => {})
+            }
+        })()
+    }, [status, currentChatName, assistant])
+
+    const messages = chat?.chat.messages ?? []
+    const busy = chat?.chat.status === 'submitted' || chat?.chat.status === 'streaming'
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }, [messages])
 
-    // Surface connection status to the parent (for the dot/indicator).
     useEffect(() => {
         window.parent?.postMessage({ type: 'eva-status', status }, '*')
     }, [status])
 
     function send() {
         const text = input.trim()
-        if (!text || !chat?.sendMessage) return
-        chat.sendMessage({ role: 'user', parts: [{ type: 'text', text }] })
+        if (!text || !chat?.chat.sendMessage) return
+        chat.chat.sendMessage({ role: 'user', parts: [{ type: 'text', text }] })
         setInput('')
     }
 
     if (status === 'unauthorized') return <Centered>Token rejected — refresh it and reconnect.</Centered>
     if (status === 'connecting') return <Centered>Connecting to Eva…</Centered>
     if (status === 'disconnected') return <Centered>Disconnected. Check the network / VPN.</Centered>
+    if (!currentChatName) return <Centered>Starting chat…</Centered>
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#fff' }}>
