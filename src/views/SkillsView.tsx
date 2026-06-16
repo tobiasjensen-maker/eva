@@ -1278,6 +1278,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                 <StepPicker
                     mode={picker}
                     installed={installed}
+                    currentStarter={starter}
                     onPickStarter={(id) => { setStarter(id); setPicker(null); }}
                     onPickStep={(s) => { addStep(s); setPicker(null); }}
                     onPickCondition={(c) => { addCondition(c); setPicker(null); }}
@@ -1483,9 +1484,10 @@ function StepSettings({ step, onClose }: { step: FlowStep; onClose: () => void }
 }
 
 // ---- Step / starter picker (the right-hand "Add step" panel, as a modal) ----
-function StepPicker({ mode, installed, onPickStarter, onPickStep, onPickCondition, onClose }: {
+function StepPicker({ mode, installed, currentStarter, onPickStarter, onPickStep, onPickCondition, onClose }: {
     mode: 'starter' | 'step' | 'condition';
     installed: Set<string>;
+    currentStarter?: string;
     onPickStarter: (id: string) => void;
     onPickStep: (s: FlowStep) => void;
     onPickCondition: (c: string) => void;
@@ -1526,14 +1528,18 @@ function StepPicker({ mode, installed, onPickStarter, onPickStep, onPickConditio
                         </div>
                     ) : mode === 'starter' ? (
                         <div className="grid grid-cols-2 gap-2.5">
-                            {FLOW_STARTERS.map((s) => (
-                                <button key={s.id} onClick={() => onPickStarter(s.id)} className="flex items-center gap-3 rounded-xl p-3 text-left" style={{ border: `1px solid ${COLORS.cardBorder}` }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}>
-                                    {tile(s.icon, '#f1f1f3', '#52525b')}
-                                    <span className="text-sm font-medium" style={{ color: COLORS.text }}>{t(s.label)}</span>
-                                </button>
-                            ))}
+                            {FLOW_STARTERS.map((s) => {
+                                const sel = s.id === currentStarter;
+                                return (
+                                    <button key={s.id} onClick={() => onPickStarter(s.id)} className="flex items-center gap-3 rounded-xl p-3 text-left" style={{ border: `1px solid ${sel ? '#16a34a' : COLORS.cardBorder}`, background: sel ? '#f0fdf4' : '#fff', boxShadow: sel ? '0 0 0 1px #16a34a' : 'none' }}
+                                        onMouseEnter={(e) => { if (!sel) { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; } }}
+                                        onMouseLeave={(e) => { if (!sel) { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = COLORS.cardBorder; } }}>
+                                        {tile(s.icon, '#f1f1f3', '#52525b')}
+                                        <span className="text-sm font-medium" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                                        {sel && <Icon name="circle-tick" className="ml-auto shrink-0" style={{ color: '#16a34a' }} />}
+                                    </button>
+                                );
+                            })}
                         </div>
                     ) : (
                         <>
