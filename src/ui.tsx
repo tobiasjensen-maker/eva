@@ -21,6 +21,8 @@ export function ScopeSwitcher() {
         : isLive
         ? liveAgreement!.name
         : AGREEMENTS.find((a) => a.id === scope)?.name ?? scope;
+    // Keep the pill compact — long agreement names are truncated (full name on hover).
+    const display = label.length > 20 ? `${label.slice(0, 20).trimEnd()}…` : label;
     const pick = (id: string) => { setOpen(false); onChoose(id); };
     const onIn = (e: { currentTarget: HTMLElement }) => (e.currentTarget.style.background = '#f7f7f8');
     const onOut = (e: { currentTarget: HTMLElement }) => (e.currentTarget.style.background = 'transparent');
@@ -37,7 +39,7 @@ export function ScopeSwitcher() {
                     ? <span className="rounded-full" style={{ width: 7, height: 7, background: '#22c55e' }} />
                     : <Icon name={portfolio ? 'contacts' : 'person'} style={{ color: COLORS.textMuted }} />}
                 <span style={{ color: COLORS.textMuted }}>{t('Working on:')}</span>
-                <span className="font-medium">{label}</span>
+                <span className="font-medium" title={label}>{display}</span>
                 <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
             </button>
             {open && (
