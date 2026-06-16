@@ -3,16 +3,24 @@ import { Icon } from '@economic/taco';
 import { AGREEMENTS } from './data';
 import { useLang } from './i18n';
 
+// A real e-conomic agreement connected via the dev proxy (see eco.ts / App.tsx).
+export interface LiveAgreement { id: string; name: string; number: number }
+
 // Global "which client am I working on" context, surfaced as a header pill.
-export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void }>({ scope: 'portfolio', onChoose: () => {} });
+export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void; liveAgreement?: LiveAgreement | null }>({ scope: 'portfolio', onChoose: () => {} });
 
 // The "Working on: …" pill + agreement dropdown, shown in each page header.
 export function ScopeSwitcher() {
-    const { scope, onChoose } = useContext(ScopeContext);
+    const { scope, onChoose, liveAgreement } = useContext(ScopeContext);
     const { t } = useLang();
     const [open, setOpen] = useState(false);
     const portfolio = scope === 'portfolio';
-    const label = portfolio ? t('All clients') : AGREEMENTS.find((a) => a.id === scope)?.name ?? scope;
+    const isLive = !!liveAgreement && scope === liveAgreement.id;
+    const label = portfolio
+        ? t('All clients')
+        : isLive
+        ? liveAgreement!.name
+        : AGREEMENTS.find((a) => a.id === scope)?.name ?? scope;
     const pick = (id: string) => { setOpen(false); onChoose(id); };
     const onIn = (e: { currentTarget: HTMLElement }) => (e.currentTarget.style.background = '#f7f7f8');
     const onOut = (e: { currentTarget: HTMLElement }) => (e.currentTarget.style.background = 'transparent');
@@ -25,7 +33,9 @@ export function ScopeSwitcher() {
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#ececee')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = '#f1f1f3')}
             >
-                <Icon name={portfolio ? 'contacts' : 'person'} style={{ color: COLORS.textMuted }} />
+                {isLive
+                    ? <span className="rounded-full" style={{ width: 7, height: 7, background: '#22c55e' }} />
+                    : <Icon name={portfolio ? 'contacts' : 'person'} style={{ color: COLORS.textMuted }} />}
                 <span style={{ color: COLORS.textMuted }}>{t('Working on:')}</span>
                 <span className="font-medium">{label}</span>
                 <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
@@ -34,6 +44,20 @@ export function ScopeSwitcher() {
                 <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
                     <div className="absolute z-40 rounded-xl bg-white overflow-hidden anim-in" style={{ top: 'calc(100% + 6px)', left: 0, width: 268, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                        {liveAgreement && (
+                            <>
+                                <p className="text-xs font-medium px-3 pt-2.5 pb-1" style={{ color: COLORS.textMuted }}>{t('Connected agreement')}</p>
+                                <button onClick={() => pick(liveAgreement.id)} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
+                                    <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: '#22c55e' }} />
+                                    <span className="flex-1 min-w-0">
+                                        <span className="block truncate font-medium">{liveAgreement.name}</span>
+                                        <span className="block text-xs" style={{ color: COLORS.textMuted }}>{t('Agreement')} {liveAgreement.number} · {t('Live')}</span>
+                                    </span>
+                                    {isLive && <Icon name="tick" style={{ color: '#16a34a' }} />}
+                                </button>
+                                <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
+                            </>
+                        )}
                         <p className="text-xs font-medium px-3 pt-2.5 pb-1" style={{ color: COLORS.textMuted }}>{t('Work across')}</p>
                         <button onClick={() => pick('portfolio')} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
                             <Icon name="contacts" style={{ color: COLORS.textMuted }} />

@@ -783,6 +783,8 @@ const DA: Record<string, string> = {
     'Preview': 'Forhåndsvis',
     'Preview invoice': 'Forhåndsvis faktura',
     'Open in new tab': 'Åbn i ny fane',
+    'Connected agreement': 'Forbundet aftale',
+    'Live': 'Live',
     'Invoice': 'Faktura',
     'Amount (DKK)': 'Beløb (DKK)',
     'Want me to send reminders? Just ask “send reminders to overdue customers”.': 'Skal jeg sende rykkere? Skriv blot “send rykkere til kunder med forfaldne fakturaer”.',

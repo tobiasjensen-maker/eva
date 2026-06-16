@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Icon } from '@economic/taco';
-import { PageHeader, COLORS } from '../ui';
+import { PageHeader, COLORS, ScopeContext } from '../ui';
 import { useLang } from '../i18n';
 import { getCustomers, getInvoices, invoicePdfUrl, type EcoCustomer, type EcoInvoice } from '../eco';
 
@@ -36,6 +36,11 @@ const STATUS_STYLE: Record<Status, { label: string; bg: string; fg: string }> = 
 
 export default function CustomersView() {
     const { t } = useLang();
+    const { scope, onChoose, liveAgreement } = useContext(ScopeContext);
+    // This page shows the connected agreement's live data, so default the picker to it.
+    useEffect(() => {
+        if (liveAgreement && scope === 'portfolio') onChoose(liveAgreement.id);
+    }, [liveAgreement, scope, onChoose]);
     const [customers, setCustomers] = useState<EcoCustomer[]>([]);
     const [invoices, setInvoices] = useState<EcoInvoice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -85,7 +90,6 @@ export default function CustomersView() {
         <div className="h-full flex flex-col" style={{ background: '#fff' }}>
             <PageHeader
                 title={t('Customers')}
-                showScope={false}
                 badge={
                     <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: '#ecfdf3', color: '#15803d' }}>
                         <span className="rounded-full" style={{ width: 6, height: 6, background: '#22c55e' }} /> {t('Live · e-conomic')}

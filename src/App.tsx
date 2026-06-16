@@ -94,6 +94,11 @@ export default function App() {
     const eco = useEcoConnection(ecoEnabled);
     const ecoCompany = ecoEnabled && eco.status === 'connected' ? eco.company : 'e-conomic Topco';
     const ecoDot = eco.status === 'connected' ? '#22c55e' : eco.status === 'connecting' ? '#d4a72c' : '#9ca3af';
+    // The real connected agreement, surfaced in the agreement picker when live.
+    const liveAgreement =
+        ecoEnabled && eco.status === 'connected'
+            ? { id: `live-${eco.agreementNumber}`, name: eco.company, number: eco.agreementNumber }
+            : null;
     const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('va-lang') === 'da' ? 'da' : 'en'));
     useEffect(() => {
         localStorage.setItem('va-lang', lang);
@@ -139,7 +144,7 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem('va-scope', scope);
     }, [scope]);
-    const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
+    const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : liveAgreement && s === liveAgreement.id ? liveAgreement.name : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
     const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review').length;
 
@@ -283,7 +288,7 @@ export default function App() {
 
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
-        <ScopeContext.Provider value={{ scope, onChoose: chooseScope }}>
+        <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement }}>
         <div className="flex" style={{ height: '100vh', background: '#ececee', padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
