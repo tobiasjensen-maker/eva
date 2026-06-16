@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { Icon } from '@economic/taco';
 import { PageHeader, COLORS, ScopeContext } from '../ui';
 import { useLang } from '../i18n';
+import { AGREEMENTS } from '../data';
 import { getCustomers, getInvoices, invoicePdfUrl, type EcoCustomer, type EcoInvoice } from '../eco';
 
 // Live view backed by the connected e-conomic agreement: the agreement's customers
@@ -50,7 +51,18 @@ export default function CustomersView() {
     const [query, setQuery] = useState('');
     const [preview, setPreview] = useState<EcoInvoice | null>(null);
 
+    // We only have live data for the connected agreement; other agreements have none.
+    const isLiveScope = !!liveAgreement && scope === liveAgreement.id;
+    const selectedName = scope === 'portfolio' ? t('All clients') : isLiveScope ? liveAgreement!.name : AGREEMENTS.find((a) => a.id === scope)?.name ?? scope;
+
     useEffect(() => {
+        if (!isLiveScope) {
+            setCustomers([]);
+            setInvoices([]);
+            setSelected(null);
+            setLoading(false);
+            return;
+        }
         let alive = true;
         setLoading(true);
         setError(null);
@@ -64,7 +76,7 @@ export default function CustomersView() {
             .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)))
             .finally(() => alive && setLoading(false));
         return () => { alive = false; };
-    }, [reloadKey]);
+    }, [reloadKey, isLiveScope]);
 
     const kpis = useMemo(() => {
         const outstanding = customers.reduce((s, c) => s + (c.balance || 0), 0);
@@ -90,11 +102,6 @@ export default function CustomersView() {
         <div className="h-full flex flex-col" style={{ background: '#fff' }}>
             <PageHeader
                 title={t('Customers')}
-                badge={
-                    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: '#ecfdf3', color: '#15803d' }}>
-                        <span className="rounded-full" style={{ width: 6, height: 6, background: '#22c55e' }} /> {t('Live · e-conomic')}
-                    </span>
-                }
                 right={
                     <button
                         onClick={() => setReloadKey((k) => k + 1)}
@@ -109,7 +116,18 @@ export default function CustomersView() {
             />
 
             <div className="flex-1 overflow-y-auto px-8 py-5" style={{ maxWidth: 1040, width: '100%', margin: '0 auto' }}>
-                {loading ? (
+                {!isLiveScope ? (
+                    <div className="flex flex-col items-center gap-2 py-20 text-center">
+                        <span className="flex items-center justify-center rounded-full" style={{ width: 44, height: 44, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="connection-revoke" /></span>
+                        <div className="text-sm font-medium" style={{ color: COLORS.text }}>{t('No live data for {name}').replace('{name}', selectedName)}</div>
+                        <div className="text-sm" style={{ color: COLORS.textMuted, maxWidth: 360 }}>{t('Customer data is only available for the connected e-conomic agreement.')}</div>
+                        {liveAgreement && (
+                            <button onClick={() => onChoose(liveAgreement.id)} className="mt-1 rounded-lg px-3 py-1.5 text-sm font-medium" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                {t('Switch to {name}').replace('{name}', liveAgreement.name)}
+                            </button>
+                        )}
+                    </div>
+                ) : loading ? (
                     <div className="flex items-center gap-2 py-16 justify-center text-sm" style={{ color: COLORS.textMuted }}>
                         <Icon name="refresh" className="animate-spin" /> {t('Loading from e-conomic…')}
                     </div>
