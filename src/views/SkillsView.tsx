@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, Fragment, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
 import { Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
@@ -975,7 +975,7 @@ function FlowDiagram({
     );
 
     return (
-        <div>
+        <div className="rounded-2xl p-4 sm:p-5" style={{ background: '#f7f7f8', border: `1px solid ${COLORS.cardBorder}` }}>
             {/* Trigger */}
             <SectionLabel>{t('Trigger')}</SectionLabel>
             <button
@@ -994,54 +994,59 @@ function FlowDiagram({
 
             {/* Conditions */}
             <SectionLabel>{t('Conditions')}</SectionLabel>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
                 {conditions.length === 0 && !onAddCondition && (
                     <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('Runs every time — no conditions.')}</p>
                 )}
                 {conditions.map((c, i) => (
-                    <div key={`${c}-${i}`} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                        {tile('filter', '#eef2ff', '#4456c7')}
-                        <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(c)}</span>
-                        {onRemoveCondition && (
-                            <button onClick={() => onRemoveCondition(i)} title={t('Remove')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                <Icon name="close" />
-                            </button>
-                        )}
-                    </div>
+                    <Fragment key={`${c}-${i}`}>
+                        {i > 0 && <FlowConnector />}
+                        <div className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
+                            {tile('filter', '#eef2ff', '#4456c7')}
+                            <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(c)}</span>
+                            {onRemoveCondition && (
+                                <button onClick={() => onRemoveCondition(i)} title={t('Remove')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                    <Icon name="close" />
+                                </button>
+                            )}
+                        </div>
+                    </Fragment>
                 ))}
-                {onAddCondition && addBtn(t('Add condition'), onAddCondition)}
+                {onAddCondition && <>{conditions.length > 0 && <FlowConnector />}{addBtn(t('Add condition'), onAddCondition)}</>}
             </div>
 
             <FlowConnector />
 
             {/* Actions */}
             <SectionLabel>{t('Actions')}</SectionLabel>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
                 {actions.map((s, i) => {
                     const clickable = !!onEditAction;
                     return (
-                        <div
-                            key={s.id}
-                            onClick={clickable ? () => onEditAction!(i, s) : undefined}
-                            className={`flex items-center gap-3 rounded-xl p-3 ${clickable ? 'cursor-pointer' : ''}`}
-                            style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}
-                            onMouseEnter={clickable ? (e) => (e.currentTarget.style.background = '#fafafa') : undefined}
-                            onMouseLeave={clickable ? (e) => (e.currentTarget.style.background = '#fff') : undefined}
-                        >
-                            {tile(s.icon, s.capId ? '#f3f0fb' : '#f1f1f3', s.capId ? '#7c3aed' : '#52525b')}
-                            <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
-                            {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
-                            <ApproachTag approach={s.approach} />
-                            {clickable && <Icon name="settings" style={{ color: '#c4c4cc' }} />}
-                            {onRemoveAction && (
-                                <button onClick={(e) => { e.stopPropagation(); onRemoveAction(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                    <Icon name="close" />
-                                </button>
-                            )}
-                        </div>
+                        <Fragment key={s.id}>
+                            {i > 0 && <FlowConnector />}
+                            <div
+                                onClick={clickable ? () => onEditAction!(i, s) : undefined}
+                                className={`flex items-center gap-3 rounded-xl p-3 ${clickable ? 'cursor-pointer' : ''}`}
+                                style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}
+                                onMouseEnter={clickable ? (e) => (e.currentTarget.style.background = '#fafafa') : undefined}
+                                onMouseLeave={clickable ? (e) => (e.currentTarget.style.background = '#fff') : undefined}
+                            >
+                                {tile(s.icon, s.capId ? '#f3f0fb' : '#f1f1f3', s.capId ? '#7c3aed' : '#52525b')}
+                                <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
+                                <ApproachTag approach={s.approach} />
+                                {clickable && <Icon name="settings" style={{ color: '#c4c4cc' }} />}
+                                {onRemoveAction && (
+                                    <button onClick={(e) => { e.stopPropagation(); onRemoveAction(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                        <Icon name="close" />
+                                    </button>
+                                )}
+                            </div>
+                        </Fragment>
                     );
                 })}
-                {onAddAction && addBtn(t('Add step'), onAddAction)}
+                {onAddAction && <>{actions.length > 0 && <FlowConnector />}{addBtn(t('Add step'), onAddAction)}</>}
             </div>
         </div>
     );
