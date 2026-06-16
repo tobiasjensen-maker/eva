@@ -42,7 +42,12 @@ export function evaConfig(ctx: { agreementNumber?: number; companyName?: string;
         host: EVA_HOST,
         agentName: EVA_AGENT,
         userId: ctx.agreementNumber ? `agreement-${ctx.agreementNumber}` : 'prototype',
-        context: { agreementNumber: ctx.agreementNumber, companyName: ctx.companyName, page: ctx.page },
+        context: {
+            agreementNumber: ctx.agreementNumber,
+            companyName: ctx.companyName,
+            page: ctx.page,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
     };
 }
 

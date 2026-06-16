@@ -78,6 +78,11 @@ function Connected({ config }: { config: EvaConfig }) {
         window.parent?.postMessage({ type: 'eva-status', status }, '*')
     }, [status])
 
+    // Diagnostics: log what EVA streams so we can see tool calls / part shapes.
+    useEffect(() => {
+        console.debug('[eva] status', status, 'chat.status', chat?.chat.status, 'messages', messages)
+    }, [status, chat?.chat.status, messages])
+
     function send() {
         const text = input.trim()
         if (!text || !chat?.chat.sendMessage) return
@@ -101,7 +106,15 @@ function Connected({ config }: { config: EvaConfig }) {
                             <div style={{ background: '#f1f1f3', color: COLORS.text, borderRadius: 16, padding: '8px 14px', fontSize: 14, maxWidth: '85%' }}>{text}</div>
                         </div>
                     ) : (
-                        <div key={m.id} style={{ fontSize: 14, lineHeight: 1.55, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{text || (busy ? <TypingDots /> : null)}</div>
+                        <div key={m.id} style={{ fontSize: 14, lineHeight: 1.55, color: COLORS.text, whiteSpace: 'pre-wrap' }}>
+                            {text ? text : null}
+                            {!text && toolActivity(m) && (
+                                <span style={{ display: 'flex', gap: 6, alignItems: 'center', color: COLORS.muted }}>
+                                    <TypingDots /> {toolActivity(m)}
+                                </span>
+                            )}
+                            {!text && !toolActivity(m) && busy ? <TypingDots /> : null}
+                        </div>
                     )
                 })}
                 {/* Waiting on the first token (no assistant bubble yet). */}
@@ -128,6 +141,14 @@ function Connected({ config }: { config: EvaConfig }) {
             </div>
         </div>
     )
+}
+
+// Describe any in-progress tool/step part so the user sees EVA "looking things up".
+function toolActivity(m: { parts?: { type: string; toolName?: string }[] }): string {
+    const tool = (m.parts ?? []).find((p) => p.type === 'dynamic-tool' || (typeof p.type === 'string' && p.type.startsWith('tool-')))
+    if (!tool) return ''
+    const name = tool.toolName ?? (tool.type.startsWith('tool-') ? tool.type.slice(5) : 'data')
+    return `Looking up ${name}…`
 }
 
 function TypingDots() {
