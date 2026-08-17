@@ -47,12 +47,12 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Artifacts')} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New artifact')}</Button>} />
+            <PageHeader title={t('Views')} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New view')}</Button>} />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
                     {spaces.length < FREE_SPACE_LIMIT
-                        ? (lang === 'da' ? `${spaces.length} af ${FREE_SPACE_LIMIT} gratis artefakter brugt` : `${spaces.length} of ${FREE_SPACE_LIMIT} free artifacts used`)
-                        : (lang === 'da' ? `${FREE_SPACE_LIMIT} gratis artefakter brugt · ekstra artefakter koster ${SPACE_PRICE} kr pr. stk.` : `${FREE_SPACE_LIMIT} free artifacts used · extra artifacts are ${SPACE_PRICE} kr each`)}
+                        ? (lang === 'da' ? `${spaces.length} af ${FREE_SPACE_LIMIT} gratis visninger brugt` : `${spaces.length} of ${FREE_SPACE_LIMIT} free views used`)
+                        : (lang === 'da' ? `${FREE_SPACE_LIMIT} gratis visninger brugt · ekstra visninger koster ${SPACE_PRICE} kr pr. stk.` : `${FREE_SPACE_LIMIT} free views used · extra views are ${SPACE_PRICE} kr each`)}
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 pb-10">
@@ -103,7 +103,7 @@ function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-                <PageHeader title={space.title} onBack={onBack} backLabel={t('Artifacts')} />
+                <PageHeader title={space.title} onBack={onBack} backLabel={t('Views')} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     <div className="flex items-start gap-3 mb-6">
                         <EmojiTile emoji={space.emoji} size={44} />

@@ -117,7 +117,7 @@ const CONDITION_LIBRARY = [
 let stSeq = 0;
 function st(label: string, approach: StepApproach, capId?: string): FlowStep {
     const icon = capId ? 'connection-enable' : approach === 'eva' ? 'ai-stars' : approach === 'review' ? 'person' : 'settings';
-    return { id: `st-${stSeq++}`, icon, label, approach, capId };
+    return { id: `st-${stSeq++}`, icon, label, approach, capId, kind: actionKind(label, approach) };
 }
 
 const FLOW_TEMPLATES: FlowTemplate[] = [
@@ -296,8 +296,8 @@ function preinstalledFlows(): LocalFlow[] {
 }
 
 const AUTO_TABS = [
-    { k: 'flows', label: 'Flows' },
-    { k: 'capabilities', label: 'Capabilities' },
+    { k: 'flows', label: 'Routines' },
+    { k: 'capabilities', label: 'Skills' },
 ] as const;
 type AutoTab = (typeof AUTO_TABS)[number]['k'];
 
@@ -323,7 +323,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
 
     function createScratch() {
         const id = `flow-${flowSeq++}`;
-        const skill: Skill = { id, title: 'Untitled flow', description: 'A custom flow you built from scratch.', emoji: '🛠️', color: '#7c6cf6', state: 'active', stat: 'Just created' };
+        const skill: Skill = { id, title: 'Untitled routine', description: 'A custom routine you built from scratch.', emoji: '🛠️', color: '#7c6cf6', state: 'active', stat: 'Just created' };
         setLocalFlows((prev) => [{ skill, seed: { starter: 'schedule', conditions: [], steps: [] } }, ...prev]);
         setNewFlow(false);
         setOpenId(id);
@@ -365,11 +365,11 @@ export default function AutomationsView({ skills, onEnable }: Props) {
         <div className="h-full overflow-y-auto">
             {/* Automations are set up for the practice, not per client — no scope pill here. */}
             <PageHeader
-                title={t('Automations')}
+                title={t('Routines')}
                 showScope={false}
                 right={
-                    tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New flow')}</Button>
-                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('New capability')}</Button>
+                    tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
+                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('Add skill')}</Button>
                     : undefined
                 }
             />
@@ -395,10 +395,10 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 {tab === 'flows' && (
                     <>
                         <div className="mb-6"><PerfKpis /></div>
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Your flows')}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Your routines')}</p>
                         {allFlows.length === 0 ? (
                             <Card className="p-10 text-center">
-                                <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No flows set up yet. Start one from a template.')}</p>
+                                <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No routines set up yet. Start one from a template.')}</p>
                             </Card>
                         ) : (
                             <div className="flex flex-col gap-3 pb-10">
@@ -456,7 +456,7 @@ function CapabilitiesMarket({ installed, onAdd, onOpen }: { installed: Set<strin
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
                 >
                     <Icon name="circle-plus" style={{ color: COLORS.textMuted }} />
-                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a capability')}</p>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a skill')}</p>
                     <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install skills from e-conomic partners.')}</p>
                 </button>
             </div>
@@ -484,15 +484,15 @@ function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<s
             >
                 <header className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <div>
-                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Add a capability')}</h2>
+                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Add a skill')}</h2>
                         <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Install skills from the e-conomic partner marketplace.')}</p>
                     </div>
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </header>
                 <div className="overflow-y-auto p-5">
-                    <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search capabilities…')} />
+                    <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search skills…')} />
                     {filtered.length === 0 ? (
-                        <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No capabilities match your search.')}</p>
+                        <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No skills match your search.')}</p>
                     ) : (
                         <div className="grid grid-cols-2 gap-4">
                             {filtered.map((c) => <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => onInstall(c.id)} />)}
@@ -601,7 +601,7 @@ function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-                <PageHeader title={cap.name} onBack={onBack} backLabel={t('Capabilities')} showScope={false} />
+                <PageHeader title={cap.name} onBack={onBack} backLabel={t('Skills')} showScope={false} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* intro */}
                     <div className="flex items-start gap-3 mb-6">
@@ -722,7 +722,18 @@ const AUTONOMY = [
 // Flow builder primitives — a starter (trigger) and a library of steps.
 // approach: how the step runs — a deterministic rule, Eva (the AI), or human-in-the-loop review.
 type StepApproach = 'rule' | 'eva' | 'review';
-interface FlowStep { id: string; icon: string; label: string; capId?: string; approach?: StepApproach }
+// EVA action taxonomy: every step is a Read, Reasoning or Write action. A human
+// checkpoint (approach 'review') is surfaced as its own 'review' pill.
+type ActionKind = 'read' | 'reasoning' | 'write' | 'review';
+interface FlowStep { id: string; icon: string; label: string; capId?: string; approach?: StepApproach; kind?: ActionKind }
+
+function actionKind(label: string, approach?: StepApproach): ActionKind {
+    if (approach === 'eva') return 'reasoning';
+    if (approach === 'review') return 'review';
+    const l = label.toLowerCase();
+    if (/(receive|import|read|pull|gather|fetch|detect|identif|find|check|compar|verif|calculat|analy|investigat|match|classif|extract|determin|prioriti|optimi|validat|monitor|look|review)/.test(l)) return 'read';
+    return 'write';
+}
 
 const FLOW_STARTERS = [
     { id: 'schedule', icon: 'time', label: 'On a schedule' },
@@ -746,9 +757,9 @@ const ECONOMIC_STEPS: FlowStep[] = [
 ];
 // Eva AI reasoning steps (always available)
 const AI_STEPS: FlowStep[] = [
-    { id: 'ai-decide', icon: 'ai-stars', label: 'Ask Eva to decide' },
-    { id: 'ai-summarize', icon: 'ai-stars', label: 'Summarize' },
-    { id: 'ai-extract', icon: 'ai-stars', label: 'Extract data' },
+    { id: 'ai-decide', icon: 'ai-stars', label: 'Ask Eva to decide', approach: 'eva', kind: 'reasoning' },
+    { id: 'ai-summarize', icon: 'ai-stars', label: 'Summarize', approach: 'eva', kind: 'reasoning' },
+    { id: 'ai-extract', icon: 'ai-stars', label: 'Extract data', approach: 'eva', kind: 'reasoning' },
 ];
 
 interface SkillConfig {
@@ -919,14 +930,17 @@ function dayLabel(daysAgo: number, locale = 'en-GB'): string {
 }
 
 // Small tag showing how a step runs — Eva (AI), a deterministic rule, or human review.
-function ApproachTag({ approach }: { approach?: StepApproach }) {
+function ApproachTag({ step }: { step?: FlowStep }) {
     const { t } = useLang();
-    if (!approach) return null;
-    const s = approach === 'eva'
-        ? { label: 'Eva', bg: '#f3f0fb', fg: '#7c3aed' }
-        : approach === 'review'
-            ? { label: 'Review', bg: '#fbf3e0', fg: '#b9842b' }
-            : { label: 'Rule', bg: '#f1f1f3', fg: '#6b6b76' };
+    if (!step) return null;
+    const kind = step.kind ?? actionKind(step.label, step.approach);
+    const s = kind === 'reasoning'
+        ? { label: 'Reasoning', bg: '#f3f0fb', fg: '#7c3aed' }
+        : kind === 'read'
+            ? { label: 'Read', bg: '#eef4fb', fg: '#2f6fb0' }
+            : kind === 'review'
+                ? { label: 'Review', bg: '#fbf3e0', fg: '#b9842b' }
+                : { label: 'Write', bg: '#ecfdf3', fg: '#15803d' };
     return <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: s.bg, color: s.fg }}>{t(s.label)}</span>;
 }
 
@@ -1035,7 +1049,7 @@ function FlowDiagram({
                                 {tile(s.icon, s.capId ? '#f3f0fb' : '#f1f1f3', s.capId ? '#7c3aed' : '#52525b')}
                                 <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
                                 {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
-                                <ApproachTag approach={s.approach} />
+                                <ApproachTag step={s} />
                                 {clickable && <Icon name="settings" style={{ color: '#c4c4cc' }} />}
                                 {onRemoveAction && (
                                     <button onClick={(e) => { e.stopPropagation(); onRemoveAction(i); }} title={t('Remove step')} className="shrink-0 rounded-md p-1" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
@@ -1171,7 +1185,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                 ) : (
                 <>
                 {/* Flow builder — reusable Trigger / Conditions / Actions component */}
-                <Section title={t('Flow')}>
+                <Section title={t('Routine')}>
                     <FlowDiagram
                         starterId={starter}
                         conditions={conditions}
@@ -1347,7 +1361,7 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                             <Icon name="arrow-left" />
                         </button>
                     )}
-                    <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Create New Flow')}</h2>
+                    <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Create routine')}</h2>
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </header>
 
@@ -1400,15 +1414,15 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                             <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 36, height: 36, background: '#eef2ff', color: '#4456c7' }}><Icon name="circle-plus" /></span>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Start from scratch')}</p>
-                                <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Build your own flow step by step.')}</p>
+                                <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Build your own routine step by step.')}</p>
                             </div>
                             <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
                         </button>
 
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Start from a template')}</p>
-                        <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search flows…')} />
+                        <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search routines…')} />
                         {filtered.length === 0 ? (
-                            <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No flows match your search.')}</p>
+                            <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No routines match your search.')}</p>
                         ) : (
                         <div className="grid grid-cols-2 gap-3">
                             {filtered.map((tpl) => {
@@ -1506,7 +1520,7 @@ function StepPicker({ mode, installed, currentStarter, onPickStarter, onPickStep
     );
     const partners = CAPABILITIES.filter((c) => !c.native);
     const heading = mode === 'starter' ? t('Choose a trigger') : mode === 'condition' ? t('Add a condition') : t('Add a step');
-    const sub = mode === 'starter' ? t('This event or schedule launches your flow.') : mode === 'condition' ? t('A check that must be true to continue.') : t('e-conomic and partner steps Eva can run.');
+    const sub = mode === 'starter' ? t('This event or schedule launches your routine.') : mode === 'condition' ? t('A check that must be true to continue.') : t('e-conomic and partner actions Eva can run.');
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>

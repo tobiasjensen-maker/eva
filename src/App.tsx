@@ -37,16 +37,16 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
-    { id: 'skills', label: 'Automations', Icon: SkillsIcon },
-    { id: 'spaces', label: 'Artifacts', Icon: SpacesIcon },
+    { id: 'skills', label: 'Routines', Icon: SkillsIcon },
+    { id: 'spaces', label: 'Views', Icon: SpacesIcon },
 ];
 
 const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'skills', spaces: 'artifacts', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', skills: 'skills', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -210,22 +210,22 @@ export default function App() {
               }
             : view === 'skills'
             ? {
-                  subtitle: 'automations assistant',
-                  intro: "I'm Eva. I can help you set up a flow, explain what each one does, or show what I can do with your data and partner integrations. What are you trying to automate?",
-                  chips: ['Which flows should I set up?', 'What does reconciliation automate?', 'Help me set up reminders'],
+                  subtitle: 'routines assistant',
+                  intro: "I'm Eva. I can help you set up a routine, explain the skills each one uses, or show what I can do with your data and partner integrations. What are you trying to get done?",
+                  chips: ['Which routines should I set up?', 'What does bank reconciliation do?', 'Help me set up reminders'],
                   respond: skillsAnswer,
               }
             : view === 'spaces'
             ? {
-                  subtitle: activeSpace ? 'about this artifact' : 'artifacts assistant',
+                  subtitle: activeSpace ? 'about this view' : 'views assistant',
                   intro: activeSpace
                       ? (lang === 'da'
-                          ? `Bed mig forfine “${activeSpace.title}” — tilføj en prognose, filtrér det, eller eksportér det.`
+                          ? `Bed mig forfine “${activeSpace.title}” — tilføj en prognose, filtrér den, eller eksportér den.`
                           : `Ask me to refine “${activeSpace.title}” — add a forecast, filter it, or export it.`)
-                      : "I'm Eva. Tell me what you want to track and I'll spin up an artifact — a dashboard, report, list or form.",
+                      : "I'm Eva. Tell me what you want to track and I'll render a view — a dashboard, report, list or form.",
                   chips: activeSpace
                       ? ['Add a forecast', 'Filter to last quarter', 'Export as PDF']
-                      : ['Build a revenue dashboard', 'Create an aged receivables report', 'What can an artifact do?'],
+                      : ['Build a revenue dashboard', 'Create an aged receivables report', 'What can a view do?'],
                   respond: spacesAnswer,
               }
             : null;
