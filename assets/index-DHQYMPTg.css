@@ -3803,6 +3803,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .gap-x-2\.5 {
   column-gap: 0.625rem;
 }
+.gap-x-3\.5 {
+  column-gap: 0.875rem;
+}
 .gap-x-4 {
   column-gap: 1rem;
 }
@@ -4466,6 +4469,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .pl-5 {
   padding-left: 1.25rem;
 }
+.pl-6 {
+  padding-left: 1.5rem;
+}
 .pl-7 {
   padding-left: 1.75rem;
 }
@@ -4492,6 +4498,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .pr-8 {
   padding-right: 2rem;
+}
+.pt-2 {
+  padding-top: 0.5rem;
 }
 .pt-2\.5 {
   padding-top: 0.625rem;
@@ -4715,9 +4724,6 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .underline {
   text-decoration-line: underline;
-}
-.line-through {
-  text-decoration-line: line-through;
 }
 .no-underline {
   text-decoration-line: none;
@@ -5064,6 +5070,9 @@ h1, h2, h3, h4, h5, h6, p {
 .after\:content-\[\'\'\]::after {
   --tw-content: '';
   content: var(--tw-content);
+}
+.first\:pt-0:first-child {
+  padding-top: 0px;
 }
 .last\:after\:content-none:last-child::after {
   --tw-content: none;
