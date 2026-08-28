@@ -5775,8 +5775,20 @@ h1, h2, h3, h4, h5, h6, p {
     margin-right: 0px !important;
   }
 
+  .md\:block {
+    display: block;
+  }
+
+  .md\:inline {
+    display: inline;
+  }
+
   .md\:flex {
     display: flex;
+  }
+
+  .md\:hidden {
+    display: none;
   }
 
   .md\:\!translate-x-0 {
