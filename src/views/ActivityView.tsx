@@ -496,7 +496,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
     const consider = needsReview && entry.confidence === 'low';
     return (
         <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
-            <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: open ? '#fafafa' : '#fff' }}>
+            <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: '#fff' }}>
                 {/* Left icon: the skill-area emoji, tinted with the status colour. */}
                 <span
                     title={`${SKILL_INFO[entry.skill]?.label ?? ''} · ${t(st.label)}`}
