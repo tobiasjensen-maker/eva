@@ -85,6 +85,23 @@ export function ChatPanel({
     const scrollRef = useRef<HTMLDivElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);
 
+    // User-resizable panel width (drag the left edge). Persisted for the session.
+    const [width, setWidth] = useState(() => {
+        const saved = Number(localStorage.getItem('va-chat-width'));
+        return saved >= 320 && saved <= 760 ? saved : 360;
+    });
+    useEffect(() => { localStorage.setItem('va-chat-width', String(width)); }, [width]);
+    function startResize(e: { clientX: number; preventDefault: () => void }) {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startW = width;
+        const onMove = (ev: MouseEvent) => setWidth(Math.min(760, Math.max(320, startW + (startX - ev.clientX))));
+        const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); document.body.style.userSelect = ''; };
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+    }
+
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, [msgs]);
@@ -134,9 +151,18 @@ export function ChatPanel({
 
     return (
         <aside
-            className="shrink-0 flex flex-col rounded-2xl overflow-hidden"
-            style={{ width: 360, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
+            className="shrink-0 flex flex-col rounded-2xl overflow-hidden relative"
+            style={{ width, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
         >
+            {/* drag the left edge to widen the panel */}
+            <div
+                onMouseDown={startResize}
+                title={t('Drag to resize')}
+                className="absolute top-0 left-0 h-full z-20 group"
+                style={{ width: 8, cursor: 'col-resize' }}
+            >
+                <span className="absolute top-1/2 -translate-y-1/2 left-0.5 rounded-full" style={{ width: 3, height: 34, background: COLORS.cardBorder }} />
+            </div>
             <div className="flex items-center gap-2 px-4 shrink-0" style={{ minHeight: 62, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <Orb size={22} />
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
