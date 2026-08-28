@@ -1103,6 +1103,11 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
     const [notify, setNotify] = useState(cfg.notify);
     const [guardrail, setGuardrail] = useState(cfg.guardrail);
     const [threshold, setThreshold] = useState(cfg.threshold ?? '10.000');
+    // Trust layer: a per-segment autonomy cap and a circuit breaker (the vision's
+    // "every step up in autonomy is earned by a step up in control").
+    const [segCap, setSegCap] = useState(false);
+    const [segThreshold, setSegThreshold] = useState('15.000');
+    const [circuit, setCircuit] = useState(true);
     // Flow builder: a trigger + conditions + actions. Seeded from a template when
     // one was used, otherwise from the skill's default steps.
     const [starter, setStarter] = useState<string>(() => (seed ? seed.starter : seedStarter(cfg)));
@@ -1277,24 +1282,44 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                     </div>
                 </Section>
 
-                {/* Guardrails */}
-                <Section title={t('Guardrails & notifications')} sub={t('Keep control over the riskier actions.')}>
+                {/* Trust layer — autonomy caps + circuit breaker */}
+                <Section title={t('Trust & autonomy caps')} sub={t('Every step up in autonomy is earned by a step up in control.')}>
                     <div className="flex flex-col gap-3">
                         <ToggleRow
                             checked={guardrail}
                             onChange={setGuardrail}
-                            title={t('Require my approval above an amount')}
-                            desc={t('Anything below the threshold can be handled automatically.')}
+                            title={t('Ask before acting above an amount')}
+                            desc={t('Anything below the cap can be handled automatically.')}
                         >
                             {guardrail && (
                                 <div className="flex items-center gap-2 mt-3">
-                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>{t('Threshold')}</span>
+                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>{t('Cap')}</span>
                                     <input value={threshold} onChange={(e) => setThreshold(e.target.value)} className="rounded-lg px-3 py-1.5 text-sm bg-white text-right" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 110 }} />
                                     <span className="text-sm" style={{ color: COLORS.textMuted }}>DKK</span>
                                 </div>
                             )}
                         </ToggleRow>
-                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this flow acts')} desc={t('Get a notification and a Review entry each time it runs.')} />
+                        <ToggleRow
+                            checked={segCap}
+                            onChange={setSegCap}
+                            title={t('Tighter cap for a client segment')}
+                            desc={t('Lower the autonomy cap for a group of clients — e.g. construction clients.')}
+                        >
+                            {segCap && (
+                                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>{t('For construction clients, ask above')}</span>
+                                    <input value={segThreshold} onChange={(e) => setSegThreshold(e.target.value)} className="rounded-lg px-3 py-1.5 text-sm bg-white text-right" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, width: 100 }} />
+                                    <span className="text-sm" style={{ color: COLORS.textMuted }}>DKK</span>
+                                </div>
+                            )}
+                        </ToggleRow>
+                        <ToggleRow
+                            checked={circuit}
+                            onChange={setCircuit}
+                            title={t('Circuit breaker')}
+                            desc={t('Pause the routine and put a human back in the loop if its behaviour looks unusual.')}
+                        />
+                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this routine acts')} desc={t('Get a notification and a control-centre entry each time it runs.')} />
                     </div>
                 </Section>
 
