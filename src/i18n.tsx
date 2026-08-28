@@ -83,6 +83,14 @@ const DA: Record<string, string> = {
     'Reasoning': 'Ræsonnement',
     'Read': 'Læs',
     'Write': 'Skriv',
+    'Action': 'Handling',
+    'Trace': 'Spor',
+    'Data it read': 'Data den læste',
+    'What it concluded': 'Hvad den konkluderede',
+    'Approved by': 'Godkendt af',
+    'Under whose authority': 'På hvis myndighed',
+    'What Eva did and why': 'Hvad Eva gjorde og hvorfor',
+    'Full audit trail · no ticket, no support call': 'Fuldt revisionsspor · ingen sag, intet supportopkald',
 
     // ---- Common actions ----
     'Cancel': 'Annullér',

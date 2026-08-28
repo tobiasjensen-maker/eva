@@ -286,6 +286,7 @@ export default function ActivityView({
     const [expanded, setExpanded] = useState<string | null>(null);
     const [acting, setActing] = useState<string | null>(null);
     const [doc, setDoc] = useState<{ entry: LogEntry; doc: SourceDoc } | null>(null);
+    const [trace, setTrace] = useState<LogEntry | null>(null);
 
     // "Ask Eva" on a flagged item — hand the question + explanation to the shell chat panel.
     function askAbout(e: LogEntry) {
@@ -424,6 +425,7 @@ export default function ActivityView({
                                         onToggle={() => setExpanded(expanded === e.id ? null : e.id)}
                                         onResolve={(action) => resolve(e.id, action)}
                                         onOpenDoc={() => e.doc && setDoc({ entry: e, doc: e.doc })}
+                                        onTrace={() => setTrace(e)}
                                         onAsk={() => askAbout(e)}
                                         onReverse={() => reverse(e.id)}
                                     />
@@ -435,11 +437,27 @@ export default function ActivityView({
             </div>
 
             {doc && <DocModal entry={doc.entry} doc={doc.doc} onClose={() => setDoc(null)} />}
+            {trace && <TraceModal entry={trace} onClose={() => setTrace(null)} />}
         </div>
     );
 }
 
-function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, onReverse }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onAsk: () => void; onReverse: () => void }) {
+// Derive a full trace for any item (the vision's 14:20 "what did you do and why").
+function traceOf(e: LogEntry): TraceInfo {
+    if (e.trace) return e.trace;
+    const sk = SKILL_INFO[e.skill];
+    return {
+        routine: sk?.label ?? 'Routine',
+        version: 'v3',
+        action: e.desc,
+        dataRead: e.source ?? (e.doc ? `${e.doc.kind} ${e.doc.ref} — ${e.doc.detail}` : 'Ledger data for this agreement'),
+        concluded: e.reasoning[e.reasoning.length - 1] ?? e.desc,
+        approvedBy: e.status === 'completed' ? (e.resolution ? 'Mette Sørensen · client manager' : 'Auto — within the routine’s autonomy cap') : e.status === 'waiting' ? 'Auto — read-only outreach' : 'Pending your approval',
+        authority: 'Mette Sørensen · client manager',
+    };
+}
+
+function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void }) {
     const { t, lang } = useLang();
     const sk = SKILL_INFO[entry.skill];
     const conf = CONF_STYLE[entry.confidence];
@@ -503,6 +521,9 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                                     <Icon name={DOC_ICON[entry.doc.kind] as never} /> {t(`View ${entry.doc.kind.toLowerCase()}`)} {entry.doc.ref}
                                 </button>
                             )}
+                            <button onClick={onTrace} className="flex items-center gap-1.5 font-medium" style={{ color: '#4456c7' }}>
+                                <Icon name="search" /> {t('Trace')}
+                            </button>
                         </div>
 
                         <div style={{ borderTop: `1px solid ${COLORS.cardBorder}`, margin: '14px -16px 0' }} />
@@ -550,6 +571,57 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                 </div>
             )}
         </Card>
+    );
+}
+
+// The trace — "what did you do and why", answerable in two clicks. The vision's
+// load-bearing trust artefact: routine → version → action → data → conclusion →
+// approval → authority.
+function TraceModal({ entry, onClose }: { entry: LogEntry; onClose: () => void }) {
+    const { t } = useLang();
+    const tr = traceOf(entry);
+    const rows: { label: string; value: string; icon: string }[] = [
+        { label: 'Routine', value: `${t(tr.routine)} · ${tr.version}`, icon: 'workflow' },
+        { label: 'Action', value: t(tr.action), icon: 'connection-enable' },
+        { label: 'Data it read', value: tr.dataRead, icon: 'document' },
+        { label: 'What it concluded', value: t(tr.concluded), icon: 'ai-stars' },
+        { label: 'Approved by', value: t(tr.approvedBy), icon: 'document-approve' },
+        { label: 'Under whose authority', value: tr.authority, icon: 'person' },
+    ];
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full anim-in" style={{ maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex items-center justify-center rounded-lg" style={{ width: 34, height: 34, background: '#eef2ff', color: '#4456c7' }}>
+                            <Icon name="search" />
+                        </span>
+                        <div>
+                            <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Trace')}</p>
+                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('What Eva did and why')} · {t(clientName(entry.client))}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                </div>
+                <div className="px-5 py-4 flex flex-col gap-0">
+                    {rows.map((r, i) => (
+                        <div key={r.label} className="flex items-start gap-3 py-2.5" style={i > 0 ? { borderTop: `1px solid ${COLORS.cardBorder}` } : undefined}>
+                            <span className="flex items-center justify-center shrink-0 rounded-lg mt-0.5" style={{ width: 28, height: 28, background: '#f1f1f3', color: '#52525b' }}>
+                                <Icon name={r.icon as never} />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t(r.label)}</p>
+                                <p className="text-sm" style={{ color: COLORS.text }}>{r.value}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="px-5 py-4 flex justify-between items-center" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Full audit trail · no ticket, no support call')}</span>
+                    <Button onClick={onClose}>{t('Close')}</Button>
+                </div>
+            </div>
+        </div>
     );
 }
 
