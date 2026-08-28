@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button, Icon, useToast } from '@economic/taco';
 import {
     COLORS,
     EconomicLogo,
     NodeMark,
     ProfileAvatar,
-    ChatIcon,
     ReviewIcon,
     InsightsIcon,
-    SkillsIcon,
+    RoutinesIcon,
     SpacesIcon,
     CustomersIcon,
     SidebarTooltip,
@@ -37,12 +36,12 @@ import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from '.
 const SHOW_CONNECTION = false;
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
-    { id: 'chat', label: 'Chat', Icon: ChatIcon },
-    { id: 'activity', label: 'Home', Icon: ReviewIcon },
+    // Chat is reached via the expand icon in the EVA side panel, not the rail.
+    { id: 'activity', label: 'Cockpit', Icon: ReviewIcon },
     { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
-    { id: 'skills', label: 'Routines', Icon: SkillsIcon },
+    { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
     { id: 'spaces', label: 'Views', Icon: SpacesIcon },
 ];
 
@@ -151,6 +150,7 @@ export default function App() {
     const [scope, setScope] = useState<string>(() => localStorage.getItem('va-scope') || 'portfolio');
     const [pendingScope, setPendingScope] = useState<string | null>(null);
     const [chatActive, setChatActive] = useState(false);
+    const [chatReturn, setChatReturn] = useState<ViewId>('activity'); // where to return when closing full chat
     useEffect(() => {
         localStorage.setItem('va-scope', scope);
     }, [scope]);
@@ -166,6 +166,12 @@ export default function App() {
     // Home badge counts only core bookkeeping items (advisory lives under Insights).
     const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && !isAdvisory(e)).length;
     const advisoryCount = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && isAdvisory(e)).length;
+    // Review items (bookkeeping "Needs you") per client, for the scope picker.
+    const reviewCounts = useMemo(() => {
+        const m: Record<string, number> = {};
+        activity.forEach((e) => { if ((e.status === 'needs-review' || e.status === 'failed') && !isAdvisory(e)) m[e.client] = (m[e.client] || 0) + 1; });
+        return m;
+    }, [activity]);
 
     function skillsAnswer(q: string): string {
         const s = q.toLowerCase();
@@ -207,13 +213,13 @@ export default function App() {
             : 'An artifact is a reusable dashboard, report, list or form built from your data. Tell me what you want to see and I’ll create it.';
     }
 
-    // The contextual Eva chat panel (third shell block) — present on every content page.
+    // The contextual EVA chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
         view === 'activity'
             ? {
                   subtitle: 'review assistant',
-                  intro: "I'm Eva. Ask me about your review queue — or hit “Ask Eva” on a flagged item and I'll explain my thinking.",
+                  intro: "I'm EVA. Ask me about your review queue — or hit “Ask EVA” on a flagged item and I'll explain my thinking.",
                   chips: ['What needs my attention most?', 'Summarize today’s actions', 'Anything risky?'],
                   respond: (q: string) => reviewAnswer(activity, q, lang),
               }
@@ -227,7 +233,7 @@ export default function App() {
             : view === 'skills'
             ? {
                   subtitle: 'routines assistant',
-                  intro: "I'm Eva. I can help you set up a routine, explain the skills each one uses, or show what I can do with your data and partner integrations. What are you trying to get done?",
+                  intro: "I'm EVA. I can help you set up a routine, explain the skills each one uses, or show what I can do with your data and partner integrations. What are you trying to get done?",
                   chips: ['Which routines should I set up?', 'What does bank reconciliation do?', 'Help me set up reminders'],
                   respond: skillsAnswer,
               }
@@ -238,7 +244,7 @@ export default function App() {
                       ? (lang === 'da'
                           ? `Bed mig forfine “${activeSpace.title}” — tilføj en prognose, filtrér den, eller eksportér den.`
                           : `Ask me to refine “${activeSpace.title}” — add a forecast, filter it, or export it.`)
-                      : "I'm Eva. Tell me what you want to track and I'll render a view — a dashboard, report, list or form.",
+                      : "I'm EVA. Tell me what you want to track and I'll render a view — a dashboard, report, list or form.",
                   chips: activeSpace
                       ? ['Add a forecast', 'Filter to last quarter', 'Export as PDF']
                       : ['Build a revenue dashboard', 'Create an aged receivables report', 'What can a view do?'],
@@ -307,7 +313,7 @@ export default function App() {
 
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
-        <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement }}>
+        <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
         <div className="flex" style={{ height: '100vh', background: '#ececee', padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
@@ -346,7 +352,7 @@ export default function App() {
                                 onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                             >
-                                <Icon name="chevron-left-double" />
+                                <Icon name="layout-first" />
                             </button>
                         </>
                     )}
@@ -429,9 +435,9 @@ export default function App() {
                                 <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                     <div className="flex items-center gap-2.5 mb-1.5">
                                         <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: evaConfigured() ? '#22c55e' : '#9ca3af' }} />
-                                        <span className="text-sm font-medium" style={{ color: COLORS.text }}>{evaConfigured() ? t('Eva assistant connected') : t('Connect Eva assistant')}</span>
+                                        <span className="text-sm font-medium" style={{ color: COLORS.text }}>{evaConfigured() ? t('EVA assistant connected') : t('Connect EVA assistant')}</span>
                                         {evaConfigured() && (
-                                            <button onClick={() => { setEvaToken(''); setEvaInput(''); setEvaTick((n) => n + 1); toast.information('Eva disconnected'); }} className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t('Disconnect')}</button>
+                                            <button onClick={() => { setEvaToken(''); setEvaInput(''); setEvaTick((n) => n + 1); toast.information('EVA disconnected'); }} className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t('Disconnect')}</button>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-1.5">
@@ -439,13 +445,13 @@ export default function App() {
                                             type="password"
                                             value={evaInput}
                                             onChange={(e) => setEvaInput(e.target.value)}
-                                            onKeyDown={(e) => { if (e.key === 'Enter' && evaInput.trim()) { setEvaToken(evaInput.trim()); setEvaTick((n) => n + 1); toast.information('Eva connected'); } }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' && evaInput.trim()) { setEvaToken(evaInput.trim()); setEvaTick((n) => n + 1); toast.information('EVA connected'); } }}
                                             placeholder={t('Paste Plex token')}
                                             className="flex-1 min-w-0 rounded-md px-2 py-1 text-xs outline-none"
                                             style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fafafa' }}
                                         />
                                         <button
-                                            onClick={() => { if (evaInput.trim()) { setEvaToken(evaInput.trim()); setEvaTick((n) => n + 1); toast.information('Eva connected'); } }}
+                                            onClick={() => { if (evaInput.trim()) { setEvaToken(evaInput.trim()); setEvaTick((n) => n + 1); toast.information('EVA connected'); } }}
                                             disabled={!evaInput.trim()}
                                             className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
                                             style={{ background: evaInput.trim() ? '#4c6ef5' : '#e4e4e7', color: evaInput.trim() ? '#fff' : '#b0b0b8', cursor: evaInput.trim() ? 'pointer' : 'not-allowed' }}
@@ -572,6 +578,7 @@ export default function App() {
                         onActiveChange={setChatActive}
                         analyticsUnlocked={insightsPro}
                         onSelectClient={applyScope}
+                        onClose={() => goView(chatReturn)}
                     />
                 )}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
@@ -601,6 +608,7 @@ export default function App() {
                     evaSrc={evaIslandSrc()}
                     collapsed={chatCollapsed}
                     onToggleCollapsed={() => setChatCollapsed((c) => !c)}
+                    onExpand={() => { setChatReturn(view); goView('chat'); }}
                     pendingAsk={pendingAsk}
                     onPendingConsumed={() => setPendingAsk(null)}
                 />

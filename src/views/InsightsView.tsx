@@ -1,6 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
-import { Card, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { Card, PageHeader, PeriodPicker, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { getAccounts, getCustomers, getInvoices } from '../eco';
 import ActivityView, { type LogEntry } from './ActivityView';
@@ -503,7 +503,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader title={t('Advisory')} right={insTab === 'financial' ? <SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} /> : undefined} />
+                <PageHeader title={t('Advisory')} right={insTab === 'financial' ? <PeriodPicker value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} /> : undefined} />
                 {/* Insights tabs: Advisory (what to do about it) + Financial (the numbers) */}
                 <div className="mx-auto px-8 pt-4" style={{ maxWidth: 1040 }}>
                     <div className="flex items-center gap-7" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
@@ -521,7 +521,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
                 {insTab === 'advisory' && (
                     <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
-                        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('Advisory Eva surfaces across your book — proactive, per client, ready to act on.')}</p>
+                        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('Advisory EVA surfaces across your book — proactive, per client, ready to act on.')}</p>
                         {activity && setActivity && onAskEva ? (
                             <ActivityView kind="advisory" embedded entries={activity} setEntries={setActivity} status="all" onStatusChange={() => {}} scope={scope} onAskEva={onAskEva} />
                         ) : (
@@ -542,8 +542,8 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                                 <p className="text-sm font-semibold text-white">{t('Unlock full Financial Insights')}</p>
                                 <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
                                     {lang === 'da'
-                                        ? `Dyb analyse af likviditet, marginer, afvigelser og prognoser for ${subjectLabel} — og Eva kan svare på analysespørgsmål direkte i chatten.`
-                                        : `Deep cash-flow, margin, anomaly and forecast analysis for ${subjectLabel} — plus Eva can answer analysis questions right in chat.`}
+                                        ? `Dyb analyse af likviditet, marginer, afvigelser og prognoser for ${subjectLabel} — og EVA kan svare på analysespørgsmål direkte i chatten.`
+                                        : `Deep cash-flow, margin, anomaly and forecast analysis for ${subjectLabel} — plus EVA can answer analysis questions right in chat.`}
                                 </p>
                             </div>
                             <Button appearance="primary" onClick={onUpgrade}>{t('Upgrade')} · {INSIGHTS_PRICE} kr/{t('mo')}</Button>
@@ -649,7 +649,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
     );
 }
 
-// ---- Eva insights-analyst answers (consumed by the shell chat panel) ----
+// ---- EVA insights-analyst answers (consumed by the shell chat panel) ----
 export function insightsIntro(pro: boolean, subjectLabel: string, lang: 'en' | 'da' = 'en'): string {
     if (lang === 'da')
         return pro

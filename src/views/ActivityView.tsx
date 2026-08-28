@@ -1,6 +1,6 @@
 import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { Card, Orb, PageHeader, PeriodPicker, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
 
@@ -36,7 +36,7 @@ export interface LogEntry {
     resolution?: string; // set once the user resolves it
     waitingOn?: string; // for 'waiting' items — who it's waiting on
     trace?: TraceInfo; // the deep "what did you do and why" audit trail (opened on demand)
-    proactive?: boolean; // Eva surfaced this before being asked (the vision's 11:00 hour)
+    proactive?: boolean; // EVA surfaced this before being asked (the vision's 11:00 hour)
     provenance?: Provenance; // override — e.g. a genuine e-conomic system flag
 }
 
@@ -75,7 +75,7 @@ const DOC_ICON: Record<SourceDoc['kind'], string> = {
 };
 
 export const ACTIVITY_ENTRIES: LogEntry[] = [
-    // ---- Proactive · Eva acted before being asked (the 11:00 hour) ----
+    // ---- Proactive · EVA acted before being asked (the 11:00 hour) ----
     { id: 'p1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '06:20', skill: 'regulations', client: 'portfolio',
         desc: 'A reporting-rule change affects 6 of your 40 clients', confidence: 'high', status: 'needs-review', proactive: true,
         reasoning: ['A change to reporting rules landed overnight.', 'I worked out which 6 of your 40 clients it touches, and why.', 'A tailored note is drafted for each — “does this apply to me, and what do I do”.'],
@@ -202,11 +202,11 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
 ];
 
 const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string; explain: string }> = {
-    high: { bg: '#e9f7ef', fg: '#15803d', label: 'High', explain: 'High confidence — Eva matched this cleanly and could complete it automatically.' },
+    high: { bg: '#e9f7ef', fg: '#15803d', label: 'High', explain: 'High confidence — EVA matched this cleanly and could complete it automatically.' },
     medium: { bg: '#fbf3e0', fg: '#92710f', label: 'Medium', explain: 'Medium confidence — mostly clear, but worth a quick check.' },
-    low: { bg: '#fdecec', fg: '#dc2626', label: 'Low', explain: 'Low confidence — Eva wasn’t sure, so it held this for your review.' },
+    low: { bg: '#fdecec', fg: '#dc2626', label: 'Low', explain: 'Low confidence — EVA wasn’t sure, so it held this for your review.' },
 };
-// Illustrative metrics shown in the "Why did Eva do this?" panel.
+// Illustrative metrics shown in the "Why did EVA do this?" panel.
 const CONF_PCT: Record<Confidence, string> = { high: '99%', medium: '86%', low: '62%' };
 const SKILL_TIME: Record<string, string> = {
     reconciliation: '~1 min', reminders: '~2 min', documents: '~3 min', monitor: '~10 min', anomalies: '~5 min', 'close-books': '~30 min',
@@ -230,9 +230,9 @@ type StatusFilter = 'all' | 'completed' | 'needs-review' | 'waiting';
 // The control centre's three lanes — the surface answers three questions at a glance:
 // what needs me, what's waiting on someone else, what happened while I was away.
 const LANES: { key: string; label: string; match: (e: LogEntry) => boolean; proactive?: boolean }[] = [
-    // Proactive advisory — Eva acted before being asked (the 11:00 hour). Sits on top.
+    // Proactive advisory — EVA acted before being asked (the 11:00 hour). Sits on top.
     // Once accepted/dismissed (completed) it drops out and shows only under "What happened".
-    { key: 'proactive', label: 'Eva spotted this — before you asked', match: (e) => !!e.proactive && e.status !== 'completed', proactive: true },
+    { key: 'proactive', label: 'EVA spotted this — before you asked', match: (e) => !!e.proactive && e.status !== 'completed', proactive: true },
     { key: 'needs-review', label: 'Needs you', match: (e) => (e.status === 'needs-review' || e.status === 'failed') && !e.proactive },
     { key: 'waiting', label: 'Waiting on someone else', match: (e) => e.status === 'waiting' },
     { key: 'completed', label: 'What happened', match: (e) => e.status === 'completed' },
@@ -271,8 +271,8 @@ export function reviewAnswer(entries: LogEntry[], q: string, lang: 'en' | 'da' =
             : `The riskiest items are the low-confidence ones: ${low.map((e) => `“${e.desc}”`).join(', ')}. I held these rather than acting automatically.`;
     }
     return da
-        ? 'Jeg kan forklare ethvert markeret punkt, opsummere hvad jeg har gjort, eller tage næste skridt for dig. Prøv “Hvad kræver mest min opmærksomhed?”, eller klik “Spørg Eva” på et punkt.'
-        : 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask Eva” on an item.';
+        ? 'Jeg kan forklare ethvert markeret punkt, opsummere hvad jeg har gjort, eller tage næste skridt for dig. Prøv “Hvad kræver mest min opmærksomhed?”, eller klik “Spørg EVA” på et punkt.'
+        : 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask EVA” on an item.';
 }
 
 export default function ActivityView({
@@ -297,7 +297,7 @@ export default function ActivityView({
     // Reminders sent on waiting items (shows a "Reminder sent" confirmation).
     const [reminded, setReminded] = useState<Set<string>>(new Set());
 
-    // "Ask Eva" on a flagged item — hand the question + explanation to the shell chat panel.
+    // "Ask EVA" on a flagged item — hand the question + explanation to the shell chat panel.
     function askAbout(e: LogEntry) {
         const needsReview = e.status === 'needs-review';
         const consider = needsReview && e.confidence === 'low';
@@ -371,7 +371,7 @@ export default function ActivityView({
 
     return (
         <div className={embedded ? '' : 'h-full overflow-y-auto'}>
-            {!embedded && <PageHeader title={kind === 'advisory' ? t('Advisory') : t('Cockpit')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
+            {!embedded && <PageHeader title={kind === 'advisory' ? t('Advisory') : t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
             <div className={embedded ? 'pb-2' : 'px-8 pt-5 pb-7 mx-auto'} style={embedded ? undefined : { maxWidth: 1040 }}>
                 {!embedded && range === 'custom' && (
                     <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>
@@ -418,7 +418,7 @@ export default function ActivityView({
                     {groups.length === 0 && (
                         <Card className="p-10 text-center">
                             <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                                {status === 'needs-review' ? t('Nothing needs you right now — Eva is all caught up. 🎉') : t('No activity matches these filters.')}
+                                {status === 'needs-review' ? t('Nothing needs you right now — EVA is all caught up. 🎉') : t('No activity matches these filters.')}
                             </p>
                         </Card>
                     )}
@@ -491,8 +491,8 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
     const needsReview = entry.status === 'needs-review';
-    // Low-confidence flags are things Eva can't act on alone — the AO considers them and checks them off.
-    // Higher-confidence flags are actions Eva can carry out once accepted.
+    // Low-confidence flags are things EVA can't act on alone — the AO considers them and checks them off.
+    // Higher-confidence flags are actions EVA can carry out once accepted.
     const consider = needsReview && entry.confidence === 'low';
     return (
         <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
@@ -521,7 +521,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                     <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
-                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? t('What Eva wants you to check') : needsReview ? t('Why Eva suggests this') : t('Why did Eva do this?')}</span>
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? t('What EVA wants you to check') : needsReview ? t('Why EVA suggests this') : t('Why did EVA do this?')}</span>
                         </div>
 
                         <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.map((r) => t(r)).join(' ')}</p>
@@ -546,17 +546,17 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
 
                         <div style={{ borderTop: `1px solid ${COLORS.cardBorder}`, margin: '14px -16px 0' }} />
 
-                        {/* footer: every item is a suggestion — accept, dismiss, or ask Eva to do something else */}
+                        {/* footer: every item is a suggestion — accept, dismiss, or ask EVA to do something else */}
                         <div className="flex items-center justify-between pt-3 gap-3">
                             <button
                                 onClick={onAsk}
-                                title="Ask Eva to do something else"
+                                title="Ask EVA to do something else"
                                 className="flex items-center gap-1.5 rounded-full font-semibold shrink-0"
                                 style={{ padding: '5px 12px 5px 8px', fontSize: 13, background: '#fff7ed', color: COLORS.text, border: '1px solid #efddc0', cursor: 'pointer' }}
                                 onMouseEnter={(e) => (e.currentTarget.style.background = '#fdeed8')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}
                             >
-                                <Orb size={16} /> {t('Ask Eva')}
+                                <Orb size={16} /> {t('Ask EVA')}
                             </button>
                             {acting ? (
                                 <span className="flex items-center gap-2 text-sm" style={{ color: COLORS.textMuted }}>
@@ -573,7 +573,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                                     <Button onClick={onReverse}><Icon name="arrow-left" /> {t('Undo')}</Button>
                                 </div>
                             ) : consider ? (
-                                // AO-judgement item — Eva can't action it; the accountant checks it off.
+                                // AO-judgement item — EVA can't action it; the accountant checks it off.
                                 <div className="flex items-center gap-2">
                                     <Button onClick={() => onResolve('Dismissed')}>{t('Not relevant')}</Button>
                                     <Button appearance="primary" onClick={() => onResolve('Reviewed')}><Icon name="circle-tick" /> {t('Mark as reviewed')}</Button>
@@ -644,7 +644,7 @@ function TraceModal({ entry, onClose }: { entry: LogEntry; onClose: () => void }
                         </span>
                         <div>
                             <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Trace')}</p>
-                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('What Eva did and why')} · {t(clientName(entry.client))}</p>
+                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('What EVA did and why')} · {t(clientName(entry.client))}</p>
                         </div>
                     </div>
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
@@ -695,7 +695,7 @@ function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; on
                         <p className="font-medium">{doc.kind} {doc.ref}</p>
                         <p className="mt-1" style={{ color: COLORS.textMuted }}>{doc.detail}</p>
                     </div>
-                    <p className="text-xs mt-3" style={{ color: COLORS.textMuted }}>{t('This is the record Eva acted on. Open it in e-conomic to see the full document and audit history.')}</p>
+                    <p className="text-xs mt-3" style={{ color: COLORS.textMuted }}>{t('This is the record EVA acted on. Open it in e-conomic to see the full document and audit history.')}</p>
                 </div>
                 <div className="px-5 py-4 flex justify-end gap-2" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     <Button onClick={onClose}>{t('Close')}</Button>

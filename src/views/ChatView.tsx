@@ -22,7 +22,7 @@ type AssistantMsg =
           result?: string;
           createsSpace?: string;
           outcome?: { title: string; sub: string };
-          // Once the action is DONE, Eva suggests automating it as an AI workflow.
+          // Once the action is DONE, EVA suggests automating it as an AI workflow.
           workflow?: { skill: string; skillDesc: string; value: string };
       }
     | { id: number; role: 'assistant'; kind: 'skill'; skillId: string; text: string }
@@ -50,6 +50,7 @@ interface Props {
     onActiveChange?: (active: boolean) => void;
     analyticsUnlocked?: boolean;
     onSelectClient?: (id: string) => void;
+    onClose?: () => void; // close the full-window chat and return
 }
 
 const MONTHS = [
@@ -132,7 +133,7 @@ const CLIENT_TABLES: Record<string, ClientTableData> = {
     },
 };
 
-// Eva's opening portfolio brief, shown as the first message right after onboarding.
+// EVA's opening portfolio brief, shown as the first message right after onboarding.
 const PORTFOLIO_BRIEF = {
     clients: 8,
     revenue: '4,80 mio. kr',
@@ -494,9 +495,9 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose }: Props) {
     const { t, lang } = useLang();
-    // Seed Eva's getting-started message right after onboarding (lazy init → StrictMode-safe)
+    // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : []));
     const [input, setInput] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>(SEED_HISTORY);
@@ -792,6 +793,18 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                             style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
                         >
                             <Icon name="circle-plus" /> {t('New chat')}
+                        </button>
+                    )}
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            title={t('Close')}
+                            className="flex items-center justify-center rounded-lg"
+                            style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            <Icon name="close" />
                         </button>
                     )}
                 </div>
@@ -1538,7 +1551,7 @@ function AssistantBubble({
                                 </div>
                             );
                         })()}
-                        {/* The action is done — now (and only now) Eva offers to automate it */}
+                        {/* The action is done — now (and only now) EVA offers to automate it */}
                         {msg.phase === 'done' && msg.workflow && (
                             <WorkflowSuggestion
                                 skill={msg.workflow.skill}
@@ -1577,7 +1590,7 @@ function AssistantBubble({
     );
 }
 
-// Friendly names, a suggested automation, and its value proposition for each data view Eva can render.
+// Friendly names, a suggested automation, and its value proposition for each data view EVA can render.
 const VIEW_META: Record<string, { artifact: string; skill: string; skillDesc: string; value: string }> = {
     overdue: { artifact: 'Overdue invoices', skill: 'Watch overdue invoices', skillDesc: 'Checks for invoices passing 30 days overdue and flags them to Review.', value: 'Automated, I’d catch invoices the day they pass 30 days and have reminders drafted before you open the books — roughly 2 hours saved a month.' },
     unreconciled: { artifact: 'Unreconciled bank transactions', skill: 'Chase unreconciled transactions', skillDesc: 'Watches for bank transactions without a match and flags them to Review.', value: 'Automated, I’d match new bank transactions daily and only bring you the exceptions — no month-end pile-up.' },
@@ -1611,7 +1624,7 @@ function viewMeta(kind: 'data' | 'clienttable', dataKey: string) {
 }
 
 // Under every data view: keep it as an artifact. (Automation is only suggested
-// after Eva has actually performed an action — see WorkflowSuggestion on done plans.)
+// after EVA has actually performed an action — see WorkflowSuggestion on done plans.)
 function ArtifactActions({
     kind, dataKey, onCreateSpace, onNavigate,
 }: {
@@ -1640,7 +1653,7 @@ function ArtifactActions({
     );
 }
 
-// After Eva has DONE an action, she suggests automating it as an AI workflow —
+// After EVA has DONE an action, she suggests automating it as an AI workflow —
 // leading with the concrete value of never doing it manually again.
 function WorkflowSuggestion({
     skill, skillDesc, value, onCreateSkill, onNavigate,
@@ -1673,7 +1686,7 @@ function WorkflowSuggestion({
         return (
             <div className="rounded-xl p-4 mt-3 anim-in" style={{ border: '1px solid #efddc0', background: '#fff7ed', maxWidth: 560 }}>
                 <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Create a flow from this action')}</p>
-                <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('Eva will run this for you on a schedule and flag anything notable to Review.')}</p>
+                <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('EVA will run this for you on a schedule and flag anything notable to Review.')}</p>
                 <label className="block text-xs font-medium mt-3 mb-1.5" style={{ color: COLORS.textMuted }}>{t('Flow name')}</label>
                 <input
                     value={name}

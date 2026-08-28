@@ -7,7 +7,13 @@ import { useLang } from './i18n';
 export interface LiveAgreement { id: string; name: string; number: number }
 
 // Global "which client am I working on" context, surfaced as a header pill.
-export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void; liveAgreement?: LiveAgreement | null }>({ scope: 'portfolio', onChoose: () => {} });
+export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void; liveAgreement?: LiveAgreement | null; reviewCounts?: Record<string, number> }>({ scope: 'portfolio', onChoose: () => {} });
+
+// Small amber count badge for outstanding review items in the scope picker.
+function ReviewCount({ n }: { n: number }) {
+    if (!n) return null;
+    return <span className="rounded-full text-xs font-semibold shrink-0" style={{ background: '#fbf3e0', color: '#b9842b', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{n}</span>;
+}
 
 // Clients have no real logos in the prototype, so we render a monogram avatar
 // (coloured circle + initial, colour derived from the name) as a stand-in logo.
@@ -27,8 +33,10 @@ export function ClientAvatar({ name, size = 18 }: { name: string; size?: number 
 
 // The agreement pill + dropdown, shown in each page header.
 export function ScopeSwitcher() {
-    const { scope, onChoose, liveAgreement } = useContext(ScopeContext);
+    const { scope, onChoose, liveAgreement, reviewCounts } = useContext(ScopeContext);
     const { t } = useLang();
+    const counts = reviewCounts ?? {};
+    const totalReview = Object.values(counts).reduce((a, b) => a + b, 0);
     const [open, setOpen] = useState(false);
     const portfolio = scope === 'portfolio';
     const isLive = !!liveAgreement && scope === liveAgreement.id;
@@ -56,7 +64,8 @@ export function ScopeSwitcher() {
                     : portfolio
                         ? <Icon name="contacts" style={{ color: COLORS.textMuted }} />
                         : <ClientAvatar name={label} size={16} />}
-                <span className="font-medium" title={label}>{display}</span>
+                {/* On small screens the pill collapses to just the logo. */}
+                <span className="font-medium hidden md:inline" title={label}>{display}</span>
                 <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
             </button>
             {open && (
@@ -81,6 +90,7 @@ export function ScopeSwitcher() {
                         <button onClick={() => pick('portfolio')} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
                             <Icon name="contacts" style={{ color: COLORS.textMuted }} />
                             <span className="flex-1">{t('Portfolio')}<span style={{ color: COLORS.textMuted }}> · {AGREEMENTS.length} {t('agreements')}</span></span>
+                            <ReviewCount n={totalReview} />
                             {portfolio && <Icon name="tick" style={{ color: '#16a34a' }} />}
                         </button>
                         <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
@@ -90,6 +100,7 @@ export function ScopeSwitcher() {
                                 <button key={a.id} onClick={() => pick(a.id)} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
                                     <ClientAvatar name={a.name} size={20} />
                                     <span className="flex-1 truncate">{a.name}</span>
+                                    <ReviewCount n={counts[a.id] ?? 0} />
                                     {scope === a.id && <Icon name="tick" style={{ color: '#16a34a' }} />}
                                 </button>
                             ))}
@@ -240,6 +251,47 @@ export function SegmentedTabs({ value, onChange, options }: { value: string; onC
     );
 }
 
+// Period control: segmented tabs on wide screens, a compact dropdown on small ones.
+export function PeriodPicker({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+    const [open, setOpen] = useState(false);
+    const current = options.find((o) => o.value === value)?.label ?? '';
+    return (
+        <>
+            <div className="hidden md:block"><SegmentedTabs value={value} onChange={onChange} options={options} /></div>
+            <div className="md:hidden relative">
+                <button
+                    onClick={() => setOpen((o) => !o)}
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium"
+                    style={{ background: '#f1f1f3', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                >
+                    {current}
+                    <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
+                </button>
+                {open && (
+                    <>
+                        <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+                        <div className="absolute z-40 right-0 rounded-xl bg-white overflow-hidden anim-in" style={{ top: 'calc(100% + 6px)', width: 180, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                            {options.map((o) => (
+                                <button
+                                    key={o.value}
+                                    onClick={() => { onChange(o.value); setOpen(false); }}
+                                    className="flex items-center justify-between w-full text-left px-3 py-2 text-sm"
+                                    style={{ color: COLORS.text }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                >
+                                    {o.label}
+                                    {o.value === value && <Icon name="tick" style={{ color: '#16a34a' }} />}
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+        </>
+    );
+}
+
 // Action bar pinned to the bottom of a detail page. Pair it with a flex-col page
 // wrapper (header + scrollable content above, this bar below) so the content
 // scrolls underneath while the CTAs stay visible.
@@ -253,7 +305,7 @@ export function StickyFooter({ children }: { children: ReactNode }) {
     );
 }
 
-// Eva-branded suggestion / action chip — the Eva mark + label in an outlined pill.
+// EVA-branded suggestion / action chip — the EVA mark + label in an outlined pill.
 export function EvaChip({ label, onClick }: { label: string; onClick: () => void }) {
     return (
         <button
@@ -324,7 +376,7 @@ export interface PanelMsg {
     action?: { label: string; onClick: () => void };
 }
 
-// Reusable Eva assistant side panel — a full-height white panel that fills its
+// Reusable EVA assistant side panel — a full-height white panel that fills its
 // column, used on Review, Insights and Spaces.
 export function AssistantPanel({
     subtitle,
@@ -333,7 +385,7 @@ export function AssistantPanel({
     onInputChange,
     onSend,
     chips = [],
-    placeholder = 'Ask Eva',
+    placeholder = 'Ask EVA',
     width = 360,
 }: {
     subtitle?: string;
@@ -354,7 +406,7 @@ export function AssistantPanel({
         <aside className="shrink-0 bg-white flex flex-col h-full" style={{ width, borderLeft: `1px solid ${COLORS.cardBorder}` }}>
                 <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <Orb size={20} />
-                    <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
+                    <span className="text-sm font-semibold" style={{ color: COLORS.text }}>EVA</span>
                     {subtitle && <span className="text-xs" style={{ color: COLORS.textMuted }}>· {subtitle}</span>}
                 </div>
 
@@ -416,12 +468,12 @@ export function AssistantPanel({
     );
 }
 
-// ---- Eva: animated e-conomic mark (five orange circles that merge via a gooey filter) ----
+// ---- EVA: animated e-conomic mark (five orange circles that merge via a gooey filter) ----
 const EVA_ORANGE = '#ed9b2c';
 type Constellation = [number, number, number][]; // [cx, cy, r] × 5, in a 100×100 viewBox
 
 // The 13 reference constellations. Index 0 is the resting pentagon; 1–12 are the
-// asymmetric shapes Eva steps through while thinking.
+// asymmetric shapes EVA steps through while thinking.
 const EVA_CONFIGS: Constellation[] = [
     [[50, 14, 11], [84, 39, 11], [71, 79, 11], [29, 79, 11], [16, 39, 11]], // 0 — pentagon (rest)
     [[30, 30, 16], [45, 48, 11], [60, 66, 8], [75, 22, 10], [14, 80, 8]],   // 1
@@ -576,6 +628,17 @@ export function ChatIcon({ active }: { active: boolean }) {
                 strokeWidth="1.8"
                 strokeLinejoin="round"
             />
+        </svg>
+    );
+}
+
+// A winding path with waypoints — routines are step-by-step flows.
+export function RoutinesIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <path d="M6 5h6a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <circle cx="6" cy="5" r="2.1" fill="currentColor" />
+            <circle cx="18" cy="17" r="2.1" fill="currentColor" />
         </svg>
     );
 }

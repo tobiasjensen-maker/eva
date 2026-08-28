@@ -15,7 +15,7 @@ function EvaIframe({ src, config }: { src: string; config: EvaConfig }) {
         const id = setTimeout(post, 600); // fallback if the ready signal was missed
         return () => { window.removeEventListener('message', onMsg); clearTimeout(id); };
     }, [config]);
-    return <iframe ref={ref} src={src} title="Eva" style={{ flex: 1, width: '100%', border: 'none' }} />;
+    return <iframe ref={ref} src={src} title="EVA" style={{ flex: 1, width: '100%', border: 'none' }} />;
 }
 
 const PANEL_SHADOW = '0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)';
@@ -65,7 +65,7 @@ function Thinking() {
 export interface PendingAsk { user: string; answer: string }
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, pendingAsk, onPendingConsumed,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, pendingAsk, onPendingConsumed,
 }: {
     subtitle: string;
     intro: string;
@@ -76,6 +76,7 @@ export function ChatPanel({
     evaSrc?: string;
     collapsed: boolean;
     onToggleCollapsed: () => void;
+    onExpand?: () => void; // open the full-window chat
     pendingAsk: PendingAsk | null;
     onPendingConsumed: () => void;
 }) {
@@ -121,7 +122,7 @@ export function ChatPanel({
         requestAnimationFrame(() => taRef.current?.focus());
     }
 
-    // External "Ask Eva about this" requests from the main content.
+    // External "Ask EVA about this" requests from the main content.
     useEffect(() => {
         if (!pendingAsk) return;
         deliver(pendingAsk.user, pendingAsk.answer);
@@ -129,7 +130,7 @@ export function ChatPanel({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingAsk]);
 
-    // Collapsed: a slim floating rail with the Eva mark, like the collapsed sidebar.
+    // Collapsed: a slim floating rail with the EVA mark, like the collapsed sidebar.
     if (collapsed) {
         return (
             <aside
@@ -138,7 +139,7 @@ export function ChatPanel({
             >
                 <button
                     onClick={onToggleCollapsed}
-                    title="Open Eva"
+                    title="Open EVA"
                     className="rounded-lg p-1.5"
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -165,18 +166,32 @@ export function ChatPanel({
             </div>
             <div className="flex items-center gap-2 px-4 shrink-0" style={{ minHeight: 62, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <Orb size={22} />
-                <span className="text-sm font-semibold" style={{ color: COLORS.text }}>Eva</span>
+                <span className="text-sm font-semibold" style={{ color: COLORS.text }}>EVA</span>
                 <span className="text-xs" style={{ color: COLORS.textMuted }}>· {t(subtitle)}</span>
-                <button
-                    onClick={onToggleCollapsed}
-                    title="Collapse"
-                    className="ml-auto rounded-md p-1"
-                    style={{ color: COLORS.textMuted }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                    <Icon name="chevron-right-double" />
-                </button>
+                <div className="ml-auto flex items-center gap-0.5">
+                    {onExpand && (
+                        <button
+                            onClick={onExpand}
+                            title={t('Open in full window')}
+                            className="rounded-md p-1"
+                            style={{ color: COLORS.textMuted }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                            <Icon name="expand-view" />
+                        </button>
+                    )}
+                    <button
+                        onClick={onToggleCollapsed}
+                        title="Collapse"
+                        className="rounded-md p-1"
+                        style={{ color: COLORS.textMuted }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                        <Icon name="layout-last" />
+                    </button>
+                </div>
             </div>
 
             {evaConfig && evaSrc ? (
@@ -215,7 +230,7 @@ export function ChatPanel({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                        placeholder={t('Ask Eva anything')}
+                        placeholder={t('Ask EVA anything')}
                         rows={2}
                         className="w-full resize-none bg-transparent px-3.5 py-2.5 text-sm outline-none"
                         style={{ color: COLORS.text }}

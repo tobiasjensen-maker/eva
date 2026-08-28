@@ -23,7 +23,7 @@ const SKILL_META: Record<string, { category: string; features: string[] }> = {
     anomalies: { category: 'Insights', features: ['Detects unusual transactions', 'Explains why they stand out', 'Suggests how to handle them'] },
 };
 
-// ---- Capabilities: what Eva can do — e-conomic native (built in) + 3rd-party partner skills ----
+// ---- Capabilities: what EVA can do — e-conomic native (built in) + 3rd-party partner skills ----
 interface Capability {
     id: string;
     name: string;
@@ -38,7 +38,7 @@ interface Capability {
 const CAPABILITIES: Capability[] = [
     // e-conomic native — the foundation, presented as already installed
     { id: 'economic', name: 'e-conomic', logo: 'econ-logo.png', bg: '#fff7ed', category: 'Core', native: true,
-        desc: 'Native access to your e-conomic ledger — the foundation Eva builds every flow on.',
+        desc: 'Native access to your e-conomic ledger — the foundation EVA builds every flow on.',
         skills: ['Bookkeeping & bank reconciliation', 'Invoicing, customers & reminders', 'Suppliers, bills & payments', 'Documents, receipts & OCR', 'Reporting, VAT & period close'] },
     // 3rd-party partners — installable from the e-conomic marketplace
     { id: 'likvido', name: 'Likvido', logo: 'partners/likvido.svg', bg: '#eef0f7', category: 'Receivables', native: false,
@@ -55,7 +55,7 @@ const CAPABILITIES: Capability[] = [
         skills: ['Sync inventory & stock levels', 'Create purchase orders', 'Book cost of goods sold'] },
 ];
 
-// ---- Performance tab — how much Eva is automating, time saved, breakdown by job ----
+// ---- Performance tab — how much EVA is automating, time saved, breakdown by job ----
 const PERF = {
     automatedPct: 82,
     hoursSaved: 148,
@@ -76,11 +76,11 @@ const PERF = {
         { label: 'Active flows', value: '4' },
         { label: 'Clients covered', value: '8' },
     ],
-    // What Eva could take over but isn't yet — surfaced to drive adoption.
+    // What EVA could take over but isn't yet — surfaced to drive adoption.
     untappedHours: 18,
     opportunities: [
         { name: 'Match supplier payments', saving: '~6 hrs / mo', note: 'Still matched by hand across 5 clients.', kind: 'flow' as const },
-        { name: 'Prepare VAT settlements', saving: '~4 hrs / quarter', note: 'Eva can draft and pre-check before you file.', kind: 'flow' as const },
+        { name: 'Prepare VAT settlements', saving: '~4 hrs / quarter', note: 'EVA can draft and pre-check before you file.', kind: 'flow' as const },
         { name: 'Chase missing documents', saving: '~3 hrs / mo', note: 'Only partly automated for 3 clients.', kind: 'flow' as const },
         { name: 'Forecast client liquidity', saving: '~5 hrs / mo', note: 'Needs the Budget123 capability installed.', kind: 'capability' as const },
     ],
@@ -115,7 +115,7 @@ const CONDITION_LIBRARY = [
     'Receipt is still missing after 3 days',
 ];
 
-// Step factory — picks an icon from the approach (rule / eva / review). LLM steps are Eva's.
+// Step factory — picks an icon from the approach (rule / eva / review). LLM steps are EVA's.
 let stSeq = 0;
 function st(label: string, approach: StepApproach, capId?: string): FlowStep {
     const icon = capId ? 'connection-enable' : approach === 'eva' ? 'ai-stars' : approach === 'review' ? 'person' : 'settings';
@@ -322,7 +322,7 @@ function preinstalledFlows(): LocalFlow[] {
 
 const AUTO_TABS = [
     { k: 'flows', label: 'Routines' },
-    { k: 'capabilities', label: 'Skills' },
+    { k: 'capabilities', label: 'Connectors' },
     { k: 'office', label: 'Office' },
 ] as const;
 type AutoTab = (typeof AUTO_TABS)[number]['k'];
@@ -395,7 +395,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 showScope={false}
                 right={
                     tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
-                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('Add skill')}</Button>
+                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('Add connector')}</Button>
                     : undefined
                 }
             />
@@ -484,8 +484,8 @@ function CapabilitiesMarket({ installed, onAdd, onOpen }: { installed: Set<strin
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
                 >
                     <Icon name="circle-plus" style={{ color: COLORS.textMuted }} />
-                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a skill')}</p>
-                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install skills from e-conomic partners.')}</p>
+                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a connector')}</p>
+                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install connectors from e-conomic partners.')}</p>
                 </button>
             </div>
         </div>
@@ -512,15 +512,15 @@ function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<s
             >
                 <header className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <div>
-                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Add a skill')}</h2>
-                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Install skills from the e-conomic partner marketplace.')}</p>
+                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Add a connector')}</h2>
+                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Install connectors from the e-conomic partner marketplace.')}</p>
                     </div>
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </header>
                 <div className="overflow-y-auto p-5">
-                    <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search skills…')} />
+                    <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search connectors…')} />
                     {filtered.length === 0 ? (
-                        <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No skills match your search.')}</p>
+                        <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No connectors match your search.')}</p>
                     ) : (
                         <div className="grid grid-cols-2 gap-4">
                             {filtered.map((c) => <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => onInstall(c.id)} />)}
@@ -713,7 +713,7 @@ function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-                <PageHeader title={cap.name} onBack={onBack} backLabel={t('Skills')} showScope={false} />
+                <PageHeader title={cap.name} onBack={onBack} backLabel={t('Connectors')} showScope={false} />
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* intro */}
                     <div className="flex items-start gap-3 mb-6">
@@ -730,7 +730,7 @@ function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void
                     </div>
 
                     {/* granular per-skill control */}
-                    <Section title={t('Skills')} sub={cap.native ? t('Turn individual e-conomic skills off to put them out of Eva’s reach.') : t('Choose which of this partner’s skills Eva may use.')}>
+                    <Section title={t('Skills')} sub={cap.native ? t('Turn individual e-conomic skills off to put them out of EVA’s reach.') : t('Choose which of this partner’s skills EVA may use.')}>
                         <div className="flex flex-col gap-2">
                             {cap.skills.map((s) => {
                                 const on = !off.has(s);
@@ -832,7 +832,7 @@ const AUTONOMY = [
 ];
 
 // Flow builder primitives — a starter (trigger) and a library of steps.
-// approach: how the step runs — a deterministic rule, Eva (the AI), or human-in-the-loop review.
+// approach: how the step runs — a deterministic rule, EVA (the AI), or human-in-the-loop review.
 type StepApproach = 'rule' | 'eva' | 'review';
 // EVA action taxonomy: every step is a Read, Reasoning or Write action. A human
 // checkpoint (approach 'review') is surfaced as its own 'review' pill.
@@ -867,9 +867,9 @@ const ECONOMIC_STEPS: FlowStep[] = [
     { id: 'generate-report', icon: 'chart-bar', label: 'Generate a report' },
     { id: 'flag-review', icon: 'circle-warning', label: 'Flag for review' },
 ];
-// Eva AI reasoning steps (always available)
+// EVA AI reasoning steps (always available)
 const AI_STEPS: FlowStep[] = [
-    { id: 'ai-decide', icon: 'ai-stars', label: 'Ask Eva to decide', approach: 'eva', kind: 'reasoning' },
+    { id: 'ai-decide', icon: 'ai-stars', label: 'Ask EVA to decide', approach: 'eva', kind: 'reasoning' },
     { id: 'ai-summarize', icon: 'ai-stars', label: 'Summarize', approach: 'eva', kind: 'reasoning' },
     { id: 'ai-extract', icon: 'ai-stars', label: 'Extract data', approach: 'eva', kind: 'reasoning' },
 ];
@@ -1041,7 +1041,7 @@ function dayLabel(daysAgo: number, locale = 'en-GB'): string {
     return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-// Small tag showing how a step runs — Eva (AI), a deterministic rule, or human review.
+// Small tag showing how a step runs — EVA (AI), a deterministic rule, or human review.
 function ApproachTag({ step }: { step?: FlowStep }) {
     const { t } = useLang();
     if (!step) return null;
@@ -1628,7 +1628,7 @@ function StepSettings({ step, onClose }: { step: FlowStep; onClose: () => void }
                         </div>
                     </Field>
                     <div className="mt-4">
-                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this step runs')} desc={t('Get a notification each time Eva completes this step.')} />
+                        <ToggleRow checked={notify} onChange={setNotify} title={t('Notify me when this step runs')} desc={t('Get a notification each time EVA completes this step.')} />
                     </div>
                 </div>
                 <div className="px-5 py-4 flex justify-end gap-2" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
@@ -1658,7 +1658,7 @@ function StepPicker({ mode, installed, currentStarter, onPickStarter, onPickStep
     );
     const partners = CAPABILITIES.filter((c) => !c.native);
     const heading = mode === 'starter' ? t('Choose a trigger') : mode === 'condition' ? t('Add a condition') : t('Add a step');
-    const sub = mode === 'starter' ? t('This event or schedule launches your routine.') : mode === 'condition' ? t('A check that must be true to continue.') : t('e-conomic and partner actions Eva can run.');
+    const sub = mode === 'starter' ? t('This event or schedule launches your routine.') : mode === 'condition' ? t('A check that must be true to continue.') : t('e-conomic and partner actions EVA can run.');
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
@@ -1705,7 +1705,7 @@ function StepPicker({ mode, installed, currentStarter, onPickStarter, onPickStep
                                     <StepOption key={s.id} step={s} icon={tile(s.icon, '#fff7ed', '#b9842b')} onClick={() => onPickStep(s)} />
                                 ))}
                             </StepGroup>
-                            <StepGroup label={t('Eva AI')}>
+                            <StepGroup label={t('EVA AI')}>
                                 {AI_STEPS.map((s) => (
                                     <StepOption key={s.id} step={s} icon={tile(s.icon, '#eef2ff', '#4456c7')} onClick={() => onPickStep(s)} />
                                 ))}
@@ -1851,7 +1851,7 @@ function ActivityTab({ skill, locked }: { skill: Skill; locked: boolean }) {
         return (
             <Card className="p-10 text-center mb-10">
                 <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                    {locked ? t('No activity yet — enable this flow to let Eva start working.') : t('No activity recorded for this flow yet.')}
+                    {locked ? t('No activity yet — enable this flow to let EVA start working.') : t('No activity recorded for this flow yet.')}
                 </p>
             </Card>
         );

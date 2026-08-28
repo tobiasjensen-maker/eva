@@ -91,14 +91,14 @@ function Connected({ config }: { config: EvaConfig }) {
     }
 
     if (status === 'unauthorized') return <Centered>Token rejected — refresh it and reconnect.</Centered>
-    if (status === 'connecting') return <Centered>Connecting to Eva…</Centered>
+    if (status === 'connecting') return <Centered>Connecting to EVA…</Centered>
     if (status === 'disconnected') return <Centered>Disconnected. Check the network / VPN.</Centered>
     if (!currentChatName) return <Centered>Starting chat…</Centered>
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#fff' }}>
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {messages.length === 0 && <div style={{ color: COLORS.muted, fontSize: 14 }}>Ask Eva anything about this agreement.</div>}
+                {messages.length === 0 && <div style={{ color: COLORS.muted, fontSize: 14 }}>Ask EVA anything about this agreement.</div>}
                 {messages.map((m) => {
                     const text = (m.parts ?? []).filter((p: { type: string }) => p.type === 'text').map((p: { text: string }) => p.text).join('')
                     return m.role === 'user' ? (
@@ -126,7 +126,7 @@ function Connected({ config }: { config: EvaConfig }) {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                        placeholder="Ask Eva anything"
+                        placeholder="Ask EVA anything"
                         rows={2}
                         style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontFamily: 'inherit', color: COLORS.text }}
                     />
@@ -153,7 +153,7 @@ function toolActivity(m: { parts?: { type: string; toolName?: string }[] }): str
 
 function TypingDots() {
     return (
-        <div aria-label="Eva is thinking" style={{ display: 'flex', gap: 4, alignItems: 'center', height: 18 }}>
+        <div aria-label="EVA is thinking" style={{ display: 'flex', gap: 4, alignItems: 'center', height: 18 }}>
             {[0, 1, 2].map((i) => (
                 <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#9aa0aa', display: 'inline-block', animation: 'evaDot 1.2s infinite ease-in-out', animationDelay: `${i * 0.16}s` }} />
             ))}
