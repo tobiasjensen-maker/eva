@@ -31,6 +31,7 @@ const DA: Record<string, string> = {
     'Mark resolved': 'Markér som løst',
     'Drag to resize': 'Træk for at ændre størrelse',
     'Provenance': 'Oprindelse',
+    'Skill area': 'Kompetenceområde',
     'Agent': 'Agent',
     'AI draft': 'AI-udkast',
     'An EVA agent did this automatically.': 'En EVA-agent gjorde dette automatisk.',

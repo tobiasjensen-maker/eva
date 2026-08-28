@@ -8,31 +8,9 @@ type Confidence = 'high' | 'medium' | 'low';
 export type ActivityStatus = 'completed' | 'needs-review' | 'failed' | 'waiting';
 type Bucket = 'today' | 'yesterday' | 'week' | 'older';
 
-// Provenance — glanceable on every item: who produced it. Either EVA acted, EVA
-// drafted a proposal, or e-conomic's own system rules flagged it (not an agent).
+// Provenance is still carried on each entry (for the trace), but the review rows
+// label the skill area instead — it's what an AO scans by.
 type Provenance = 'agent' | 'ai-draft' | 'system';
-function provenanceOf(e: { status: ActivityStatus; provenance?: Provenance }): Provenance {
-    if (e.provenance) return e.provenance; // explicit system flags etc.
-    // EVA acted on it (or attempted / is waiting on someone) → Agent.
-    if (e.status === 'completed' || e.status === 'waiting' || e.status === 'failed') return 'agent';
-    // EVA analysed it and is proposing something for your review → AI draft.
-    return 'ai-draft';
-}
-const PROV_STYLE: Record<Provenance, { label: string; icon: string; bg: string; fg: string; explain: string }> = {
-    agent: { label: 'Agent', icon: 'connection-enable', bg: '#eef2ff', fg: '#4456c7', explain: 'An EVA agent did this automatically.' },
-    'ai-draft': { label: 'AI draft', icon: 'ai-stars', bg: '#f3f0fb', fg: '#7c3aed', explain: 'EVA analysed this and drafted it for your approval.' },
-    system: { label: 'e-conomic', icon: 'circle-warning', bg: '#fff7ed', fg: '#b9842b', explain: 'Flagged by e-conomic’s own system rules — not by an agent.' },
-};
-
-function ProvenanceTag({ prov }: { prov: Provenance }) {
-    const { t } = useLang();
-    const s = PROV_STYLE[prov];
-    return (
-        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium shrink-0" style={{ background: s.bg, color: s.fg, cursor: 'help' }} title={t(s.explain)}>
-            <Icon name={s.icon as never} /> {t(s.label)}
-        </span>
-    );
-}
 
 interface SourceDoc {
     kind: 'Invoice' | 'Transaction' | 'Entry';
@@ -510,7 +488,6 @@ function traceOf(e: LogEntry): TraceInfo {
 
 function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void }) {
     const { t, lang } = useLang();
-    const sk = SKILL_INFO[entry.skill];
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
     const needsReview = entry.status === 'needs-review';
@@ -520,38 +497,28 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
     return (
         <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: open ? '#fafafa' : '#fff' }}>
+                {/* Left icon: the skill-area emoji, tinted with the status colour. */}
                 <span
-                    title={t(st.label)}
+                    title={`${SKILL_INFO[entry.skill]?.label ?? ''} · ${t(st.label)}`}
                     className="flex items-center justify-center shrink-0 rounded-lg"
-                    style={{ width: 36, height: 36, background: `${st.fg}1a`, color: st.fg }}
+                    style={{ width: 36, height: 36, background: `${st.fg}1a`, fontSize: 18 }}
                 >
-                    <Icon name={st.icon as never} />
+                    {SKILL_INFO[entry.skill]?.emoji ?? '•'}
                 </span>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: COLORS.text }}>
                         {t(entry.desc)}
                     </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
-                        {t(sk.label)} · {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}
-                        {entry.status === 'waiting' && entry.waitingOn ? ` · ${t('waiting on')} ${entry.waitingOn}` : ''}
+                        {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}
                     </p>
                 </div>
-                <ProvenanceTag prov={provenanceOf(entry)} />
-                {entry.status !== 'waiting' && (
-                    <span
-                        title={t(conf.explain)}
-                        className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0"
-                        style={{ background: conf.bg, color: conf.fg, cursor: 'help' }}
-                    >
-                        {t(conf.label)} {t('confidence')}
-                    </span>
-                )}
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
 
             {open && (
                 <div className="px-4 pb-4 anim-in">
-                    <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fcfcfd' }}>
+                    <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
                             <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? t('What Eva wants you to check') : needsReview ? t('Why Eva suggests this') : t('Why did Eva do this?')}</span>
@@ -629,19 +596,17 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
 // loop (never "Accept", since the ball is in someone else's court).
 function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace }: { entry: LogEntry; reminded: boolean; onRemind: () => void; onReceived: () => void; onTrace: () => void }) {
     const { t } = useLang();
-    const sk = SKILL_INFO[entry.skill];
     return (
         <Card className="flex items-center gap-3 p-3.5">
-            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#eef2ff', color: '#4456c7' }}>
-                <Icon name="time" />
+            <span title={`${SKILL_INFO[entry.skill]?.label ?? ''} · ${t('Waiting')}`} className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: `${STATUS_STYLE.waiting.fg}1a`, fontSize: 17 }}>
+                {SKILL_INFO[entry.skill]?.emoji ?? '•'}
             </span>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(entry.desc)}</p>
                 <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
-                    {t(sk.label)} · {t(clientName(entry.client))}{entry.waitingOn ? ` · ${t('waiting on')} ${entry.waitingOn}` : ''}
+                    {t(clientName(entry.client))}{entry.waitingOn ? ` · ${t('waiting on')} ${entry.waitingOn}` : ''}
                 </p>
             </div>
-            <ProvenanceTag prov={provenanceOf(entry)} />
             <button onClick={onTrace} className="flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>
                 <Icon name="search" /> {t('Trace')}
             </button>
