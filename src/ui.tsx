@@ -9,7 +9,23 @@ export interface LiveAgreement { id: string; name: string; number: number }
 // Global "which client am I working on" context, surfaced as a header pill.
 export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void; liveAgreement?: LiveAgreement | null }>({ scope: 'portfolio', onChoose: () => {} });
 
-// The "Working on: …" pill + agreement dropdown, shown in each page header.
+// Clients have no real logos in the prototype, so we render a monogram avatar
+// (coloured circle + initial, colour derived from the name) as a stand-in logo.
+const CLIENT_COLORS = ['#4456c7', '#7c3aed', '#0f766e', '#b9842b', '#be185d', '#4d7c0f', '#2f6fb0', '#c2410c'];
+function clientColor(name: string): string {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return CLIENT_COLORS[h % CLIENT_COLORS.length];
+}
+export function ClientAvatar({ name, size = 18 }: { name: string; size?: number }) {
+    return (
+        <span className="flex items-center justify-center shrink-0 rounded-full" style={{ width: size, height: size, background: clientColor(name), color: '#fff', fontSize: Math.round(size * 0.5), fontWeight: 700, lineHeight: 1 }}>
+            {(name.trim()[0] || '?').toUpperCase()}
+        </span>
+    );
+}
+
+// The agreement pill + dropdown, shown in each page header.
 export function ScopeSwitcher() {
     const { scope, onChoose, liveAgreement } = useContext(ScopeContext);
     const { t } = useLang();
@@ -37,8 +53,9 @@ export function ScopeSwitcher() {
             >
                 {isLive
                     ? <span className="rounded-full" style={{ width: 7, height: 7, background: '#22c55e' }} />
-                    : <Icon name={portfolio ? 'contacts' : 'person'} style={{ color: COLORS.textMuted }} />}
-                <span style={{ color: COLORS.textMuted }}>{t('Working on:')}</span>
+                    : portfolio
+                        ? <Icon name="contacts" style={{ color: COLORS.textMuted }} />
+                        : <ClientAvatar name={label} size={16} />}
                 <span className="font-medium" title={label}>{display}</span>
                 <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />
             </button>
@@ -71,7 +88,7 @@ export function ScopeSwitcher() {
                         <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                             {AGREEMENTS.map((a) => (
                                 <button key={a.id} onClick={() => pick(a.id)} className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm" style={{ color: COLORS.text }} onMouseEnter={onIn} onMouseLeave={onOut}>
-                                    <Icon name="person" style={{ color: COLORS.textMuted }} />
+                                    <ClientAvatar name={a.name} size={20} />
                                     <span className="flex-1 truncate">{a.name}</span>
                                     {scope === a.id && <Icon name="tick" style={{ color: '#16a34a' }} />}
                                 </button>
