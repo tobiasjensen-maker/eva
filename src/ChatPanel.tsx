@@ -65,7 +65,7 @@ function Thinking() {
 export interface PendingAsk { user: string; answer: string }
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, pendingAsk, onPendingConsumed,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed,
 }: {
     subtitle: string;
     intro: string;
@@ -77,11 +77,19 @@ export function ChatPanel({
     collapsed: boolean;
     onToggleCollapsed: () => void;
     onExpand?: () => void; // open the full-window chat
+    // A one-off welcome brief seeded as the first message (e.g. right after onboarding).
+    welcome?: string | null;
+    onWelcomeConsumed?: () => void;
     pendingAsk: PendingAsk | null;
     onPendingConsumed: () => void;
 }) {
     const { t } = useLang();
-    const [msgs, setMsgs] = useState<Msg[]>(() => [{ id: 0, role: 'assistant', text: t(intro), instant: true }]);
+    const [msgs, setMsgs] = useState<Msg[]>(() => [{ id: 0, role: 'assistant', text: welcome ? welcome : t(intro), instant: true }]);
+    // Consume the welcome once so it doesn't reappear on later remounts.
+    useEffect(() => {
+        if (welcome) onWelcomeConsumed?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);

@@ -814,6 +814,8 @@ const DA: Record<string, string> = {
     'New chat': 'Ny chat',
     'Suggested follow-ups': 'Foreslåede opfølgninger',
     // Onboarding portfolio brief
+    "Welcome! I'm EVA — I've just been through your whole portfolio. Across your 8 clients (4,80 mio. kr revenue) you have 214.500 kr overdue and 3 things worth a look first: Café Solsikke’s cash runway is under 2 months, Nordic Build ApS has your largest overdue exposure, and there’s an unusual 14.900 kr charge at Office Supplies Co. Where would you like to start?":
+        'Velkommen! Jeg er EVA — jeg har lige været igennem hele din portefølje. På tværs af dine 8 klienter (4,80 mio. kr i omsætning) er der 214.500 kr forfaldent og 3 ting værd at se på først: Café Solsikkes likviditet rækker under 2 måneder, Nordic Build ApS har din største forfaldne eksponering, og der er en usædvanlig postering på 14.900 kr hos Office Supplies Co. Hvor vil du gerne starte?',
     'Clients': 'Klienter',
     'Need attention': 'Kræver opmærksomhed',
     'Who to look at first': 'Hvem du bør se på først',

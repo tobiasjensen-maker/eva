@@ -35,6 +35,10 @@ import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from '.
 // re-enable the whole connected-agreement layer.
 const SHOW_CONNECTION = false;
 
+// EVA's post-onboarding greeting, shown as the first message in the side-panel on Cockpit.
+const WELCOME_MSG =
+    "Welcome! I'm EVA — I've just been through your whole portfolio. Across your 8 clients (4,80 mio. kr revenue) you have 214.500 kr overdue and 3 things worth a look first: Café Solsikke’s cash runway is under 2 months, Nordic Build ApS has your largest overdue exposure, and there’s an unusual 14.900 kr charge at Office Supplies Co. Where would you like to start?";
+
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
     { id: 'activity', label: 'Cockpit', Icon: ReviewIcon },
@@ -142,6 +146,7 @@ export default function App() {
     }
     const [welcome, setWelcome] = useState(false);
     const [chatKey, setChatKey] = useState(0);
+    const [panelSeed, setPanelSeed] = useState(0); // bump to remount the EVA panel (e.g. to seed the welcome)
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('va-collapsed') === '1');
     useEffect(() => {
         localStorage.setItem('va-collapsed', collapsed ? '1' : '0');
@@ -252,7 +257,7 @@ export default function App() {
               }
             : null;
     // Remount the panel (fresh conversation) when the page, the open artifact, or the language changes.
-    const panelKey = view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '') + lang;
+    const panelKey = view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '') + lang + panelSeed;
 
     function applyScope(s: string) {
         setScope(s);
@@ -609,6 +614,8 @@ export default function App() {
                     collapsed={chatCollapsed}
                     onToggleCollapsed={() => setChatCollapsed((c) => !c)}
                     onExpand={() => { setChatReturn(view); goView('chat'); }}
+                    welcome={welcome && view === 'activity' ? t(WELCOME_MSG) : null}
+                    onWelcomeConsumed={() => setWelcome(false)}
                     pendingAsk={pendingAsk}
                     onPendingConsumed={() => setPendingAsk(null)}
                 />
@@ -640,7 +647,7 @@ export default function App() {
             {route === 'onboarding' && (
                 <Onboarding
                     onClose={() => navigate(VIEW_SLUG[view])}
-                    onComplete={() => { setWelcome(true); setChatKey((k) => k + 1); goView('chat'); }}
+                    onComplete={() => { setWelcome(true); setPanelSeed((k) => k + 1); setChatCollapsed(false); goView('activity'); }}
                 />
             )}
         </div>
