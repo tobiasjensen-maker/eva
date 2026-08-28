@@ -503,7 +503,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader title={t('Insights')} right={insTab === 'financial' ? <SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} /> : undefined} />
+                <PageHeader title={t('Advisory')} right={insTab === 'financial' ? <SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} /> : undefined} />
                 {/* Insights tabs: Advisory (what to do about it) + Financial (the numbers) */}
                 <div className="mx-auto px-8 pt-4" style={{ maxWidth: 1040 }}>
                     <div className="flex items-center gap-7" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>

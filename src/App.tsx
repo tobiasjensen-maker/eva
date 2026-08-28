@@ -34,7 +34,7 @@ import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from '.
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Home', Icon: ReviewIcon },
-    { id: 'insights', label: 'Insights', Icon: InsightsIcon },
+    { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
     { id: 'skills', label: 'Routines', Icon: SkillsIcon },
