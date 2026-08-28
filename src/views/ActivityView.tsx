@@ -253,7 +253,8 @@ type StatusFilter = 'all' | 'completed' | 'needs-review' | 'waiting';
 // what needs me, what's waiting on someone else, what happened while I was away.
 const LANES: { key: string; label: string; match: (e: LogEntry) => boolean; proactive?: boolean }[] = [
     // Proactive advisory — Eva acted before being asked (the 11:00 hour). Sits on top.
-    { key: 'proactive', label: 'Eva spotted this — before you asked', match: (e) => !!e.proactive, proactive: true },
+    // Once accepted/dismissed (completed) it drops out and shows only under "What happened".
+    { key: 'proactive', label: 'Eva spotted this — before you asked', match: (e) => !!e.proactive && e.status !== 'completed', proactive: true },
     { key: 'needs-review', label: 'Needs you', match: (e) => (e.status === 'needs-review' || e.status === 'failed') && !e.proactive },
     { key: 'waiting', label: 'Waiting on someone else', match: (e) => e.status === 'waiting' },
     { key: 'completed', label: 'What happened', match: (e) => e.status === 'completed' },
