@@ -31,12 +31,17 @@ import { LangContext, translate, type Lang } from './i18n';
 import { useEcoConnection } from './eco';
 import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from './eva';
 
+// Hide the live e-conomic connection UI for now (agreement picker's connected group,
+// account-menu connection status, EVA connect, sidebar dot, Customers page). Flip to
+// re-enable the whole connected-agreement layer.
+const SHOW_CONNECTION = false;
+
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Home', Icon: ReviewIcon },
     { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
-    ...(import.meta.env.DEV ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
+    ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
     { id: 'skills', label: 'Routines', Icon: SkillsIcon },
     { id: 'spaces', label: 'Views', Icon: SpacesIcon },
 ];
@@ -93,8 +98,9 @@ export default function App() {
     const [accountOpen, setAccountOpen] = useState(false);
     const [, setEvaTick] = useState(0); // bump to re-render after the EVA token changes
     const [evaInput, setEvaInput] = useState(() => evaToken());
-    // Live e-conomic connection — local dev only (the public build has no proxy).
-    const ecoEnabled = import.meta.env.DEV;
+    // Live e-conomic connection — local dev only (the public build has no proxy), and
+    // only when the connected-agreement layer is switched on.
+    const ecoEnabled = import.meta.env.DEV && SHOW_CONNECTION;
     const eco = useEcoConnection(ecoEnabled);
     const ecoCompany = ecoEnabled && eco.status === 'connected' ? eco.company : 'e-conomic Topco';
     const ecoDot = eco.status === 'connected' ? '#22c55e' : eco.status === 'connecting' ? '#d4a72c' : '#9ca3af';
@@ -148,6 +154,13 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem('va-scope', scope);
     }, [scope]);
+    // With the connected-agreement layer hidden, clear any stale live scope / Customers view.
+    useEffect(() => {
+        if (SHOW_CONNECTION) return;
+        if (scope.startsWith('live-')) setScope('portfolio');
+        if (view === 'customers') setView('activity');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : liveAgreement && s === liveAgreement.id ? liveAgreement.name : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
     // Home badge counts only core bookkeeping items (advisory lives under Insights).

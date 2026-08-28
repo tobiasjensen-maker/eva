@@ -371,7 +371,7 @@ export default function ActivityView({
 
     return (
         <div className={embedded ? '' : 'h-full overflow-y-auto'}>
-            {!embedded && <PageHeader title={kind === 'advisory' ? t('Advisory') : t('Control centre')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
+            {!embedded && <PageHeader title={kind === 'advisory' ? t('Advisory') : t('Cockpit')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
             <div className={embedded ? 'pb-2' : 'px-8 pt-5 pb-7 mx-auto'} style={embedded ? undefined : { maxWidth: 1040 }}>
                 {!embedded && range === 'custom' && (
                     <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>

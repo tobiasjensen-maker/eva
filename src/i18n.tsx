@@ -21,6 +21,7 @@ const DA: Record<string, string> = {
     'Chat': 'Chat',
     'Home': 'Hjem',
     'Control centre': 'Kontrolcenter',
+    'Cockpit': 'Cockpit',
     'Needs you': 'Kræver dig',
     'Waiting on someone else': 'Venter på andre',
     'What happened': 'Hvad der skete',
