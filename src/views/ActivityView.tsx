@@ -8,26 +8,27 @@ type Confidence = 'high' | 'medium' | 'low';
 export type ActivityStatus = 'completed' | 'needs-review' | 'failed' | 'waiting';
 type Bucket = 'today' | 'yesterday' | 'week' | 'older';
 
-// Provenance — glanceable on every item: an agent did it, AI drafted it, or
-// e-conomic itself is flagging it. (The vision: "provenance always, trace on demand".)
+// Provenance — glanceable on every item: who produced it. Either EVA acted, EVA
+// drafted a proposal, or e-conomic's own system rules flagged it (not an agent).
 type Provenance = 'agent' | 'ai-draft' | 'system';
-function provenanceOf(e: { skill: string; status: ActivityStatus }): Provenance {
-    if (e.status === 'waiting') return 'agent'; // the agent did the outreach; now it waits
-    if (e.skill === 'anomalies' || e.skill === 'monitor') return 'system';
-    if (e.status === 'needs-review') return 'ai-draft';
-    return 'agent';
+function provenanceOf(e: { status: ActivityStatus; provenance?: Provenance }): Provenance {
+    if (e.provenance) return e.provenance; // explicit system flags etc.
+    // EVA acted on it (or attempted / is waiting on someone) → Agent.
+    if (e.status === 'completed' || e.status === 'waiting' || e.status === 'failed') return 'agent';
+    // EVA analysed it and is proposing something for your review → AI draft.
+    return 'ai-draft';
 }
-const PROV_STYLE: Record<Provenance, { label: string; icon: string; bg: string; fg: string }> = {
-    agent: { label: 'Agent', icon: 'connection-enable', bg: '#eef2ff', fg: '#4456c7' },
-    'ai-draft': { label: 'AI draft', icon: 'ai-stars', bg: '#f3f0fb', fg: '#7c3aed' },
-    system: { label: 'e-conomic', icon: 'circle-warning', bg: '#fff7ed', fg: '#b9842b' },
+const PROV_STYLE: Record<Provenance, { label: string; icon: string; bg: string; fg: string; explain: string }> = {
+    agent: { label: 'Agent', icon: 'connection-enable', bg: '#eef2ff', fg: '#4456c7', explain: 'An EVA agent did this automatically.' },
+    'ai-draft': { label: 'AI draft', icon: 'ai-stars', bg: '#f3f0fb', fg: '#7c3aed', explain: 'EVA analysed this and drafted it for your approval.' },
+    system: { label: 'e-conomic', icon: 'circle-warning', bg: '#fff7ed', fg: '#b9842b', explain: 'Flagged by e-conomic’s own system rules — not by an agent.' },
 };
 
 function ProvenanceTag({ prov }: { prov: Provenance }) {
     const { t } = useLang();
     const s = PROV_STYLE[prov];
     return (
-        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium shrink-0" style={{ background: s.bg, color: s.fg }} title={t('Provenance')}>
+        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium shrink-0" style={{ background: s.bg, color: s.fg, cursor: 'help' }} title={t(s.explain)}>
             <Icon name={s.icon as never} /> {t(s.label)}
         </span>
     );
@@ -58,6 +59,7 @@ export interface LogEntry {
     waitingOn?: string; // for 'waiting' items — who it's waiting on
     trace?: TraceInfo; // the deep "what did you do and why" audit trail (opened on demand)
     proactive?: boolean; // Eva surfaced this before being asked (the vision's 11:00 hour)
+    provenance?: Provenance; // override — e.g. a genuine e-conomic system flag
 }
 
 // The trace pulled on demand (Mette's 14:20 moment): routine → version → action →
@@ -165,7 +167,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         reasoning: ['Invoice 38 days overdue with no payment recorded.', 'First reminder template applied.'],
         source: 'Invoice #NB-228',
         doc: { kind: 'Invoice', ref: '#NB-228', detail: 'Nordic Build ApS · 34.200 DKK · 38 days overdue' } },
-    { id: 'a9', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '14:18', skill: 'anomalies', client: 'tech',
+    { id: 'a9', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '14:18', skill: 'anomalies', client: 'tech', provenance: 'system',
         desc: 'Void a possible duplicate bill #TE-189', confidence: 'medium', status: 'needs-review',
         reasoning: ['Bill #TE-189 shares amount, date and supplier with #TE-188.', 'Could be a legitimate split delivery — needs a human check.'],
         source: 'Bills #TE-188 and #TE-189 · 22.650 DKK',
@@ -647,6 +649,7 @@ function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace }: { entry:
                     {t(sk.label)} · {t(clientName(entry.client))}{entry.waitingOn ? ` · ${t('waiting on')} ${entry.waitingOn}` : ''}
                 </p>
             </div>
+            <ProvenanceTag prov={provenanceOf(entry)} />
             <button onClick={onTrace} className="flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>
                 <Icon name="search" /> {t('Trace')}
             </button>
