@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
 import { Card, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { getAccounts, getCustomers, getInvoices } from '../eco';
+import ActivityView, { type LogEntry } from './ActivityView';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
@@ -12,6 +13,10 @@ interface Props {
     live?: boolean; // true when the connected e-conomic agreement is the active scope
     pro: boolean;
     onUpgrade: () => void;
+    // Advisory lives under Insights — the advisory subset of the activity feed.
+    activity?: LogEntry[];
+    setActivity?: Dispatch<SetStateAction<LogEntry[]>>;
+    onAskEva?: (user: string, answer: string) => void;
 }
 
 // ---- per-agreement financial profiles ----
@@ -483,8 +488,9 @@ function useLiveInsights(enabled: boolean): LiveInsights | null | 'loading' {
     return state;
 }
 
-export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', live = false, pro, onUpgrade }: Props) {
+export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', live = false, pro, onUpgrade, activity, setActivity, onAskEva }: Props) {
     const { t, lang } = useLang();
+    const [insTab, setInsTab] = useState<'advisory' | 'financial'>('advisory');
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const liveData = useLiveInsights(live);
     // Mock profile drives the (blurred) Deep-analysis section; live data, when present, drives the overview + chart.
@@ -497,7 +503,34 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader title={t('Insights')} right={<SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} />} />
+                <PageHeader title={t('Insights')} right={insTab === 'financial' ? <SegmentedTabs value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} /> : undefined} />
+                {/* Insights tabs: Advisory (what to do about it) + Financial (the numbers) */}
+                <div className="mx-auto px-8 pt-4" style={{ maxWidth: 1040 }}>
+                    <div className="flex items-center gap-7" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                        {([['advisory', 'Advisory'], ['financial', 'Financial']] as const).map(([k, label]) => {
+                            const on = insTab === k;
+                            return (
+                                <button key={k} onClick={() => setInsTab(k)} className="relative" style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}>
+                                    {t(label)}
+                                    {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {insTab === 'advisory' && (
+                    <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+                        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('Advisory Eva surfaces across your book — proactive, per client, ready to act on.')}</p>
+                        {activity && setActivity && onAskEva ? (
+                            <ActivityView kind="advisory" embedded entries={activity} setEntries={setActivity} status="all" onStatusChange={() => {}} scope={scope} onAskEva={onAskEva} />
+                        ) : (
+                            <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No advisory items right now.')}</p></Card>
+                        )}
+                    </div>
+                )}
+
+                {insTab === 'financial' && (
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     {/* upgrade banner */}
                     {!pro && (
@@ -611,6 +644,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                         )}
                     </div>
                 </div>
+                )}
         </div>
     );
 }

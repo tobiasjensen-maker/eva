@@ -72,6 +72,11 @@ export interface TraceInfo {
     authority: string;
 }
 
+// Advisory skills live under Insights → Advisory; everything else is core
+// bookkeeping and stays in the control centre.
+const ADVISORY_SKILLS = new Set(['monitor', 'advisory', 'regulations']);
+export const isAdvisory = (e: { skill: string }) => ADVISORY_SKILLS.has(e.skill);
+
 const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
     reconciliation: { emoji: '🏦', label: 'Bank reconciliation' },
     reminders: { emoji: '🔔', label: 'Payment reminders' },
@@ -138,7 +143,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         suggestions: ['Draft a reminder cadence', 'Open detailed breakdown'] },
 
     // ---- Waiting on someone else ----
-    { id: 'w1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:55', skill: 'monitor', client: 'nordic',
+    { id: 'w1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:55', skill: 'close-books', client: 'nordic',
         desc: 'Asked Jonas which project the 8.400 DKK cost belongs to', confidence: 'medium', status: 'waiting', waitingOn: 'Jonas · client',
         reasoning: ['The cost could sit on either of two active projects.', 'Sent Jonas a one-line question in the firm’s tone.', 'A reminder is set for Thursday if he hasn’t replied.'],
         source: 'Entry #8840 · 8.400 DKK',
@@ -209,7 +214,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         reasoning: ['12 supplier payments matched open bills with high confidence.', 'All posted under the supplier-payment rule.'],
         source: 'Bank import · 142.600 DKK',
         doc: { kind: 'Transaction', ref: 'Bank import', detail: '12 transactions · 142.600 DKK · booked to Account 5000' } },
-    { id: 'a18', daysAgo: 14, bucket: 'older', dateLabel: '26 May', time: '11:11', skill: 'anomalies', client: 'cafe',
+    { id: 'a18', daysAgo: 14, bucket: 'older', dateLabel: '26 May', time: '11:11', skill: 'advisory', client: 'cafe',
         desc: 'Review Café Solsikke’s cash runway — under 2 months', confidence: 'low', status: 'needs-review',
         reasoning: ['Projected runway fell below the 2-month threshold.', 'Driven by slower weekday footfall and a card-fee increase.', 'Low confidence — worth your judgement before raising it with the client.'],
         source: 'Cash-flow model · runway 1.4 mo',
@@ -290,7 +295,7 @@ export function reviewAnswer(entries: LogEntry[], q: string, lang: 'en' | 'da' =
 }
 
 export default function ActivityView({
-    entries, setEntries, status, onStatusChange, scope = 'portfolio', onAskEva,
+    entries, setEntries, status, onStatusChange, scope = 'portfolio', onAskEva, kind = 'core', embedded = false,
 }: {
     entries: LogEntry[];
     setEntries: Dispatch<SetStateAction<LogEntry[]>>;
@@ -298,6 +303,8 @@ export default function ActivityView({
     onStatusChange: (s: StatusFilter) => void;
     scope?: string;
     onAskEva: (user: string, answer: string) => void;
+    kind?: 'core' | 'advisory'; // core = bookkeeping control centre; advisory = Insights → Advisory
+    embedded?: boolean; // rendered inside another page (Insights) — no page header
 }) {
     const { t, lang } = useLang();
     const [range, setRange] = useState('30');
@@ -348,7 +355,7 @@ export default function ActivityView({
         return true; // custom → all (stub)
     };
     // Period set (date + skill + client) drives the stat counts; status is an additional filter on top.
-    const periodSet = entries.filter((e) => inRange(e) && (client === 'all' || e.client === client));
+    const periodSet = entries.filter((e) => inRange(e) && (client === 'all' || e.client === client) && (kind === 'advisory' ? isAdvisory(e) : !isAdvisory(e)));
 
     function resolve(id: string, action: string) {
         setActing(id);
@@ -379,10 +386,10 @@ export default function ActivityView({
         .filter((g) => g.items.length > 0);
 
     return (
-        <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Control centre')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
-            <div className="px-8 pt-5 pb-7 mx-auto" style={{ maxWidth: 1040 }}>
-                {range === 'custom' && (
+        <div className={embedded ? '' : 'h-full overflow-y-auto'}>
+            {!embedded && <PageHeader title={kind === 'advisory' ? t('Advisory') : t('Control centre')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
+            <div className={embedded ? 'pb-2' : 'px-8 pt-5 pb-7 mx-auto'} style={embedded ? undefined : { maxWidth: 1040 }}>
+                {!embedded && range === 'custom' && (
                     <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
                         <span>{t('to')}</span>
@@ -390,7 +397,8 @@ export default function ActivityView({
                     </div>
                 )}
 
-                {/* stats — double as status filters (flagged first) */}
+                {/* stats — bookkeeping control centre only (advisory has no lanes cockpit) */}
+                {kind !== 'advisory' && (
                 <div className="grid grid-cols-3 gap-3">
                     {stats.map((s) => {
                         const active = status === s.key;
@@ -419,9 +427,10 @@ export default function ActivityView({
                         );
                     })}
                 </div>
+                )}
 
                 {/* log */}
-                <div className="mt-5 pb-10">
+                <div className={kind === 'advisory' ? 'pb-4' : 'mt-5 pb-10'}>
                     {groups.length === 0 && (
                         <Card className="p-10 text-center">
                             <p className="text-sm" style={{ color: COLORS.textMuted }}>

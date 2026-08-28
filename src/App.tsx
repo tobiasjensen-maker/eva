@@ -21,7 +21,7 @@ import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
-import ActivityView, { ACTIVITY_ENTRIES, reviewAnswer } from './views/ActivityView';
+import ActivityView, { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
@@ -150,7 +150,9 @@ export default function App() {
     }, [scope]);
     const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : liveAgreement && s === liveAgreement.id ? liveAgreement.name : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
-    const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review').length;
+    // Home badge counts only core bookkeeping items (advisory lives under Insights).
+    const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && !isAdvisory(e)).length;
+    const advisoryCount = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && isAdvisory(e)).length;
 
     function skillsAnswer(q: string): string {
         const s = q.toLowerCase();
@@ -367,6 +369,9 @@ export default function App() {
                                 {!collapsed && id === 'activity' && needsReview > 0 && (
                                     <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{needsReview}</span>
                                 )}
+                                {!collapsed && id === 'insights' && advisoryCount > 0 && (
+                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#7c3aed', color: '#fff', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{advisoryCount}</span>
+                                )}
                             </button>
                             </SidebarTooltip>
                         );
@@ -556,7 +561,7 @@ export default function App() {
                         onSelectClient={applyScope}
                     />
                 )}
-                {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} />}
+                {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                 {view === 'activity' && (
                     <ActivityView
                         entries={activity}
