@@ -23,37 +23,109 @@ const SKILL_META: Record<string, { category: string; features: string[] }> = {
     anomalies: { category: 'Insights', features: ['Detects unusual transactions', 'Explains why they stand out', 'Suggests how to handle them'] },
 };
 
-// ---- Capabilities: what EVA can do — e-conomic native (built in) + 3rd-party partner skills ----
+// ---- Connectors: an external system EVA works through, and the SKILLS it exposes.
+// A skill is one job, made of typed actions — Read (fetch/inspect), Reasoning
+// (decide/derive) and Write (change something). Skills are grouped into areas.
+type ConnKind = 'read' | 'reasoning' | 'write';
+interface ConnAction { text: string; kind: ConnKind }
+interface ConnSkill { title: string; desc: string; actions: ConnAction[] }
+interface ConnArea { name: string; skills: ConnSkill[] }
 interface Capability {
     id: string;
     name: string;
     logo: string; // public asset path
     bg: string; // tile background behind the logo
     category: string;
-    native: boolean; // e-conomic native → installed by default, can't be removed
+    native: boolean; // e-conomic core → always connected, can't be removed
     desc: string;
-    skills: string[];
+    areas: ConnArea[];
 }
 
+// Terse builders for a skill's typed actions.
+const R = (text: string): ConnAction => ({ text, kind: 'read' });
+const N = (text: string): ConnAction => ({ text, kind: 'reasoning' });
+const W = (text: string): ConnAction => ({ text, kind: 'write' });
+
 const CAPABILITIES: Capability[] = [
-    // e-conomic native — the foundation, presented as already installed
+    // e-conomic core — the foundation, always connected, can't be removed
     { id: 'economic', name: 'e-conomic', logo: 'econ-logo.png', bg: '#fff7ed', category: 'Core', native: true,
-        desc: 'Native access to your e-conomic ledger — the foundation EVA builds every flow on.',
-        skills: ['Bookkeeping & bank reconciliation', 'Invoicing, customers & reminders', 'Suppliers, bills & payments', 'Documents, receipts & OCR', 'Reporting, VAT & period close'] },
-    // 3rd-party partners — installable from the e-conomic marketplace
+        desc: 'Native access to your e-conomic ledger — the foundation EVA builds every routine on.',
+        areas: [
+            { name: 'Bookkeeping & bank', skills: [
+                { title: 'Bank reconciliation', desc: 'Match incoming bank transactions to the right entries and book them.', actions: [R('Read the bank feed and open entries'), N('Decide the most likely match'), W('Post the reconciled entry')] },
+                { title: 'Journal posting', desc: 'Create and post journal entries from documents and rules.', actions: [R('Read the source document'), N('Determine accounts and VAT codes'), W('Create and post the voucher')] },
+            ] },
+            { name: 'Invoicing & customers', skills: [
+                { title: 'Send invoices', desc: 'Issue and send customer invoices.', actions: [R('Read the draft invoice'), W('Send the invoice and log it')] },
+                { title: 'Payment reminders', desc: 'Chase overdue invoices on the customer’s terms.', actions: [R('Find overdue invoices'), N('Draft a tailored reminder'), W('Send the reminder and note it')] },
+            ] },
+            { name: 'Suppliers & payments', skills: [
+                { title: 'Book supplier bills', desc: 'Read, validate and book supplier invoices.', actions: [R('Read the supplier invoice'), N('Validate supplier and amounts'), W('Create the creditor entry')] },
+                { title: 'Prepare payments', desc: 'Assemble and export a supplier payment run.', actions: [R('Gather open creditor entries'), N('Optimise the payment timing'), W('Generate the payment file')] },
+            ] },
+            { name: 'Documents & receipts', skills: [
+                { title: 'Collect receipts', desc: 'Detect and request missing documentation.', actions: [R('Detect entries missing a receipt'), W('Request the document from the client'), W('File the document against the entry')] },
+            ] },
+            { name: 'Reporting, VAT & close', skills: [
+                { title: 'VAT settlement', desc: 'Calculate, reconcile and file the VAT return.', actions: [R('Read the period’s VAT accounts'), N('Reconcile against the calculation'), W('File the return to SKAT')] },
+                { title: 'Period close', desc: 'Run the month-end and year-end close.', actions: [R('Read the period’s entries'), N('Identify risks and adjustments'), W('Lock the period and post closing entries')] },
+            ] },
+        ] },
+    // 3rd-party partners — installable from the connector directory
     { id: 'likvido', name: 'Likvido', logo: 'partners/likvido.svg', bg: '#eef0f7', category: 'Receivables', native: false,
         desc: 'Automated debtor management, reminders and debt collection.',
-        skills: ['Escalate overdue invoices to collection', 'Offer invoice financing', 'Reconcile Likvido payouts'] },
+        areas: [
+            { name: 'Debtor management', skills: [
+                { title: 'Escalate to collection', desc: 'Hand overdue invoices to Likvido collection.', actions: [R('Read invoices past the dunning limit'), N('Decide which are collection-ready'), W('Escalate the case to Likvido')] },
+                { title: 'Reconcile payouts', desc: 'Match Likvido payouts back to the ledger.', actions: [R('Read the Likvido payout report'), W('Book the payout and fees')] },
+            ] },
+            { name: 'Financing', skills: [
+                { title: 'Offer invoice financing', desc: 'Surface financing on eligible invoices.', actions: [R('Read open receivables'), N('Assess financing eligibility'), W('Create a financing offer')] },
+            ] },
+        ] },
     { id: 'budget123', name: 'Budget123', logo: 'partners/budget123.svg', bg: '#eef6fc', category: 'Planning', native: false,
         desc: 'Budgeting, forecasting and liquidity planning on top of your books.',
-        skills: ['Build budgets & forecasts', 'Project liquidity', 'Track budget variance'] },
+        areas: [
+            { name: 'Budgeting', skills: [
+                { title: 'Build budgets', desc: 'Draft budgets and forecasts from actuals.', actions: [R('Read the latest actuals'), N('Project the budget lines'), W('Save the budget scenario')] },
+                { title: 'Track variance', desc: 'Compare actuals against budget and flag drift.', actions: [R('Read actuals and budget'), N('Compute the variance'), W('Post a variance alert')] },
+            ] },
+            { name: 'Liquidity', skills: [
+                { title: 'Forecast liquidity', desc: 'Project cash runway and warn on shortfalls.', actions: [R('Read the cash position and pipeline'), N('Model the liquidity curve'), W('Raise an alert when runway is short')] },
+            ] },
+        ] },
     { id: 'creditro', name: 'Creditro', logo: 'partners/creditro.svg', bg: '#eaf2f6', category: 'Compliance', native: false,
         desc: 'Automated KYC, AML and credit checks for client onboarding.',
-        skills: ['Run KYC & AML checks', 'Monitor credit ratings', 'Flag compliance risks'] },
+        areas: [
+            { name: 'KYC & AML', skills: [
+                { title: 'Run KYC checks', desc: 'Verify identity and ownership on onboarding.', actions: [R('Read the client’s registration data'), N('Assess the KYC risk score'), W('File the KYC result')] },
+                { title: 'Screen for AML', desc: 'Screen parties against sanctions and PEP lists.', actions: [R('Read the party details'), N('Match against the watchlists')] },
+            ] },
+            { name: 'Credit monitoring', skills: [
+                { title: 'Monitor credit rating', desc: 'Watch client credit ratings and flag changes.', actions: [R('Read the latest credit rating'), N('Detect a material change'), W('Flag the change for review')] },
+            ] },
+        ] },
     { id: 'rackbeat', name: 'RackBeat', logo: 'partners/rackbeat.svg', bg: '#f0eef7', category: 'Inventory', native: false,
         desc: 'Inventory and warehouse management synced with your ledger.',
-        skills: ['Sync inventory & stock levels', 'Create purchase orders', 'Book cost of goods sold'] },
+        areas: [
+            { name: 'Inventory', skills: [
+                { title: 'Sync stock levels', desc: 'Keep stock quantities in sync with the ledger.', actions: [R('Read RackBeat stock levels'), W('Update stock in e-conomic')] },
+                { title: 'Book cost of goods', desc: 'Post cost of goods as stock moves.', actions: [R('Read stock movements'), N('Value the goods sold'), W('Post the COGS entry')] },
+            ] },
+            { name: 'Purchasing & goods receipt', skills: [
+                { title: 'Raise purchase orders', desc: 'Create purchase orders before stock runs out.', actions: [R('Read the reorder points'), N('Decide the reorder quantity'), W('Create the purchase order')] },
+                { title: 'Match goods receipt', desc: 'Match received goods to their orders and invoices.', actions: [] },
+            ] },
+        ] },
 ];
+
+// ---- Connector helpers -------------------------------------------------------
+const capSkills = (c: Capability): ConnSkill[] => c.areas.flatMap((a) => a.skills);
+const capSkillTitles = (c: Capability): string[] => capSkills(c).map((s) => s.title);
+const skillCount = (c: Capability): number => capSkills(c).length;
+
+// A connector's live connection status once installed.
+type ConnStatus = 'connected' | 'off' | 'lost';
 
 // ---- Performance tab — how much EVA is automating, time saved, breakdown by job ----
 const PERF = {
@@ -332,10 +404,13 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     const [tab, setTab] = useState<AutoTab>('flows');
     const [openId, setOpenId] = useState<string | null>(null);
     const [newFlow, setNewFlow] = useState(false);
-    // Installed partner capabilities (e-conomic native is always present).
-    const [installedCaps, setInstalledCaps] = useState<Set<string>>(new Set());
-    const [capGallery, setCapGallery] = useState(false);
-    const [openCapId, setOpenCapId] = useState<string | null>(null);
+    // Installed partner connectors → their live connection status. e-conomic (core)
+    // is always connected and isn't tracked here.
+    const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>({});
+    // The connector sheet: directory / drill-down / consent, all one surface.
+    const [sheet, setSheet] = useState<{ start: 'grid' | 'detail' | 'reconnect'; id?: string } | null>(null);
+    // Confirm before switching off a connector that routines depend on.
+    const [switchOff, setSwitchOff] = useState<{ id: string; deps: string[] } | null>(null);
     // Installed flows: the doc-based pre-installed set, plus anything created/trialled this session.
     const [localFlows, setLocalFlows] = useState<LocalFlow[]>(() => preinstalledFlows());
     const [trials, setTrials] = useState<Set<string>>(new Set());
@@ -346,6 +421,26 @@ export default function AutomationsView({ skills, onEnable }: Props) {
         .map((s) => ({ skill: s, seed: { starter: 'schedule', conditions: [], steps: [] } }));
     const flows = [...localFlows, ...customFlows];
     const allFlows = flows.map((f) => f.skill);
+
+    // Which installed connectors exist (any status) — used to gate routine templates.
+    const installedCaps = useMemo(() => new Set(Object.keys(connStatus)), [connStatus]);
+    // Routines that depend on a given connector (by name).
+    const dependentsOf = (capId: string) => flows.filter((f) => f.capId === capId).map((f) => t(f.skill.title));
+
+    // --- connector lifecycle ---
+    const connectConnector = (id: string) => setConnStatus((prev) => ({ ...prev, [id]: 'connected' }));
+    const uninstallConnector = (id: string) => setConnStatus((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    const simulateLost = (id: string) => setConnStatus((prev) => ({ ...prev, [id]: 'lost' }));
+    function toggleConnector(id: string) {
+        const status = connStatus[id];
+        if (status === 'connected') {
+            const deps = dependentsOf(id);
+            if (deps.length) { setSwitchOff({ id, deps }); return; } // confirm first
+            setConnStatus((prev) => ({ ...prev, [id]: 'off' }));
+        } else if (status === 'off') {
+            setConnStatus((prev) => ({ ...prev, [id]: 'connected' }));
+        }
+    }
 
     function createScratch() {
         const id = `flow-${flowSeq++}`;
@@ -358,7 +453,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
         const id = `flow-${flowSeq++}`;
         setLocalFlows((prev) => [{ ...flowFromTemplate(tpl, id, 'Trial') }, ...prev]);
         setTrials((prev) => new Set(prev).add(id));
-        if (tpl.capId) setInstalledCaps((prev) => new Set(prev).add(tpl.capId!)); // the trial includes the partner capability
+        if (tpl.capId) connectConnector(tpl.capId); // ensure the connector it needs is connected
         setNewFlow(false);
         setOpenId(id);
     }
@@ -382,11 +477,6 @@ export default function AutomationsView({ skills, onEnable }: Props) {
         );
     }
 
-    const openCap = openCapId ? CAPABILITIES.find((c) => c.id === openCapId) ?? null : null;
-    if (openCap) {
-        return <CapabilityDetail cap={openCap} onBack={() => setOpenCapId(null)} />;
-    }
-
     return (
         <div className="h-full overflow-y-auto">
             {/* Automations are set up for the practice, not per client — no scope pill here. */}
@@ -395,7 +485,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 showScope={false}
                 right={
                     tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
-                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setCapGallery(true)}><Icon name="circle-plus" /> {t('Add connector')}</Button>
+                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>
                     : undefined
                 }
             />
@@ -442,7 +532,17 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     </>
                 )}
 
-                {tab === 'capabilities' && <CapabilitiesMarket installed={installedCaps} onAdd={() => setCapGallery(true)} onOpen={(id) => setOpenCapId(id)} />}
+                {tab === 'capabilities' && (
+                    <ConnectorsList
+                        connStatus={connStatus}
+                        onAdd={() => setSheet({ start: 'grid' })}
+                        onDetails={(id) => setSheet({ start: 'detail', id })}
+                        onToggle={toggleConnector}
+                        onReconnect={(id) => setSheet({ start: 'reconnect', id })}
+                        onUninstall={uninstallConnector}
+                        onSimulateLost={simulateLost}
+                    />
+                )}
 
                 {tab === 'office' && <OfficeView />}
             </div>
@@ -456,76 +556,166 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 />
             )}
 
-            {capGallery && (
-                <CapabilityGallery
-                    installed={installedCaps}
-                    onInstall={(id) => setInstalledCaps((prev) => new Set(prev).add(id))}
-                    onClose={() => setCapGallery(false)}
+            {sheet && (
+                <ConnectorSheet
+                    start={sheet.start}
+                    startId={sheet.id}
+                    connStatus={connStatus}
+                    onConnect={connectConnector}
+                    onUninstall={uninstallConnector}
+                    onClose={() => setSheet(null)}
+                />
+            )}
+
+            {switchOff && (
+                <SwitchOffConfirm
+                    cap={CAPABILITIES.find((c) => c.id === switchOff.id)!}
+                    deps={switchOff.deps}
+                    onKeep={() => setSwitchOff(null)}
+                    onConfirm={() => { setConnStatus((prev) => ({ ...prev, [switchOff.id]: 'off' })); setSwitchOff(null); }}
                 />
             )}
         </div>
     );
 }
 
-// ---- Capabilities tab — installed capabilities (e-conomic native + any installed partners) ----
-function CapabilitiesMarket({ installed, onAdd, onOpen }: { installed: Set<string>; onAdd: () => void; onOpen: (id: string) => void }) {
+// The consequence of each connection status — drives the badge and its tooltip.
+function statusMeta(status: ConnStatus): { label: string; dot: string; bg: string; fg: string; tip: string } {
+    if (status === 'connected') return { label: 'Connected', dot: '#16a34a', bg: '#eef7ef', fg: '#15803d', tip: 'EVA can use every skill this connector provides.' };
+    if (status === 'off') return { label: 'Off', dot: '#a8a8b0', bg: '#f1f1f3', fg: '#52525b', tip: 'EVA can’t use this connector’s skills until you switch it back on.' };
+    return { label: 'Connection lost', dot: '#dc2626', bg: '#fdecec', fg: '#b91c1c', tip: 'Access expired — EVA can’t reach this system. Reconnect to restore its skills.' };
+}
+
+function StatusBadge({ status }: { status: ConnStatus }) {
     const { t } = useLang();
-    // One merged grid: e-conomic native + any installed partners, no section split.
-    const installedCaps = CAPABILITIES.filter((c) => c.native || installed.has(c.id));
+    const m = statusMeta(status);
     return (
-        <div className="pb-10">
-            <div className="grid grid-cols-3 gap-3.5">
-                {installedCaps.map((c) => <CapabilityCard key={c.id} cap={c} installed onInstall={() => {}} onOpen={() => onOpen(c.id)} />)}
-                <button
-                    onClick={onAdd}
-                    className="rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 text-center"
-                    style={{ border: `1.5px dashed ${COLORS.cardBorder}`, background: '#fafafa', minHeight: 150 }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#c4c4cc')}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
-                >
-                    <Icon name="circle-plus" style={{ color: COLORS.textMuted }} />
-                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('Add a connector')}</p>
-                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Install connectors from e-conomic partners.')}</p>
-                </button>
-            </div>
+        <span title={t(m.tip)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: m.bg, color: m.fg }}>
+            <span className="rounded-full" style={{ width: 6, height: 6, background: m.dot }} />
+            {t(m.label)}
+        </span>
+    );
+}
+
+// A small ⋮ overflow menu.
+function RowMenu({ items }: { items: { label: string; icon: string; onClick: () => void; danger?: boolean }[] }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="relative">
+            <button onClick={() => setOpen((v) => !v)} className="rounded-md p-1.5" style={{ color: COLORS.textMuted }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                <Icon name="more" />
+            </button>
+            {open && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+                    <div className="absolute right-0 z-50 mt-1 rounded-xl bg-white py-1" style={{ minWidth: 200, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                        {items.map((it) => (
+                            <button
+                                key={it.label}
+                                onClick={() => { setOpen(false); it.onClick(); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm"
+                                style={{ color: it.danger ? '#b91c1c' : COLORS.text }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                            >
+                                <Icon name={it.icon as never} /> {it.label}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     );
 }
 
-// ---- "New capability" marketplace gallery (install partner capabilities) ----
-function CapabilityGallery({ installed, onInstall, onClose }: { installed: Set<string>; onInstall: (id: string) => void; onClose: () => void }) {
+// ---- Connectors tab — the installed list (core + installed partners) ----
+function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, onUninstall, onSimulateLost }: {
+    connStatus: Record<string, ConnStatus>;
+    onAdd: () => void;
+    onDetails: (id: string) => void;
+    onToggle: (id: string) => void;
+    onReconnect: (id: string) => void;
+    onUninstall: (id: string) => void;
+    onSimulateLost: (id: string) => void;
+}) {
     const { t } = useLang();
-    const [query, setQuery] = useState('');
-    const [cat, setCat] = useState('All');
-    const partners = CAPABILITIES.filter((c) => !c.native);
-    const categories = Array.from(new Set(partners.map((c) => c.category)));
-    const q = query.trim().toLowerCase();
-    const filtered = partners.filter((c) =>
-        (cat === 'All' || c.category === cat) && (!q || c.name.toLowerCase().includes(q) || t(c.desc).toLowerCase().includes(q)),
-    );
+    const rows = CAPABILITIES.filter((c) => c.native || c.id in connStatus);
+    const metaLine = (c: Capability) =>
+        t('{s} skills · {a} areas').replace('{s}', String(skillCount(c))).replace('{a}', String(c.areas.length));
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
-            <div
-                className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in"
-                style={{ width: 'min(840px, 94vw)', maxHeight: '88vh', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }}
-                onClick={(e) => e.stopPropagation()}
+        <div className="pb-10">
+            <div className="flex flex-col gap-2.5">
+                {rows.map((c) => {
+                    const status: ConnStatus = c.native ? 'connected' : connStatus[c.id];
+                    const disabled = status === 'off' || status === 'lost';
+                    return (
+                        <Card key={c.id} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3.5" style={disabled ? { background: '#fafafa' } : undefined}>
+                            <span style={{ opacity: disabled ? 0.5 : 1 }}><CapabilityLogo cap={c} size={40} /></span>
+                            <div className="flex-1" style={{ minWidth: 150 }}>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{c.name}</p>
+                                    {c.native ? (
+                                        <span title={t('Built into e-conomic — always on and can’t be removed.')} className="inline-flex items-center gap-1 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: '#fff7ed', color: '#b9842b' }}><Icon name="lock" /> {t('Built in')}</span>
+                                    ) : (
+                                        <span className="shrink-0"><StatusBadge status={status} /></span>
+                                    )}
+                                </div>
+                                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{metaLine(c)}</p>
+                            </div>
+                            {/* right cluster: details, control, overflow — wraps together when cramped */}
+                            <div className="flex items-center gap-2 shrink-0 ml-auto">
+                                <button onClick={() => onDetails(c.id)} className="text-sm font-medium" style={{ color: '#4456c7' }}>{t('See details')}</button>
+                                {!c.native && (
+                                    status === 'lost' ? (
+                                        <Button appearance="primary" onClick={() => onReconnect(c.id)}><Icon name="refresh" /> {t('Reconnect')}</Button>
+                                    ) : (
+                                        <Switch checked={status === 'connected'} onChange={() => onToggle(c.id)} />
+                                    )
+                                )}
+                                {!c.native && (
+                                    <RowMenu items={[
+                                        { label: t('Uninstall'), icon: 'delete', danger: true, onClick: () => onUninstall(c.id) },
+                                        ...(status !== 'lost' ? [{ label: t('Simulate lost connection'), icon: 'connection-revoke', onClick: () => onSimulateLost(c.id) }] : []),
+                                    ]} />
+                                )}
+                            </div>
+                        </Card>
+                    );
+                })}
+            </div>
+            <button
+                onClick={onAdd}
+                className="mt-2.5 w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-medium"
+                style={{ border: `1.5px dashed ${COLORS.cardBorder}`, background: '#fafafa', color: COLORS.text }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#c4c4cc')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = COLORS.cardBorder)}
             >
-                <header className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                    <div>
-                        <h2 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Add a connector')}</h2>
-                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Install connectors from the e-conomic partner marketplace.')}</p>
-                    </div>
-                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
-                </header>
-                <div className="overflow-y-auto p-5">
-                    <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search connectors…')} />
-                    {filtered.length === 0 ? (
-                        <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No connectors match your search.')}</p>
-                    ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                            {filtered.map((c) => <CapabilityCard key={c.id} cap={c} installed={installed.has(c.id)} onInstall={() => onInstall(c.id)} />)}
-                        </div>
-                    )}
+                <Icon name="circle-plus" style={{ color: COLORS.textMuted }} /> {t('Add a connector')}
+            </button>
+        </div>
+    );
+}
+
+// ---- Confirm before switching off a connector routines depend on ----
+function SwitchOffConfirm({ cap, deps, onKeep, onConfirm }: { cap: Capability; deps: string[]; onKeep: () => void; onConfirm: () => void }) {
+    const { t } = useLang();
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onKeep}>
+            <div className="bg-white rounded-2xl w-full p-6 anim-in" style={{ maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-base font-semibold mb-1.5" style={{ color: COLORS.text }}>{t('Switch off {name}?').replace('{name}', cap.name)}</h2>
+                <p className="text-sm" style={{ color: COLORS.textMuted }}>
+                    {t('EVA loses the {n} skills this connection provides. These routines will skip the dependent steps until you switch it back on:').replace('{n}', String(skillCount(cap)))}
+                </p>
+                <ul className="mt-3 flex flex-col gap-1.5">
+                    {deps.map((d) => (
+                        <li key={d} className="flex items-center gap-2 text-sm" style={{ color: COLORS.text }}>
+                            <Dot color="#b9842b" /> {d}
+                        </li>
+                    ))}
+                </ul>
+                <div className="mt-5 flex justify-end gap-2">
+                    <Button onClick={onKeep}>{t('Keep connection')}</Button>
+                    <Button appearance="primary" onClick={onConfirm}>{t('Switch off anyway')}</Button>
                 </div>
             </div>
         </div>
@@ -656,129 +846,261 @@ function CapabilityLogo({ cap, size = 40 }: { cap: Capability; size?: number }) 
     );
 }
 
-function CapabilityCard({ cap, installed, onInstall, onOpen }: { cap: Capability; installed: boolean; onInstall: () => void; onOpen?: () => void }) {
-    const { t } = useLang();
-    const clickable = !!onOpen && installed;
+// A small logo mark used on template cards and the consent step.
+function ConnMark({ cap, size = 18 }: { cap: Capability; size?: number }) {
     return (
-        <Card className="p-4 flex flex-col" hover={clickable} onClick={clickable ? onOpen : undefined} style={{ minHeight: 150 }}>
+        <span className="inline-flex items-center justify-center shrink-0 rounded-md overflow-hidden" style={{ width: size, height: size, background: cap.bg, border: `1px solid ${COLORS.cardBorder}` }}>
+            <img src={asset(cap.logo)} alt={cap.name} style={{ maxWidth: '72%', maxHeight: '60%', width: 'auto', height: 'auto', display: 'block' }} />
+        </span>
+    );
+}
+
+// Badge for a skill action's type: Read / Reason / Write.
+function KindBadge({ kind }: { kind: ConnKind }) {
+    const { t } = useLang();
+    const s = kind === 'write'
+        ? { label: 'Write', bg: '#f3f0fb', fg: '#7c3aed' }
+        : kind === 'reasoning'
+            ? { label: 'Reason', bg: '#eef4fb', fg: '#2f6fb0' }
+            : { label: 'Read', bg: '#f1f1f3', fg: '#52525b' };
+    return <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: s.bg, color: s.fg }}>{t(s.label)}</span>;
+}
+
+// ---- Details view — a connector's areas → skills → typed actions.
+// Shared by the installed list ("See details") and the directory drill-down.
+function ConnectorDetails({ cap }: { cap: Capability }) {
+    const { t } = useLang();
+    const [open, setOpen] = useState<Set<string>>(() => new Set(cap.areas.map((a) => a.name)));
+    const toggle = (name: string) => setOpen((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; });
+    return (
+        <div className="flex flex-col">
+            {cap.areas.map((area) => {
+                const isOpen = open.has(area.name);
+                return (
+                    <section key={area.name} className="py-3 first:pt-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                        <button onClick={() => toggle(area.name)} className="w-full flex items-center gap-2">
+                            <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} style={{ color: COLORS.textMuted }} />
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(area.name)}</span>
+                            <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t(area.skills.length === 1 ? '{n} skill' : '{n} skills').replace('{n}', String(area.skills.length))}</span>
+                        </button>
+                        {isOpen && (
+                            <div className="mt-3 flex flex-col gap-3.5 pl-6">
+                                {area.skills.map((sk) => (
+                                    <div key={sk.title}>
+                                        <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(sk.title)}</p>
+                                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(sk.desc)}</p>
+                                        {sk.actions.length === 0 ? (
+                                            <p className="text-xs mt-1.5 italic" style={{ color: COLORS.textMuted }}>{t('The actions behind this skill aren’t documented yet.')}</p>
+                                        ) : (
+                                            <ol className="mt-2 flex flex-col gap-1.5">
+                                                {sk.actions.map((ac, i) => (
+                                                    <li key={i} className="flex items-start gap-2">
+                                                        <span className="text-xs shrink-0" style={{ color: COLORS.textMuted, marginTop: 1 }}>{i + 1}.</span>
+                                                        <span className="flex-1 text-xs" style={{ color: COLORS.text }}>{t(ac.text)}</span>
+                                                        <KindBadge kind={ac.kind} />
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                );
+            })}
+        </div>
+    );
+}
+
+// A directory card in the connector sheet's grid.
+function ConnectorDirectoryCard({ cap, installed, onInstall, onOpen }: { cap: Capability; installed: boolean; onInstall: () => void; onOpen: () => void }) {
+    const { t } = useLang();
+    return (
+        <Card className="p-4 flex flex-col" hover onClick={onOpen} style={{ minHeight: 150 }}>
             <div className="flex items-start gap-2.5">
                 <CapabilityLogo cap={cap} size={32} />
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{cap.name}</p>
-                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(cap.category)} · {cap.skills.length} {t('skills')}</span>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(cap.category)} · {t('{n} skills').replace('{n}', String(skillCount(cap)))}</span>
                 </div>
-            </div>
-            <p className="text-xs mt-2 leading-snug" style={{ color: COLORS.textMuted }}>{t(cap.desc)}</p>
-            <div className="mt-auto pt-3 flex items-center justify-between">
-                {cap.native ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: COLORS.textMuted }}>
-                        <Icon name="lock" /> {t('Built in')}
-                    </span>
-                ) : installed ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: '#15803d' }}>
-                        <Icon name="circle-tick" /> {t('Installed')}
-                    </span>
+                {installed ? (
+                    <span title={t('Installed')} className="shrink-0 flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: '#eef7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
                 ) : (
-                    <Button appearance="primary" onClick={(e) => { e.stopPropagation(); onInstall(); }}>
-                        <Icon name="circle-plus" /> {t('Install')}
-                    </Button>
+                    <button
+                        aria-label={t('Install')}
+                        title={t('Install')}
+                        onClick={(e) => { e.stopPropagation(); onInstall(); }}
+                        className="shrink-0 flex items-center justify-center rounded-lg"
+                        style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#c4c4cc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = COLORS.cardBorder; }}
+                    >
+                        <Icon name="circle-plus" />
+                    </button>
                 )}
-                {clickable && <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />}
+            </div>
+            <p className="text-xs mt-2 leading-snug flex-1" style={{ color: COLORS.textMuted }}>{t(cap.desc)}</p>
+            <div className="flex items-center justify-end pt-2">
+                <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
             </div>
         </Card>
     );
 }
 
-// ---- Capability detail — granular config for an installed capability ----
-function CapabilityDetail({ cap, onBack }: { cap: Capability; onBack: () => void }) {
+// ---- Connector sheet: directory → drill-down → consent, all one surface ----
+function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, onClose }: {
+    start: 'grid' | 'detail' | 'reconnect';
+    startId?: string;
+    connStatus: Record<string, ConnStatus>;
+    onConnect: (id: string) => void;
+    onUninstall: (id: string) => void;
+    onClose: () => void;
+}) {
     const { t } = useLang();
-    const [off, setOff] = useState<Set<string>>(new Set());
-    const [clientMode, setClientMode] = useState<'all' | 'selected'>('all');
-    const [clientSel, setClientSel] = useState<Set<string>>(() => new Set(AGREEMENTS.slice(0, 3).map((a) => a.id)));
-    const toggleSkill = (s: string) =>
-        setOff((prev) => {
-            const next = new Set(prev);
-            if (next.has(s)) next.delete(s);
-            else next.add(s);
-            return next;
-        });
-    const toggleClient = (id: string) =>
-        setClientSel((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+    const host = CAPABILITIES.find((c) => c.id === 'economic')!;
+    const homeIsGrid = start === 'grid';
+    const [view, setView] = useState<'grid' | 'detail' | 'consent'>(start === 'reconnect' ? 'consent' : start);
+    const [activeId, setActiveId] = useState<string | null>(startId ?? null);
+    const [consentReturn, setConsentReturn] = useState<'grid' | 'detail' | 'close'>(start === 'reconnect' ? 'close' : 'grid');
+    const [connecting, setConnecting] = useState(false);
+    const [query, setQuery] = useState('');
+    const [cat, setCat] = useState('All');
+
+    const active = activeId ? CAPABILITIES.find((c) => c.id === activeId) ?? null : null;
+    const isInstalled = (id: string) => id in connStatus;
+
+    const partners = CAPABILITIES.filter((c) => !c.native);
+    const categories = Array.from(new Set(partners.map((c) => c.category)));
+    const q = query.trim().toLowerCase();
+    const filtered = partners.filter((c) => (cat === 'All' || c.category === cat) && (!q || c.name.toLowerCase().includes(q) || t(c.desc).toLowerCase().includes(q)));
+
+    function openDetail(id: string) { setActiveId(id); setView('detail'); }
+    function startInstall(id: string, from: 'grid' | 'detail') { setActiveId(id); setConsentReturn(from); setView('consent'); }
+    function backFromDetail() { homeIsGrid ? setView('grid') : onClose(); }
+    function cancelConsent() {
+        if (connecting) return;
+        if (consentReturn === 'grid') setView('grid');
+        else if (consentReturn === 'detail') setView('detail');
+        else onClose();
+    }
+    function confirmConsent() {
+        if (!active) return;
+        setConnecting(true);
+        setTimeout(() => { onConnect(active.id); setConnecting(false); setView('detail'); }, 1400);
+    }
 
     return (
-        <div className="h-full flex flex-col">
-            <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-                <PageHeader title={cap.name} onBack={onBack} backLabel={t('Connectors')} showScope={false} />
-                <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
-                    {/* intro */}
-                    <div className="flex items-start gap-3 mb-6">
-                        <CapabilityLogo cap={cap} size={44} />
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(cap.category)}</span>
-                                <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: cap.native ? COLORS.textMuted : '#15803d' }}>
-                                    <Icon name={cap.native ? 'lock' : 'circle-tick'} /> {cap.native ? t('Built in · always on') : t('Installed')}
-                                </span>
-                            </div>
-                            <p className="text-sm mt-1.5" style={{ color: COLORS.textMuted }}>{t(cap.desc)}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(880px, 94vw)', height: 'min(760px, 92vh)', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
+                {/* header / breadcrumb */}
+                <header className="flex items-center gap-2 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    {view === 'grid' && <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Add a connector')}</h2>}
+                    {view === 'detail' && active && (
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0 text-sm">
+                            <button onClick={backFromDetail} className="font-medium" style={{ color: '#4456c7' }}>{t('Connectors')}</button>
+                            <span style={{ color: COLORS.textMuted }}>/</span>
+                            <span className="font-semibold truncate" style={{ color: COLORS.text }}>{active.name}</span>
                         </div>
-                    </div>
+                    )}
+                    {view === 'consent' && <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Connect')}</h2>}
+                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                </header>
 
-                    {/* granular per-skill control */}
-                    <Section title={t('Skills')} sub={cap.native ? t('Turn individual e-conomic skills off to put them out of EVA’s reach.') : t('Choose which of this partner’s skills EVA may use.')}>
-                        <div className="flex flex-col gap-2">
-                            {cap.skills.map((s) => {
-                                const on = !off.has(s);
-                                return (
-                                    <div key={s} className="flex items-center gap-3 rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}`, background: on ? '#fff' : '#fafafa' }}>
-                                        <Icon name="circle-tick" style={{ color: on ? '#16a34a' : '#c4c4cc' }} />
-                                        <span className="flex-1 text-sm" style={{ color: on ? COLORS.text : '#a8a8b0', textDecoration: on ? 'none' : 'line-through' }}>{t(s)}</span>
-                                        <Switch checked={on} onChange={() => toggleSkill(s)} />
+                {/* body */}
+                <div className="flex-1 overflow-y-auto p-5" style={{ minHeight: 0 }}>
+                    {view === 'grid' && (
+                        <>
+                            <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search connectors…')} />
+                            {filtered.length === 0 ? (
+                                <p className="text-sm py-8 text-center" style={{ color: COLORS.textMuted }}>{t('No connectors match your search.')}</p>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3.5">
+                                    {filtered.map((c) => (
+                                        <ConnectorDirectoryCard key={c.id} cap={c} installed={isInstalled(c.id)} onInstall={() => startInstall(c.id, 'grid')} onOpen={() => openDetail(c.id)} />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {view === 'detail' && active && (
+                        <>
+                            <div className="flex items-start gap-4 mb-5">
+                                <CapabilityLogo cap={active} size={48} />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="text-lg font-semibold" style={{ color: COLORS.text }}>{active.name}</h3>
+                                        <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>{t(active.category)}</span>
+                                        {active.native ? (
+                                            <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: '#b9842b' }}><Icon name="lock" /> {t('Built in')}</span>
+                                        ) : isInstalled(active.id) ? (
+                                            <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Installed')}</span>
+                                        ) : null}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </Section>
-
-                    {/* where it may act */}
-                    <Section title={t('Applies to')} sub={t('Choose which clients this capability may act on.')}>
-                        <div className="grid grid-cols-2 gap-3">
-                            <OptionCard selected={clientMode === 'all'} icon="contacts" title={t('All clients')} desc={t('Runs across every client agreement, including new ones.')} onClick={() => setClientMode('all')} />
-                            <OptionCard selected={clientMode === 'selected'} icon="person" title={t('Selected clients')} desc={t('Pick the agreements this capability may use.')} onClick={() => setClientMode('selected')} />
-                        </div>
-                        {clientMode === 'selected' && (
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                {AGREEMENTS.map((a) => {
-                                    const on = clientSel.has(a.id);
-                                    return (
-                                        <button
-                                            key={a.id}
-                                            onClick={() => toggleClient(a.id)}
-                                            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm"
-                                            style={{ border: `1px solid ${on ? COLORS.text : COLORS.cardBorder}`, background: on ? COLORS.text : '#fff', color: on ? '#fff' : COLORS.text }}
-                                        >
-                                            {on && <Icon name="tick" />}
-                                            {a.name}
-                                        </button>
-                                    );
-                                })}
+                                    <p className="text-sm mt-1" style={{ color: COLORS.textMuted }}>{t(active.desc)}</p>
+                                </div>
+                                {!active.native && (
+                                    isInstalled(active.id) ? (
+                                        <Button onClick={() => { onUninstall(active.id); backFromDetail(); }}><Icon name="delete" /> {t('Uninstall')}</Button>
+                                    ) : (
+                                        <Button appearance="primary" onClick={() => startInstall(active.id, 'detail')}><Icon name="circle-plus" /> {t('Install')}</Button>
+                                    )
+                                )}
                             </div>
-                        )}
-                    </Section>
-                </div>
-            </div>
+                            <ConnectorDetails cap={active} />
+                        </>
+                    )}
 
-            <StickyFooter>
-                {cap.native ? <span /> : (
-                    <Button onClick={onBack}><Icon name="delete" /> {t('Uninstall')}</Button>
+                    {view === 'consent' && active && (
+                        <div className="mx-auto w-full max-w-md rounded-xl p-6 mt-2" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                            <div className="flex items-center justify-center gap-3 mb-4">
+                                <CapabilityLogo cap={host} size={44} />
+                                <Icon name="arrow-right" style={{ color: COLORS.textMuted }} />
+                                <CapabilityLogo cap={active} size={44} />
+                            </div>
+                            <h3 className="text-base font-semibold text-center" style={{ color: COLORS.text }}>{t('Give EVA access to {name}').replace('{name}', active.name)}</h3>
+                            <p className="text-sm text-center mt-1" style={{ color: COLORS.textMuted }}>{t('You’ll be sent to {name} to sign in and confirm.').replace('{name}', active.name)}</p>
+
+                            <div className="rounded-lg p-3 mt-4" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                <p className="text-xs font-semibold mb-1.5" style={{ color: COLORS.text }}>{t('EVA will be able to')}</p>
+                                {capSkills(active).length === 0 ? (
+                                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('This connector doesn’t list any skills yet.')}</p>
+                                ) : (
+                                    <ul className="flex flex-col gap-1">
+                                        {active.areas.map((a) => (
+                                            <li key={a.name} className="flex items-start gap-2 text-xs" style={{ color: COLORS.textMuted }}>
+                                                <Icon name="tick" style={{ color: '#16a34a' }} />
+                                                {t(a.skills.length === 1 ? 'perform 1 skill in {area}' : 'perform {n} skills in {area}').replace('{n}', String(a.skills.length)).replace('{area}', t(a.name))}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
+                            <p className="text-xs mt-3" style={{ color: COLORS.textMuted }}>{t('EVA still asks before changing anything. You can switch it off or uninstall it at any time.')}</p>
+
+                            {connecting ? (
+                                <div className="flex items-center justify-center gap-2 mt-5 text-sm" style={{ color: COLORS.textMuted }}>
+                                    <Icon name="refresh" className="animate-spin" /> {t('Connecting to {name}… waiting for approval').replace('{name}', active.name)}
+                                </div>
+                            ) : (
+                                <div className="flex justify-end gap-2 mt-5">
+                                    <Button onClick={cancelConsent}>{t('Cancel')}</Button>
+                                    <Button appearance="primary" onClick={confirmConsent}><Icon name="link-external" /> {t('Continue to {name}').replace('{name}', active.name)}</Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* footer — Back to overview on the drill-down */}
+                {view === 'detail' && (
+                    <div className="flex justify-start px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                        <Button onClick={backFromDetail}><Icon name="arrow-left" /> {t('Back to overview')}</Button>
+                    </div>
                 )}
-                <Button appearance="primary" onClick={onBack}>{t('Save changes')}</Button>
-            </StickyFooter>
+            </div>
         </div>
     );
 }
@@ -1231,7 +1553,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
             <PageHeader
                 title={t(skill.title)}
                 onBack={onBack}
-                backLabel={t('Flows')}
+                backLabel={t('Routines')}
                 showScope={false}
                 right={!locked ? (
                     <div className="flex items-center gap-2">
@@ -1476,6 +1798,7 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
     const [sel, setSel] = useState<FlowTemplate | null>(null);
     const [query, setQuery] = useState('');
     const [cat, setCat] = useState('All');
+    const host = CAPABILITIES.find((c) => c.id === 'economic')!;
     const partnerOf = (id?: string) => (id ? CAPABILITIES.find((c) => c.id === id) : undefined);
     const capTag = (capId?: string) => {
         const partner = partnerOf(capId);
@@ -1483,10 +1806,15 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
             ? { name: partner.name, bg: '#f3f0fb', fg: '#7c3aed' }
             : { name: 'e-conomic', bg: '#fff7ed', fg: '#b9842b' };
     };
+    // The connectors a template runs on — e-conomic always, plus its partner if any.
+    const marksFor = (tpl: FlowTemplate) => [host, ...(partnerOf(tpl.capId) ? [partnerOf(tpl.capId)!] : [])];
     const categories = Array.from(new Set(FLOW_TEMPLATES.map((tpl) => tpl.category)));
     const q = query.trim().toLowerCase();
+    // A template whose connector isn't installed is filtered out until it is.
     const filtered = FLOW_TEMPLATES.filter((tpl) =>
-        (cat === 'All' || tpl.category === cat) && (!q || t(tpl.title).toLowerCase().includes(q) || t(tpl.desc).toLowerCase().includes(q)),
+        (!tpl.capId || installed.has(tpl.capId)) &&
+        (cat === 'All' || tpl.category === cat) &&
+        (!q || t(tpl.title).toLowerCase().includes(q) || t(tpl.desc).toLowerCase().includes(q)),
     );
 
     return (
@@ -1573,6 +1901,10 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                                                 <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{t(tpl.title)}</p>
                                                 <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(tpl.category)}</span>
                                             </div>
+                                            {/* the connectors this routine runs on */}
+                                            <span className="flex items-center gap-1 shrink-0" title={t('Uses {names}').replace('{names}', marksFor(tpl).map((c) => c.name).join(' · '))}>
+                                                {marksFor(tpl).map((c) => <ConnMark key={c.id} cap={c} size={16} />)}
+                                            </span>
                                         </div>
                                         <p className="text-xs mt-2 leading-snug flex-1" style={{ color: COLORS.textMuted }}>{t(tpl.desc)}</p>
                                         {/* the store's "return on the label" — hrs/mo on this firm's data */}
@@ -1713,8 +2045,8 @@ function StepPicker({ mode, installed, currentStarter, onPickStarter, onPickStep
                             {partners.map((c) => {
                                 const has = installed.has(c.id);
                                 return (
-                                    <StepGroup key={c.id} label={c.name} locked={!has} lockedNote={t('Add the {p} capability to use these steps.').replace('{p}', c.name)}>
-                                        {c.skills.map((sk, i) => (
+                                    <StepGroup key={c.id} label={c.name} locked={!has} lockedNote={t('Add the {p} connector to use these steps.').replace('{p}', c.name)}>
+                                        {capSkillTitles(c).map((sk, i) => (
                                             <StepOption
                                                 key={i}
                                                 step={{ id: `${c.id}-${i}`, icon: 'connection-enable', label: sk, capId: c.id }}
