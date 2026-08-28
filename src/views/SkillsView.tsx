@@ -323,6 +323,7 @@ function preinstalledFlows(): LocalFlow[] {
 const AUTO_TABS = [
     { k: 'flows', label: 'Routines' },
     { k: 'capabilities', label: 'Skills' },
+    { k: 'office', label: 'Office' },
 ] as const;
 type AutoTab = (typeof AUTO_TABS)[number]['k'];
 
@@ -442,6 +443,8 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 )}
 
                 {tab === 'capabilities' && <CapabilitiesMarket installed={installedCaps} onAdd={() => setCapGallery(true)} onOpen={(id) => setOpenCapId(id)} />}
+
+                {tab === 'office' && <OfficeView />}
             </div>
 
             {newFlow && (
@@ -537,6 +540,90 @@ const FLOW_PERF: Record<string, { actions: number; hours: number; pct: number }>
     't-supplier': { actions: 240, hours: 33, pct: 90 },
     't-vatfile': { actions: 18, hours: 12, pct: 80 },
 };
+
+// ---- Office view (partner zoom): which routines run across which clients, what
+// they cost, what they saved, and where humans had to step in most. Two are
+// intervened with constantly → retire; one works so well → share with the network.
+interface OfficeRoutine { name: string; emoji: string; clients: number; saved: number; cost: number; intervention: number; retire?: boolean; share?: boolean }
+const OFFICE_ROUTINES: OfficeRoutine[] = [
+    { name: 'Smart voucher creation', emoji: '🧾', clients: 38, saved: 71, cost: 890, intervention: 4 },
+    { name: 'AI bank reconciliation', emoji: '🏦', clients: 40, saved: 62, cost: 1120, intervention: 6 },
+    { name: 'Supplier invoice processor', emoji: '📨', clients: 34, saved: 44, cost: 640, intervention: 9 },
+    { name: 'VAT return auto-filing', emoji: '🧮', clients: 31, saved: 28, cost: 410, intervention: 12 },
+    { name: 'Construction-client month-end', emoji: '🏗️', clients: 6, saved: 54, cost: 320, intervention: 3, share: true },
+    { name: 'Missing receipt chaser', emoji: '📎', clients: 22, saved: 12, cost: 180, intervention: 41, retire: true },
+    { name: 'Payment run optimiser', emoji: '💸', clients: 12, saved: 8, cost: 150, intervention: 38, retire: true },
+];
+
+function OfficeView() {
+    const { t, lang } = useLang();
+    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
+    const [retired, setRetired] = useState<Set<string>>(new Set());
+    const [shared, setShared] = useState<Set<string>>(new Set());
+    const live = OFFICE_ROUTINES.filter((r) => !retired.has(r.name));
+    const totalSaved = live.reduce((s, r) => s + r.saved, 0);
+    const totalCost = live.reduce((s, r) => s + r.cost, 0);
+    const avgInt = live.length ? Math.round(live.reduce((s, r) => s + r.intervention, 0) / live.length) : 0;
+    const kpis = [
+        { value: `${nf(totalSaved)} ${t('hrs')}`, label: t('Saved this quarter'), accent: '#16a34a' },
+        { value: `${nf(totalCost)} kr`, label: t('Routine cost'), accent: COLORS.text },
+        { value: '40', label: t('Clients covered'), accent: '#6366f1' },
+        { value: `${avgInt}%`, label: t('Avg. intervention'), accent: '#b9842b' },
+    ];
+    const intColor = (p: number) => (p >= 30 ? '#dc2626' : p >= 15 ? '#b9842b' : '#16a34a');
+    return (
+        <div className="pb-10">
+            <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('Whole office · {n} routines across 40 clients').replace('{n}', String(live.length))}</p>
+            <div className="grid grid-cols-4 gap-3 mb-5">
+                {kpis.map((k) => (
+                    <Card key={k.label} className="p-4">
+                        <p className="text-2xl font-semibold leading-none" style={{ color: k.accent }}>{k.value}</p>
+                        <p className="text-xs mt-1.5" style={{ color: COLORS.textMuted }}>{k.label}</p>
+                    </Card>
+                ))}
+            </div>
+            <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ color: COLORS.textMuted, background: '#fafafa' }}>
+                            <th className="text-left font-medium px-4 py-2.5">{t('Routine')}</th>
+                            <th className="text-right font-medium px-4 py-2.5">{t('Clients')}</th>
+                            <th className="text-right font-medium px-4 py-2.5">{t('Saved')}</th>
+                            <th className="text-right font-medium px-4 py-2.5">{t('Cost')}</th>
+                            <th className="text-right font-medium px-4 py-2.5">{t('Intervention')}</th>
+                            <th className="px-4 py-2.5" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {live.map((r) => (
+                            <tr key={r.name} style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                                <td className="px-4 py-2.5" style={{ color: COLORS.text }}>
+                                    <span className="mr-2">{r.emoji}</span>{t(r.name)}
+                                </td>
+                                <td className="px-4 py-2.5 text-right" style={{ color: COLORS.textMuted }}>{r.clients}</td>
+                                <td className="px-4 py-2.5 text-right" style={{ color: COLORS.text }}>{r.saved} {t('hrs')}</td>
+                                <td className="px-4 py-2.5 text-right" style={{ color: COLORS.textMuted }}>{nf(r.cost)} kr</td>
+                                <td className="px-4 py-2.5 text-right font-medium" style={{ color: intColor(r.intervention) }}>{r.intervention}%</td>
+                                <td className="px-4 py-2.5 text-right">
+                                    {r.retire ? (
+                                        <Button onClick={() => setRetired((p) => new Set(p).add(r.name))}><Icon name="delete" /> {t('Retire')}</Button>
+                                    ) : r.share ? (
+                                        shared.has(r.name) ? (
+                                            <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Shared')}</span>
+                                        ) : (
+                                            <Button appearance="primary" onClick={() => setShared((p) => new Set(p).add(r.name))}><Icon name="contacts" /> {t('Share with network')}</Button>
+                                        )
+                                    ) : null}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <p className="text-xs mt-3" style={{ color: COLORS.textMuted }}>{t('Two routines are intervened with constantly — consider retiring them. One works so well it’s worth sharing with the firms in your network.')}</p>
+        </div>
+    );
+}
 
 // Headline KPI cards, shared by the Performance tab and the top of Flows.
 function PerfKpis() {
