@@ -57,6 +57,7 @@ export interface LogEntry {
     resolution?: string; // set once the user resolves it
     waitingOn?: string; // for 'waiting' items — who it's waiting on
     trace?: TraceInfo; // the deep "what did you do and why" audit trail (opened on demand)
+    proactive?: boolean; // Eva surfaced this before being asked (the vision's 11:00 hour)
 }
 
 // The trace pulled on demand (Mette's 14:20 moment): routine → version → action →
@@ -78,6 +79,8 @@ const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
     monitor: { emoji: '🔎', label: 'Client monitoring' },
     anomalies: { emoji: '🔬', label: 'Anomaly detection' },
     'close-books': { emoji: '📚', label: 'Period close' },
+    advisory: { emoji: '💡', label: 'Advisory' },
+    regulations: { emoji: '⚖️', label: 'Regulation watch' },
 };
 
 const DOC_ICON: Record<SourceDoc['kind'], string> = {
@@ -87,6 +90,20 @@ const DOC_ICON: Record<SourceDoc['kind'], string> = {
 };
 
 export const ACTIVITY_ENTRIES: LogEntry[] = [
+    // ---- Proactive · Eva acted before being asked (the 11:00 hour) ----
+    { id: 'p1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '06:20', skill: 'regulations', client: 'portfolio',
+        desc: 'A reporting-rule change affects 6 of your 40 clients', confidence: 'high', status: 'needs-review', proactive: true,
+        reasoning: ['A change to reporting rules landed overnight.', 'I worked out which 6 of your 40 clients it touches, and why.', 'A tailored note is drafted for each — “does this apply to me, and what do I do”.'],
+        source: 'SKAT guidance · effective 1 Apr',
+        suggestions: ['Review the 6 clients', 'Send the drafted updates'],
+        trace: { routine: 'Regulation watch', version: 'v5', action: 'Resolve a rule change per client', dataRead: 'The new SKAT guidance; each client’s profile, sector and filings', concluded: '6 of 40 clients are affected; drafts prepared for each', approvedBy: 'Pending your approval', authority: 'Mette Sørensen · client manager' } },
+    { id: 'p2', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '06:35', skill: 'advisory', client: 'portfolio',
+        desc: '4 clients will drop below 60 days of cash runway in Q2', confidence: 'medium', status: 'needs-review', proactive: true,
+        reasoning: ['I watched all 40 ledgers together, not one at a time.', 'On the current trend, 4 clients fall under 60 days of runway in Q2.', 'Each has a one-page conversation starter ready for you.'],
+        source: 'Portfolio liquidity model',
+        suggestions: ['Open conversation starters', 'Book the 4 calls'],
+        trace: { routine: 'Portfolio liquidity watch', version: 'v3', action: 'Detect runway risk across the book', dataRead: 'Trailing cash flow and commitments for all 40 clients', concluded: '4 clients projected below 60 days runway in Q2', approvedBy: 'Pending your approval', authority: 'Mette Sørensen · client manager' } },
+
     // ---- Today ----
     { id: 'a1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:12', skill: 'reconciliation', client: 'nordic',
         desc: 'Booked transaction #4521 to Account 2100 — Creditors', confidence: 'high', status: 'completed',
@@ -227,8 +244,10 @@ type StatusFilter = 'all' | 'completed' | 'needs-review' | 'waiting';
 
 // The control centre's three lanes — the surface answers three questions at a glance:
 // what needs me, what's waiting on someone else, what happened while I was away.
-const LANES: { key: Exclude<StatusFilter, 'all'>; label: string; match: (e: LogEntry) => boolean }[] = [
-    { key: 'needs-review', label: 'Needs you', match: (e) => e.status === 'needs-review' || e.status === 'failed' },
+const LANES: { key: string; label: string; match: (e: LogEntry) => boolean; proactive?: boolean }[] = [
+    // Proactive advisory — Eva acted before being asked (the 11:00 hour). Sits on top.
+    { key: 'proactive', label: 'Eva spotted this — before you asked', match: (e) => !!e.proactive, proactive: true },
+    { key: 'needs-review', label: 'Needs you', match: (e) => (e.status === 'needs-review' || e.status === 'failed') && !e.proactive },
     { key: 'waiting', label: 'Waiting on someone else', match: (e) => e.status === 'waiting' },
     { key: 'completed', label: 'What happened', match: (e) => e.status === 'completed' },
 ];
@@ -412,9 +431,15 @@ export default function ActivityView({
                     )}
                     {groups.map((g) => (
                         <div key={g.lane.key} className="mb-5">
-                            <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}>
-                                {t(g.lane.label)} · {g.items.length}
-                            </div>
+                            {g.lane.proactive ? (
+                                <div className="flex items-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-wide" style={{ color: '#7c3aed' }}>
+                                    <Orb size={15} /> {t(g.lane.label)} · {g.items.length}
+                                </div>
+                            ) : (
+                                <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}>
+                                    {t(g.lane.label)} · {g.items.length}
+                                </div>
+                            )}
                             <div className="flex flex-col gap-2">
                                 {g.items.map((e) => (
                                     <LogRow
