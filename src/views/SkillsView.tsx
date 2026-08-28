@@ -93,6 +93,8 @@ interface FlowTemplate {
     emoji: string;
     category: string;
     capId?: string; // partner capability required (upsell)
+    author?: 'firm'; // three authors: e-conomic (default), a partner (capId), or the firm
+    savedHrs?: number; // "return on the label" — hrs/mo saved on this firm's data
     price: number; // kr / month after the trial
     trialDays: number;
     desc: string;
@@ -241,6 +243,17 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
             st('Suggest corrections', 'eva'),
             st('Present report', 'review'),
         ] },
+    // ---- Firm-authored (written by this office, encoding how they work) ----
+    { id: 't-construction', title: 'Construction-client month-end', emoji: '🏗️', category: 'Period close', author: 'firm', price: 0, trialDays: 0, savedHrs: 9,
+        desc: 'Your firm’s own month-end routine for construction clients — project-cost allocation, retention handling and WIP.',
+        conditions: ['Confidence is 95% or higher'],
+        starter: 'monthend', steps: [
+            st('Pull the month’s entries & bank feed', 'rule'),
+            st('Allocate costs to the right project', 'eva'),
+            st('Handle retention & WIP the firm’s way', 'eva'),
+            st('Draft the VAT return', 'rule'),
+            st('Route exceptions for review', 'review'),
+        ] },
     // ---- Partner-capability flows (upsell) ----
     { id: 't-likvido', title: 'Automated debt collection', emoji: '💸', category: 'Receivables', capId: 'likvido', price: 299, trialDays: 30,
         desc: 'Escalate overdue invoices to Likvido collection and reconcile the payouts automatically.',
@@ -273,6 +286,18 @@ const FLOW_TEMPLATES: FlowTemplate[] = [
             st('Book cost of goods', 'rule'),
         ] },
 ];
+
+// Three authors, one object model — a skill/routine is the same regardless of who
+// wrote it; only the trust tier changes. (Vision: "three authors, one object model".)
+function authorInfo(tpl: FlowTemplate): { name: string; tier: string; bg: string; fg: string } {
+    if (tpl.author === 'firm') return { name: 'Your firm', tier: 'Firm-authored', bg: '#eef7ef', fg: '#15803d' };
+    if (tpl.capId) return { name: CAPABILITIES.find((c) => c.id === tpl.capId)?.name ?? 'Partner', tier: 'Partner', bg: '#f3f0fb', fg: '#7c3aed' };
+    return { name: 'e-conomic', tier: 'Verified', bg: '#fff7ed', fg: '#b9842b' };
+}
+// The store's "return on the label" — hrs/mo saved on this firm's data.
+function savedHrsFor(tpl: FlowTemplate): number {
+    return tpl.savedHrs ?? Math.max(2, Math.round(tpl.price / 55));
+}
 
 interface LocalFlow { skill: Skill; seed: { starter: string; conditions: string[]; steps: FlowStep[] }; capId?: string }
 let flowSeq = 100;
@@ -1426,7 +1451,6 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                         ) : (
                         <div className="grid grid-cols-2 gap-3">
                             {filtered.map((tpl) => {
-                                const tag = capTag(tpl.capId);
                                 return (
                                     <button key={tpl.id} onClick={() => setSel(tpl)} className="flex flex-col text-left rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, minHeight: 132 }}
                                         onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; e.currentTarget.style.borderColor = '#d6d6db'; }}
@@ -1439,9 +1463,11 @@ function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { install
                                             </div>
                                         </div>
                                         <p className="text-xs mt-2 leading-snug flex-1" style={{ color: COLORS.textMuted }}>{t(tpl.desc)}</p>
-                                        <div className="flex items-center justify-between mt-2">
-                                            <span className="text-xs font-medium" style={{ color: COLORS.text }}>{lang === 'da' ? `${tpl.price} kr/md.` : `${tpl.price} kr/mo`}</span>
-                                            <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: tag.bg, color: tag.fg }}>{tag.name}</span>
+                                        {/* the store's "return on the label" — hrs/mo on this firm's data */}
+                                        <p className="text-xs font-medium mt-2" style={{ color: '#15803d' }}>≈ {savedHrsFor(tpl)} {t('hrs/mo saved on your data')}</p>
+                                        <div className="flex items-center justify-between mt-1.5">
+                                            <span className="text-xs font-medium" style={{ color: COLORS.text }}>{tpl.price === 0 ? t('Included') : lang === 'da' ? `${tpl.price} kr/md.` : `${tpl.price} kr/mo`}</span>
+                                            {(() => { const a = authorInfo(tpl); return <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: a.bg, color: a.fg }} title={t(a.tier)}>{a.name}</span>; })()}
                                         </div>
                                     </button>
                                 );
