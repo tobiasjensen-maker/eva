@@ -315,8 +315,7 @@ export default function ActivityView({
     const [acting, setActing] = useState<string | null>(null);
     const [doc, setDoc] = useState<{ entry: LogEntry; doc: SourceDoc } | null>(null);
     const [trace, setTrace] = useState<LogEntry | null>(null);
-    // "Waiting on someone else" shows inline under its card, not in the main list.
-    const [waitingOpen, setWaitingOpen] = useState(false);
+    // Reminders sent on waiting items (shows a "Reminder sent" confirmation).
     const [reminded, setReminded] = useState<Set<string>>(new Set());
 
     // "Ask Eva" on a flagged item — hand the question + explanation to the shell chat panel.
@@ -384,9 +383,9 @@ export default function ActivityView({
         { key: 'completed', label: 'What happened', value: completed.length, sub: `${autoResolved} ${t('auto-resolved')}`, color: '#16a34a', icon: 'circle-tick' },
     ];
 
-    const waitingItems = periodSet.filter((e) => e.status === 'waiting').sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time));
-    // Group by lane; the waiting lane is shown inline under its card, not in the list.
-    const shownLanes = (status === 'all' ? LANES : LANES.filter((l) => l.key === status)).filter((l) => l.key !== 'waiting');
+    // The "all" list hides the waiting lane (it's not something to look at yet); the
+    // Waiting card filters to it, like the other cards.
+    const shownLanes = status === 'all' ? LANES.filter((l) => l.key !== 'waiting') : LANES.filter((l) => l.key === status);
     const groups = shownLanes
         .map((l) => ({ lane: l, items: periodSet.filter(l.match).sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time)) }))
         .filter((g) => g.items.length > 0);
@@ -407,13 +406,11 @@ export default function ActivityView({
                 {kind !== 'advisory' && (
                 <div className="grid grid-cols-3 gap-3">
                     {stats.map((s) => {
-                        const isWaiting = s.key === 'waiting';
-                        const active = isWaiting ? waitingOpen : status === s.key;
+                        const active = status === s.key;
                         return (
                             <button
                                 key={s.key}
-                                onClick={() => (isWaiting ? setWaitingOpen((o) => !o) : onStatusChange(active ? 'all' : s.key))}
-                                disabled={isWaiting && s.value === 0}
+                                onClick={() => onStatusChange(active ? 'all' : s.key)}
                                 className="relative rounded-xl p-4 flex items-center gap-3 text-left overflow-hidden"
                                 style={{
                                     background: active ? `${s.color}12` : '#fff',
@@ -431,27 +428,10 @@ export default function ActivityView({
                                     <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{t(s.label)}</p>
                                     {s.sub && <p className="text-xs" style={{ color: '#a8a8b0' }}>{s.sub}</p>}
                                 </div>
-                                {isWaiting && s.value > 0 && <Icon name={waitingOpen ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />}
                             </button>
                         );
                     })}
                 </div>
-                )}
-
-                {/* Waiting items — inline under the cards, not in the main list */}
-                {kind !== 'advisory' && waitingOpen && waitingItems.length > 0 && (
-                    <div className="mt-3 flex flex-col gap-2 anim-in">
-                        {waitingItems.map((e) => (
-                            <WaitingRow
-                                key={e.id}
-                                entry={e}
-                                reminded={reminded.has(e.id)}
-                                onRemind={() => setReminded((p) => new Set(p).add(e.id))}
-                                onReceived={() => resolve(e.id, 'Resolved')}
-                                onTrace={() => setTrace(e)}
-                            />
-                        ))}
-                    </div>
                 )}
 
                 {/* log */}
@@ -475,7 +455,18 @@ export default function ActivityView({
                                 </div>
                             )}
                             <div className="flex flex-col gap-2">
-                                {g.items.map((e) => (
+                                {g.lane.key === 'waiting'
+                                    ? g.items.map((e) => (
+                                        <WaitingRow
+                                            key={e.id}
+                                            entry={e}
+                                            reminded={reminded.has(e.id)}
+                                            onRemind={() => setReminded((p) => new Set(p).add(e.id))}
+                                            onReceived={() => resolve(e.id, 'Resolved')}
+                                            onTrace={() => setTrace(e)}
+                                        />
+                                    ))
+                                    : g.items.map((e) => (
                                     <LogRow
                                         key={e.id}
                                         entry={e}
