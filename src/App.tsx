@@ -33,7 +33,7 @@ import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from '.
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
-    { id: 'activity', label: 'Review', Icon: ReviewIcon },
+    { id: 'activity', label: 'Home', Icon: ReviewIcon },
     { id: 'insights', label: 'Insights', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
@@ -64,7 +64,8 @@ export default function App() {
         const h = window.location.hash.replace(/^#\/?/, '');
         if (SLUG_VIEW[h]) return SLUG_VIEW[h];
         const saved = localStorage.getItem('va-view') as ViewId | null;
-        return saved && VIEW_IDS.includes(saved) ? saved : 'chat';
+        // The control centre ('activity') is the landing surface — the vision's "one surface".
+        return saved && VIEW_IDS.includes(saved) ? saved : 'activity';
     });
     useEffect(() => {
         localStorage.setItem('va-view', view);
@@ -74,7 +75,7 @@ export default function App() {
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
     const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
-    const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review'>('needs-review');
+    const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review' | 'waiting'>('all');
     const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
     useEffect(() => {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');

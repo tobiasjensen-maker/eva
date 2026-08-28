@@ -19,6 +19,17 @@ export function translate(lang: Lang, s: string): string {
 const DA: Record<string, string> = {
     // ---- Navigation & shell ----
     'Chat': 'Chat',
+    'Home': 'Hjem',
+    'Control centre': 'Kontrolcenter',
+    'Needs you': 'Kræver dig',
+    'Waiting on someone else': 'Venter på andre',
+    'What happened': 'Hvad der skete',
+    'Waiting': 'Venter',
+    'waiting on': 'venter på',
+    'Provenance': 'Oprindelse',
+    'Agent': 'Agent',
+    'AI draft': 'AI-udkast',
+    'Nothing needs you right now — Eva is all caught up. 🎉': 'Intet kræver dig lige nu — Eva er helt ajour. 🎉',
     'Review': 'Gennemgang',
     'Insights': 'Indsigt',
     'Skills': 'Skills',

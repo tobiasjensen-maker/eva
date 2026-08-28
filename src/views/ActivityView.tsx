@@ -5,8 +5,33 @@ import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
 
 type Confidence = 'high' | 'medium' | 'low';
-export type ActivityStatus = 'completed' | 'needs-review' | 'failed';
+export type ActivityStatus = 'completed' | 'needs-review' | 'failed' | 'waiting';
 type Bucket = 'today' | 'yesterday' | 'week' | 'older';
+
+// Provenance — glanceable on every item: an agent did it, AI drafted it, or
+// e-conomic itself is flagging it. (The vision: "provenance always, trace on demand".)
+type Provenance = 'agent' | 'ai-draft' | 'system';
+function provenanceOf(e: { skill: string; status: ActivityStatus }): Provenance {
+    if (e.status === 'waiting') return 'agent'; // the agent did the outreach; now it waits
+    if (e.skill === 'anomalies' || e.skill === 'monitor') return 'system';
+    if (e.status === 'needs-review') return 'ai-draft';
+    return 'agent';
+}
+const PROV_STYLE: Record<Provenance, { label: string; icon: string; bg: string; fg: string }> = {
+    agent: { label: 'Agent', icon: 'connection-enable', bg: '#eef2ff', fg: '#4456c7' },
+    'ai-draft': { label: 'AI draft', icon: 'ai-stars', bg: '#f3f0fb', fg: '#7c3aed' },
+    system: { label: 'e-conomic', icon: 'circle-warning', bg: '#fff7ed', fg: '#b9842b' },
+};
+
+function ProvenanceTag({ prov }: { prov: Provenance }) {
+    const { t } = useLang();
+    const s = PROV_STYLE[prov];
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium shrink-0" style={{ background: s.bg, color: s.fg }} title={t('Provenance')}>
+            <Icon name={s.icon as never} /> {t(s.label)}
+        </span>
+    );
+}
 
 interface SourceDoc {
     kind: 'Invoice' | 'Transaction' | 'Entry';
@@ -30,6 +55,20 @@ export interface LogEntry {
     doc?: SourceDoc; // source-of-truth record this action touched
     suggestions?: string[]; // AI-suggested next steps for needs-review items (first = recommended)
     resolution?: string; // set once the user resolves it
+    waitingOn?: string; // for 'waiting' items — who it's waiting on
+    trace?: TraceInfo; // the deep "what did you do and why" audit trail (opened on demand)
+}
+
+// The trace pulled on demand (Mette's 14:20 moment): routine → version → action →
+// data read → conclusion → approval → authority. The load-bearing trust artefact.
+export interface TraceInfo {
+    routine: string;
+    version: string;
+    action: string;
+    dataRead: string;
+    concluded: string;
+    approvedBy: string;
+    authority: string;
 }
 
 const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
@@ -80,6 +119,18 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         reasoning: ['Aggregate operating cash flow fell 12% quarter-over-quarter.', 'Decline concentrated in 3 clients with slower receivable collection.', 'Surfaced for advisory follow-up rather than auto-action.'],
         source: 'Portfolio cash-flow model',
         suggestions: ['Draft a reminder cadence', 'Open detailed breakdown'] },
+
+    // ---- Waiting on someone else ----
+    { id: 'w1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:55', skill: 'monitor', client: 'nordic',
+        desc: 'Asked Jonas which project the 8.400 DKK cost belongs to', confidence: 'medium', status: 'waiting', waitingOn: 'Jonas · client',
+        reasoning: ['The cost could sit on either of two active projects.', 'Sent Jonas a one-line question in the firm’s tone.', 'A reminder is set for Thursday if he hasn’t replied.'],
+        source: 'Entry #8840 · 8.400 DKK',
+        trace: { routine: 'Month-end close', version: 'v4', action: 'Ask the client to clarify a cost allocation', dataRead: 'Entry #8840, the two open projects for Nordic Build ApS', concluded: 'Ambiguous project allocation — needs the client to decide', approvedBy: 'Auto (within autonomy cap)', authority: 'Mette Sørensen · client manager' } },
+    { id: 'w2', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '13:20', skill: 'documents', client: 'cafe',
+        desc: 'Requested the missing receipt for entry #8830 from the client', confidence: 'high', status: 'waiting', waitingOn: 'Café Solsikke',
+        reasoning: ['Entry was booked without supporting documentation.', 'Client notified via the request link.', 'Follow-up scheduled in 3 days.'],
+        source: 'Entry #8830 · 2.150 DKK',
+        trace: { routine: 'Missing receipt chaser', version: 'v2', action: 'Request a document from the client', dataRead: 'Entry #8830, its missing-attachment flag', concluded: 'No receipt on file — request it before period close', approvedBy: 'Auto (read-only outreach)', authority: 'Mette Sørensen · client manager' } },
 
     // ---- Yesterday ----
     { id: 'a7', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '16:30', skill: 'reconciliation', client: 'bryg',
@@ -148,14 +199,6 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         suggestions: ['Flag it with the client', 'Note it for the next review'] },
 ];
 
-const BUCKET_LABEL: Record<Bucket, string> = {
-    today: 'Today',
-    yesterday: 'Yesterday',
-    week: 'Earlier this week',
-    older: 'Older',
-};
-const BUCKET_ORDER: Bucket[] = ['today', 'yesterday', 'week', 'older'];
-
 const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string; explain: string }> = {
     high: { bg: '#e9f7ef', fg: '#15803d', label: 'High', explain: 'High confidence — Eva matched this cleanly and could complete it automatically.' },
     medium: { bg: '#fbf3e0', fg: '#92710f', label: 'Medium', explain: 'Medium confidence — mostly clear, but worth a quick check.' },
@@ -170,6 +213,7 @@ const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: stri
     completed: { bg: '#e9f7ef', fg: '#15803d', label: 'Completed', icon: 'circle-tick' },
     'needs-review': { bg: '#fbf3e0', fg: '#92710f', label: 'Needs review', icon: 'circle-warning' },
     failed: { bg: '#fdecec', fg: '#dc2626', label: 'Failed', icon: 'error' },
+    waiting: { bg: '#eef2ff', fg: '#4456c7', label: 'Waiting', icon: 'time' },
 };
 
 const DATE_RANGES = [
@@ -179,7 +223,15 @@ const DATE_RANGES = [
     { value: 'custom', label: 'Custom' },
 ];
 
-type StatusFilter = 'all' | 'completed' | 'needs-review';
+type StatusFilter = 'all' | 'completed' | 'needs-review' | 'waiting';
+
+// The control centre's three lanes — the surface answers three questions at a glance:
+// what needs me, what's waiting on someone else, what happened while I was away.
+const LANES: { key: Exclude<StatusFilter, 'all'>; label: string; match: (e: LogEntry) => boolean }[] = [
+    { key: 'needs-review', label: 'Needs you', match: (e) => e.status === 'needs-review' || e.status === 'failed' },
+    { key: 'waiting', label: 'Waiting on someone else', match: (e) => e.status === 'waiting' },
+    { key: 'completed', label: 'What happened', match: (e) => e.status === 'completed' },
+];
 
 const clientName = (id: string) => (id === 'portfolio' ? 'Portfolio-wide' : AGREEMENTS.find((a) => a.id === id)?.name ?? id);
 
@@ -277,7 +329,6 @@ export default function ActivityView({
     };
     // Period set (date + skill + client) drives the stat counts; status is an additional filter on top.
     const periodSet = entries.filter((e) => inRange(e) && (client === 'all' || e.client === client));
-    const filtered = periodSet.filter((e) => status === 'all' || e.status === status);
 
     function resolve(id: string, action: string) {
         setActing(id);
@@ -293,17 +344,23 @@ export default function ActivityView({
 
     const completed = periodSet.filter((e) => e.status === 'completed');
     const autoResolved = completed.filter((e) => !e.resolution).length;
+    const needsCount = periodSet.filter((e) => e.status === 'needs-review' || e.status === 'failed').length;
+    const waitingCount = periodSet.filter((e) => e.status === 'waiting').length;
     const stats: { key: StatusFilter; label: string; value: number; sub?: string; color: string; icon: string }[] = [
-        { key: 'needs-review', label: 'Flagged for review', value: periodSet.filter((e) => e.status === 'needs-review').length, color: '#b9842b', icon: 'circle-warning' },
-        { key: 'completed', label: 'Resolved', value: completed.length, sub: `${autoResolved} ${t('auto-resolved')}`, color: '#16a34a', icon: 'circle-tick' },
-        { key: 'all', label: 'Actions taken', value: periodSet.length, color: '#6366f1', icon: 'workflow' },
+        { key: 'needs-review', label: 'Needs you', value: needsCount, color: '#b9842b', icon: 'circle-warning' },
+        { key: 'waiting', label: 'Waiting on someone else', value: waitingCount, color: '#4456c7', icon: 'time' },
+        { key: 'completed', label: 'What happened', value: completed.length, sub: `${autoResolved} ${t('auto-resolved')}`, color: '#16a34a', icon: 'circle-tick' },
     ];
 
-    const groups = BUCKET_ORDER.map((b) => ({ bucket: b, items: filtered.filter((e) => e.bucket === b) })).filter((g) => g.items.length > 0);
+    // Group by lane (the three questions); a specific filter narrows to one lane.
+    const shownLanes = status === 'all' ? LANES : LANES.filter((l) => l.key === status);
+    const groups = shownLanes
+        .map((l) => ({ lane: l, items: periodSet.filter(l.match).sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time)) }))
+        .filter((g) => g.items.length > 0);
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Review')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
+            <PageHeader title={t('Control centre')} right={<SegmentedTabs value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
             <div className="px-8 pt-5 pb-7 mx-auto" style={{ maxWidth: 1040 }}>
                 {range === 'custom' && (
                     <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>
@@ -320,7 +377,7 @@ export default function ActivityView({
                         return (
                             <button
                                 key={s.key}
-                                onClick={() => onStatusChange(s.key)}
+                                onClick={() => onStatusChange(active ? 'all' : s.key)}
                                 className="relative rounded-xl p-4 flex items-center gap-3 text-left overflow-hidden"
                                 style={{
                                     background: active ? `${s.color}12` : '#fff',
@@ -348,14 +405,14 @@ export default function ActivityView({
                     {groups.length === 0 && (
                         <Card className="p-10 text-center">
                             <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                                {status === 'needs-review' ? t('Nothing needs your review here — Eva is all caught up. 🎉') : t('No activity matches these filters.')}
+                                {status === 'needs-review' ? t('Nothing needs you right now — Eva is all caught up. 🎉') : t('No activity matches these filters.')}
                             </p>
                         </Card>
                     )}
                     {groups.map((g) => (
-                        <div key={g.bucket}>
+                        <div key={g.lane.key} className="mb-5">
                             <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}>
-                                {t(BUCKET_LABEL[g.bucket])} · {g.items.length}
+                                {t(g.lane.label)} · {g.items.length}
                             </div>
                             <div className="flex flex-col gap-2">
                                 {g.items.map((e) => (
@@ -407,15 +464,19 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onAsk, on
                     </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
                         {t(sk.label)} · {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}
+                        {entry.status === 'waiting' && entry.waitingOn ? ` · ${t('waiting on')} ${entry.waitingOn}` : ''}
                     </p>
                 </div>
-                <span
-                    title={t(conf.explain)}
-                    className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0"
-                    style={{ background: conf.bg, color: conf.fg, cursor: 'help' }}
-                >
-                    {t(conf.label)} {t('confidence')}
-                </span>
+                <ProvenanceTag prov={provenanceOf(entry)} />
+                {entry.status !== 'waiting' && (
+                    <span
+                        title={t(conf.explain)}
+                        className="rounded-md px-2 py-0.5 text-xs font-medium shrink-0"
+                        style={{ background: conf.bg, color: conf.fg, cursor: 'help' }}
+                    >
+                        {t(conf.label)} {t('confidence')}
+                    </span>
+                )}
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
 
