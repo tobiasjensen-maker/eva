@@ -39,7 +39,7 @@ const SHOW_CONNECTION = false;
 // Global UI density — scale the whole app down a touch so more fits on larger
 // screens (16"+). The shell compensates its width/height so it still fills the
 // viewport with no gap. Bump toward 1 for larger, down for denser.
-const APP_ZOOM = 0.85;
+const APP_ZOOM = 0.9;
 
 // EVA's post-onboarding greeting, shown as the first message in the side-panel on Cockpit.
 const WELCOME_MSG =

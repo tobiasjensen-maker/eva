@@ -69,4 +69,24 @@ separate GitHub Pages deploy — don't remove it.
 - Seed data lives in module consts and is copied into state on mount, so editing data
   needs a full reload (not HMR) to reflect.
 - The prototype is intentionally desktop-first; rows/pickers collapse responsively but the
-  design target is a wide screen.
+  design target is a wide screen. A global `APP_ZOOM` (0.85) in `src/App.tsx` scales the
+  whole app down so more fits on 16"+ screens (the shell compensates its width/height).
+
+## Updates since first publish
+
+- **Cockpit** is now a dashboard: automation KPIs → "Needs your review" table → "Waiting on
+  someone else" table → routines-performance overview → recent-activity preview. KPIs are
+  scope-aware (portfolio vs. a specific client). A separate **Activity** subpage (`#/activity`)
+  holds the full log with advanced filtering (search, area, client, status, date).
+- **Routines** page dropped the KPIs for an activity-based "Suggested for you" list; the
+  routines list uses the same table styling as the Cockpit.
+- **Advisory** consolidated its two tabs into one page: KPI cards → EVA flags & suggestions
+  table → graphs (revenue trend + deep analysis).
+- **Views** now indicate each view's source — Created by EVA, e-conomic (default), or the
+  Advisory Module — and ship three Advisory-Module views.
+- **Background**: one shared `CANVAS` token (`#fafafa` in `src/ui.tsx`) for both the outer
+  shell and the main content — they must always match; only the sidebar + EVA panel float.
+  The full-width chat is the sole white surface.
+- Shared row/table components live in `src/views/ActivityView.tsx` (`SectionCard`, `LogRow`
+  with a flat `variant="row"`, `WaitingRow`, `useActivityActions`) and are reused across the
+  Cockpit, the Activity log, and the Advisory list.
