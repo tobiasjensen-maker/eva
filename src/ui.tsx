@@ -55,9 +55,9 @@ export function ScopeSwitcher() {
             <button
                 onClick={() => setOpen((o) => !o)}
                 className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
-                style={{ background: '#f1f1f3', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#ececee')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#f1f1f3')}
+                style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f8fa')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
             >
                 {isLive
                     ? <span className="rounded-full" style={{ width: 7, height: 7, background: '#22c55e' }} />
@@ -228,7 +228,7 @@ export function SidebarTooltip({ label, show = true, children }: { label: string
 // Segmented tab control (the Insights period pattern) — reused for date ranges etc.
 export function SegmentedTabs({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
     return (
-        <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
+        <div className="flex items-center rounded-lg p-0.5" style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}` }}>
             {options.map((o) => {
                 const active = value === o.value;
                 return (
@@ -238,9 +238,8 @@ export function SegmentedTabs({ value, onChange, options }: { value: string; onC
                         className="rounded-md text-xs font-medium whitespace-nowrap"
                         style={{
                             padding: '5px 10px',
-                            background: active ? '#fff' : 'transparent',
+                            background: active ? '#f1f1f3' : 'transparent',
                             color: active ? COLORS.text : COLORS.textMuted,
-                            boxShadow: active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                         }}
                     >
                         {o.label}
@@ -262,7 +261,7 @@ export function PeriodPicker({ value, onChange, options }: { value: string; onCh
                 <button
                     onClick={() => setOpen((o) => !o)}
                     className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium"
-                    style={{ background: '#f1f1f3', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                    style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
                 >
                     {current}
                     <Icon name="chevron-down" style={{ color: COLORS.textMuted }} />

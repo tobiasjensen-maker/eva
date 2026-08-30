@@ -837,10 +837,6 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
             <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
-                <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>
-                    {t(clientName(scope))}{isPortfolio ? ` · ${t('{n} clients').replace('{n}', String(stats.clients))}` : ''} · {t('{n} routines running').replace('{n}', String(ROUTINE_OVERVIEW.length))} · {stats.automatedPct}% {t('automated')}
-                </p>
-
                 {/* automation KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
                     {kpis.map((k) => (
