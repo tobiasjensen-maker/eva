@@ -20,7 +20,7 @@ import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
-import ActivityView, { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory } from './views/ActivityView';
+import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, CockpitView, ActivityFeedView } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
@@ -49,12 +49,12 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'spaces', label: 'Views', Icon: SpacesIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'skills', 'spaces', 'customers'];
+const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'activitylog', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', activitylog: 'activity', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -83,7 +83,6 @@ export default function App() {
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
     const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
-    const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'needs-review' | 'waiting'>('all');
     const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
     useEffect(() => {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
@@ -221,7 +220,7 @@ export default function App() {
     // The contextual EVA chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
-        view === 'activity'
+        view === 'activity' || view === 'activitylog'
             ? {
                   subtitle: 'review assistant',
                   intro: "I'm EVA. Ask me about your review queue — or hit “Ask EVA” on a flagged item and I'll explain my thinking.",
@@ -366,7 +365,8 @@ export default function App() {
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 mt-3" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
                     {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
-                        const active = view === id;
+                        // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
+                        const active = view === id || (id === 'activity' && view === 'activitylog');
                         const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
@@ -588,13 +588,22 @@ export default function App() {
                 )}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                 {view === 'activity' && (
-                    <ActivityView
+                    <CockpitView
                         entries={activity}
                         setEntries={setActivity}
-                        status={activityStatus}
-                        onStatusChange={setActivityStatus}
                         scope={scope}
                         onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }}
+                        onSeeActivity={() => goView('activitylog')}
+                        onOpenRoutines={() => goView('skills')}
+                    />
+                )}
+                {view === 'activitylog' && (
+                    <ActivityFeedView
+                        entries={activity}
+                        setEntries={setActivity}
+                        scope={scope}
+                        onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }}
+                        onBack={() => goView('activity')}
                     />
                 )}
                 {view === 'customers' && <CustomersView />}

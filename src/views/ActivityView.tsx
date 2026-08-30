@@ -1,4 +1,4 @@
-import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, Orb, PageHeader, PeriodPicker, COLORS } from '../ui';
 import { AGREEMENTS } from '../data';
@@ -275,6 +275,67 @@ export function reviewAnswer(entries: LogEntry[], q: string, lang: 'en' | 'da' =
         : 'I can explain any flagged item, recap what I did, or take the next step for you. Try “What needs my attention most?”, or click “Ask EVA” on an item.';
 }
 
+// Build the "Ask EVA about this item" question + explanation handed to the chat panel.
+function buildAsk(e: LogEntry, t: (s: string) => string, lang: 'en' | 'da'): { user: string; answer: string } {
+    const needsReview = e.status === 'needs-review';
+    const consider = needsReview && e.confidence === 'low';
+    const da = lang === 'da';
+    const client = t(clientName(e.client));
+    const userText = consider
+        ? (da ? `Hvad skal jeg tjekke for ${client}?` : `What should I check on for ${clientName(e.client)}?`)
+        : needsReview
+            ? (da ? `Hvorfor foreslår du dette for ${client}?` : `Why are you suggesting this for ${clientName(e.client)}?`)
+            : (da ? `Hvorfor gjorde du dette for ${client}?` : `Why did you do this for ${clientName(e.client)}?`);
+    const lead = consider
+        ? (da ? 'Jeg markerede dette til din gennemgang, fordi:' : 'I flagged this for you to review because:')
+        : needsReview
+            ? (da ? 'Jeg foreslår dette, fordi:' : "I'm suggesting this because:")
+            : (da ? 'Jeg gjorde dette, fordi:' : 'I did this because:');
+    const confLabel = da ? (e.confidence === 'low' ? 'lav' : e.confidence === 'medium' ? 'middel' : 'høj') : e.confidence;
+    const tail = consider
+        ? (da ? ' Jeg er ikke sikker nok til selv at handle på det, så det er værd at tjekke, før du godkender.' : ' I’m not confident enough to act on this myself, so it’s worth your check before you sign off.')
+        : needsReview && e.suggestions?.length
+            ? (da ? ` Jeg vil anbefale “${e.suggestions[0]}” — skal jeg gå i gang?` : ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?`)
+            : '';
+    const reasoning = da ? e.reasoning.map((r) => t(r)).join(' ') : e.reasoning.join(' ');
+    const answer = da
+        ? `${lead} ${reasoning} Min sikkerhed er ${confLabel}.${e.source ? ` Kilde: ${e.source}.` : ''}${tail}`
+        : `${lead} ${reasoning} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${tail}`;
+    return { user: userText, answer };
+}
+
+// Shared review-action state + handlers, reused by the Cockpit and the Activity log.
+function useActivityActions(setEntries: Dispatch<SetStateAction<LogEntry[]>>, onAskEva: (u: string, a: string) => void) {
+    const { t, lang } = useLang();
+    const [expanded, setExpanded] = useState<string | null>(null);
+    const [acting, setActing] = useState<string | null>(null);
+    const [doc, setDoc] = useState<{ entry: LogEntry; doc: SourceDoc } | null>(null);
+    const [trace, setTrace] = useState<LogEntry | null>(null);
+    const [reminded, setReminded] = useState<Set<string>>(new Set());
+    function resolve(id: string, action: string) {
+        setActing(id);
+        setTimeout(() => {
+            setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'completed', confidence: 'high', resolution: action } : e)));
+            setActing(null);
+        }, 900);
+    }
+    function reverse(id: string) {
+        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'needs-review', resolution: undefined } : e)));
+    }
+    const askAbout = (e: LogEntry) => { const { user, answer } = buildAsk(e, t, lang); onAskEva(user, answer); };
+    return { expanded, setExpanded, acting, doc, setDoc, trace, setTrace, reminded, setReminded, resolve, reverse, askAbout };
+}
+
+// Renders the shared Doc + Trace modals for a view using useActivityActions.
+function ActivityModals({ doc, trace, onCloseDoc, onCloseTrace }: { doc: { entry: LogEntry; doc: SourceDoc } | null; trace: LogEntry | null; onCloseDoc: () => void; onCloseTrace: () => void }) {
+    return (
+        <>
+            {doc && <DocModal entry={doc.entry} doc={doc.doc} onClose={onCloseDoc} />}
+            {trace && <TraceModal entry={trace} onClose={onCloseTrace} />}
+        </>
+    );
+}
+
 export default function ActivityView({
     entries, setEntries, status, onStatusChange, scope = 'portfolio', onAskEva, kind = 'core', embedded = false,
 }: {
@@ -299,31 +360,8 @@ export default function ActivityView({
 
     // "Ask EVA" on a flagged item — hand the question + explanation to the shell chat panel.
     function askAbout(e: LogEntry) {
-        const needsReview = e.status === 'needs-review';
-        const consider = needsReview && e.confidence === 'low';
-        const da = lang === 'da';
-        const client = t(clientName(e.client));
-        const userText = consider
-            ? (da ? `Hvad skal jeg tjekke for ${client}?` : `What should I check on for ${clientName(e.client)}?`)
-            : needsReview
-                ? (da ? `Hvorfor foreslår du dette for ${client}?` : `Why are you suggesting this for ${clientName(e.client)}?`)
-                : (da ? `Hvorfor gjorde du dette for ${client}?` : `Why did you do this for ${clientName(e.client)}?`);
-        const lead = consider
-            ? (da ? 'Jeg markerede dette til din gennemgang, fordi:' : 'I flagged this for you to review because:')
-            : needsReview
-                ? (da ? 'Jeg foreslår dette, fordi:' : "I'm suggesting this because:")
-                : (da ? 'Jeg gjorde dette, fordi:' : 'I did this because:');
-        const confLabel = da ? (e.confidence === 'low' ? 'lav' : e.confidence === 'medium' ? 'middel' : 'høj') : e.confidence;
-        const tail = consider
-            ? (da ? ' Jeg er ikke sikker nok til selv at handle på det, så det er værd at tjekke, før du godkender.' : ' I’m not confident enough to act on this myself, so it’s worth your check before you sign off.')
-            : needsReview && e.suggestions?.length
-                ? (da ? ` Jeg vil anbefale “${e.suggestions[0]}” — skal jeg gå i gang?` : ` I'd recommend “${e.suggestions[0]}” — want me to go ahead?`)
-                : '';
-        const reasoning = da ? e.reasoning.map((r) => t(r)).join(' ') : e.reasoning.join(' ');
-        const answer = da
-            ? `${lead} ${reasoning} Min sikkerhed er ${confLabel}.${e.source ? ` Kilde: ${e.source}.` : ''}${tail}`
-            : `${lead} ${reasoning} My confidence is ${e.confidence}.${e.source ? ` Source: ${e.source}.` : ''}${tail}`;
-        onAskEva(userText, answer);
+        const { user, answer } = buildAsk(e, t, lang);
+        onAskEva(user, answer);
     }
 
     // Reflect the agreement chosen in the sidebar into the Client filter.
@@ -486,7 +524,7 @@ function traceOf(e: LogEntry): TraceInfo {
     };
 }
 
-function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void }) {
+function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse, variant = 'card', last = false }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void; variant?: 'card' | 'row'; last?: boolean }) {
     const { t, lang } = useLang();
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
@@ -494,8 +532,8 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
     // Low-confidence flags are things EVA can't act on alone — the AO considers them and checks them off.
     // Higher-confidence flags are actions EVA can carry out once accepted.
     const consider = needsReview && entry.confidence === 'low';
-    return (
-        <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>
+    const body = (
+        <>
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: '#fff' }}>
                 {/* Left icon: the skill-area emoji, tinted with the status colour. */}
                 <span
@@ -588,7 +626,13 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                     </div>
                 </div>
             )}
-        </Card>
+        </>
+    );
+    if (variant === 'row') {
+        return <div style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>{body}</div>;
+    }
+    return (
+        <Card className="overflow-hidden" style={needsReview ? { border: '1px solid #f0e4c4' } : undefined}>{body}</Card>
     );
 }
 
@@ -709,6 +753,264 @@ function DocModal({ entry, doc, onClose }: { entry: LogEntry; doc: SourceDoc; on
                     </a>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ---- Cockpit dashboard + Activity log ----------------------------------------
+
+const inRangeOf = (e: LogEntry, range: string) =>
+    range === 'today' ? e.daysAgo === 0 : range === '7' ? e.daysAgo <= 7 : range === '30' ? e.daysAgo <= 30 : true;
+
+// Headline automation numbers for the Cockpit (curated, dashboard-scale).
+const COCKPIT_KPIS = { automatedPct: 94, actions: 1240, hoursSaved: 148, clients: 8 };
+
+// Per-routine performance shown in the Cockpit's routines overview.
+const ROUTINE_OVERVIEW = [
+    { name: 'Bank reconciliation', emoji: '🏦', automated: 94, actions: 612, hours: 71 },
+    { name: 'Payment reminders', emoji: '🔔', automated: 99, actions: 318, hours: 22 },
+    { name: 'Document collection', emoji: '📎', automated: 78, actions: 142, hours: 18 },
+    { name: 'Client monitoring', emoji: '🔎', automated: 61, actions: 96, hours: 24 },
+    { name: 'Period close', emoji: '📚', automated: 70, actions: 24, hours: 4 },
+];
+
+function SectionCard({ title, count, action, children }: { title: string; count?: number; action?: ReactNode; children: ReactNode }) {
+    return (
+        <Card className="overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{title}{count !== undefined ? ` · ${count}` : ''}</p>
+                {action}
+            </div>
+            {children}
+        </Card>
+    );
+}
+
+// The redesigned Cockpit: automation KPIs, what-needs-you, routines overview, recent activity.
+export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva, onSeeActivity, onOpenRoutines }: {
+    entries: LogEntry[];
+    setEntries: Dispatch<SetStateAction<LogEntry[]>>;
+    scope?: string;
+    onAskEva: (user: string, answer: string) => void;
+    onSeeActivity: () => void;
+    onOpenRoutines: () => void;
+}) {
+    const { t, lang } = useLang();
+    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
+    const [range, setRange] = useState('30');
+    const A = useActivityActions(setEntries, onAskEva);
+    const client = scope === 'portfolio' ? 'all' : scope;
+
+    const core = entries.filter((e) => !isAdvisory(e) && (client === 'all' || e.client === client) && inRangeOf(e, range));
+    const review = core.filter((e) => e.status === 'needs-review' || e.status === 'failed')
+        .sort((a, b) => (Number(!!b.proactive) - Number(!!a.proactive)) || a.daysAgo - b.daysAgo || b.time.localeCompare(a.time));
+    const waiting = core.filter((e) => e.status === 'waiting');
+    const recent = core.filter((e) => e.status === 'completed').sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time)).slice(0, 4);
+    const needsCount = review.length;
+
+    const kpis = [
+        { value: `${COCKPIT_KPIS.automatedPct}%`, label: t('Automated'), sub: t('handled without you'), color: '#16a34a', accent: false },
+        { value: nf(COCKPIT_KPIS.actions), label: t('Actions this month'), sub: t('across {n} clients').replace('{n}', String(COCKPIT_KPIS.clients)), color: COLORS.text, accent: false },
+        { value: `${COCKPIT_KPIS.hoursSaved} ${t('hrs')}`, label: t('Time saved'), sub: t('≈ 4 working weeks'), color: '#6366f1', accent: false },
+        { value: String(needsCount), label: t('Needs your review'), sub: waiting.length ? t('{n} waiting on others').replace('{n}', String(waiting.length)) : t('nothing waiting'), color: '#b9842b', accent: true },
+    ];
+
+    const rowProps = (e: LogEntry) => ({
+        open: A.expanded === e.id, acting: A.acting === e.id,
+        onToggle: () => A.setExpanded(A.expanded === e.id ? null : e.id),
+        onResolve: (action: string) => A.resolve(e.id, action),
+        onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
+        onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
+    });
+
+    return (
+        <div className="h-full overflow-y-auto">
+            <PageHeader title={t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
+            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
+                <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>
+                    {t(clientName(scope))} · {t('{n} clients').replace('{n}', String(COCKPIT_KPIS.clients))} · {t('{n} routines running').replace('{n}', String(ROUTINE_OVERVIEW.length))} · {COCKPIT_KPIS.automatedPct}% {t('automated')}
+                </p>
+
+                {/* automation KPIs */}
+                <div className="grid grid-cols-4 gap-3 mb-6">
+                    {kpis.map((k) => (
+                        <div key={k.label} className="rounded-xl p-4" style={{ background: k.accent ? '#fdf8ec' : '#fff', border: `1px solid ${k.accent ? '#efdcb0' : COLORS.cardBorder}` }}>
+                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{k.label}</p>
+                            <p className="text-2xl font-semibold leading-tight mt-1" style={{ color: k.color }}>{k.value}</p>
+                            <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{k.sub}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* needs your review */}
+                <div className="mb-6">
+                    <SectionCard title={t('Needs your review')} count={needsCount}>
+                        {review.length === 0 ? (
+                            <p className="text-sm text-center py-8" style={{ color: COLORS.textMuted }}>{t('Nothing needs you right now — EVA is all caught up. 🎉')}</p>
+                        ) : (
+                            review.map((e, i) => <LogRow key={e.id} entry={e} variant="row" last={i === review.length - 1} {...rowProps(e)} />)
+                        )}
+                    </SectionCard>
+                </div>
+
+                {/* waiting on someone else */}
+                {waiting.length > 0 && (
+                    <div className="mb-6">
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Waiting on someone else')} · {waiting.length}</p>
+                        <div className="flex flex-col gap-2">
+                            {waiting.map((e) => (
+                                <WaitingRow key={e.id} entry={e} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* routines overview */}
+                <div className="mb-6">
+                    <SectionCard title={t('Routines')} action={<button onClick={onOpenRoutines} className="text-sm font-medium" style={{ color: '#4456c7' }}>{t('Manage routines')} →</button>}>
+                        {ROUTINE_OVERVIEW.map((r, i) => (
+                            <div key={r.name} className="flex items-center gap-3 px-4 py-3" style={i < ROUTINE_OVERVIEW.length - 1 ? { borderBottom: `1px solid ${COLORS.cardBorder}` } : undefined}>
+                                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', fontSize: 17 }}>{r.emoji}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(r.name)}</p>
+                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{nf(r.actions)} {t('actions')} · {r.hours} {t('hrs')} {t('saved')}</p>
+                                </div>
+                                <div className="shrink-0 flex items-center gap-2.5" style={{ width: 150 }}>
+                                    <span className="rounded-full" style={{ flex: 1, height: 6, background: '#f1f1f3', position: 'relative' }}>
+                                        <span className="rounded-full" style={{ position: 'absolute', left: 0, top: 0, height: 6, width: `${r.automated}%`, background: r.automated >= 80 ? '#16a34a' : r.automated >= 60 ? '#6366f1' : '#b9842b' }} />
+                                    </span>
+                                    <span className="text-xs font-medium" style={{ color: COLORS.textMuted, width: 34, textAlign: 'right' }}>{r.automated}%</span>
+                                </div>
+                            </div>
+                        ))}
+                    </SectionCard>
+                </div>
+
+                {/* recent activity preview */}
+                <SectionCard title={t('Recent activity')} action={<button onClick={onSeeActivity} className="text-sm font-medium" style={{ color: '#4456c7' }}>{t('See all activity')} →</button>}>
+                    {recent.length === 0 ? (
+                        <p className="text-sm text-center py-8" style={{ color: COLORS.textMuted }}>{t('No activity matches these filters.')}</p>
+                    ) : (
+                        recent.map((e, i) => <LogRow key={e.id} entry={e} variant="row" last={i === recent.length - 1} {...rowProps(e)} />)
+                    )}
+                </SectionCard>
+            </div>
+            <ActivityModals doc={A.doc} trace={A.trace} onCloseDoc={() => A.setDoc(null)} onCloseTrace={() => A.setTrace(null)} />
+        </div>
+    );
+}
+
+const FEED_STATUSES: { key: ActivityStatus; label: string }[] = [
+    { key: 'completed', label: 'Completed' },
+    { key: 'needs-review', label: 'Needs review' },
+    { key: 'waiting', label: 'Waiting' },
+    { key: 'failed', label: 'Failed' },
+];
+const FEED_BUCKETS: { key: Bucket; label: string }[] = [
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: 'week', label: 'Earlier this week' },
+    { key: 'older', label: 'Older' },
+];
+
+// The Activity subpage: the full log of everything that has happened, with
+// advanced filtering (search, status, area, client, date range).
+export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack }: {
+    entries: LogEntry[];
+    setEntries: Dispatch<SetStateAction<LogEntry[]>>;
+    scope?: string;
+    onAskEva: (user: string, answer: string) => void;
+    onBack: () => void;
+}) {
+    const { t } = useLang();
+    const A = useActivityActions(setEntries, onAskEva);
+    const [range, setRange] = useState('30');
+    const [q, setQ] = useState('');
+    const [statusF, setStatusF] = useState<Set<ActivityStatus>>(new Set());
+    const [skillF, setSkillF] = useState('all');
+    const [clientF, setClientF] = useState(scope === 'portfolio' ? 'all' : scope);
+
+    useEffect(() => { setClientF(scope === 'portfolio' ? 'all' : scope); }, [scope]);
+
+    const toggleStatus = (s: ActivityStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+    const ql = q.trim().toLowerCase();
+    const filtered = entries.filter((e) =>
+        inRangeOf(e, range)
+        && (statusF.size === 0 || statusF.has(e.status))
+        && (skillF === 'all' || e.skill === skillF)
+        && (clientF === 'all' || e.client === clientF)
+        && (!ql || t(e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql) || (e.source ?? '').toLowerCase().includes(ql)),
+    ).sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time));
+    const groups = FEED_BUCKETS.map((b) => ({ b, items: filtered.filter((e) => e.bucket === b.key) })).filter((g) => g.items.length > 0);
+    const anyFilter = statusF.size > 0 || skillF !== 'all' || clientF !== 'all' || !!q;
+
+    const selectStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text };
+    const skills = Object.keys(SKILL_INFO);
+
+    const rowProps = (e: LogEntry) => ({
+        open: A.expanded === e.id, acting: A.acting === e.id,
+        onToggle: () => A.setExpanded(A.expanded === e.id ? null : e.id),
+        onResolve: (action: string) => A.resolve(e.id, action),
+        onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
+        onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
+    });
+
+    return (
+        <div className="h-full overflow-y-auto">
+            <PageHeader title={t('Activity')} onBack={onBack} backLabel={t('Cockpit')} showScope={false}
+                right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
+            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
+                {/* filter bar */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="relative flex-1" style={{ minWidth: 220 }}>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
+                        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search activity…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={selectStyle} />
+                    </div>
+                    <select value={skillF} onChange={(e) => setSkillF(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selectStyle}>
+                        <option value="all">{t('All areas')}</option>
+                        {skills.map((s) => <option key={s} value={s}>{t(SKILL_INFO[s].label)}</option>)}
+                    </select>
+                    <select value={clientF} onChange={(e) => setClientF(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selectStyle}>
+                        <option value="all">{t('All clients')}</option>
+                        <option value="portfolio">{t('Portfolio-wide')}</option>
+                        {AGREEMENTS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                </div>
+                {/* status chips + result count */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-5">
+                    {FEED_STATUSES.map((s) => {
+                        const on = statusF.has(s.key);
+                        const st = STATUS_STYLE[s.key];
+                        return (
+                            <button key={s.key} onClick={() => toggleStatus(s.key)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                                style={{ border: `1px solid ${on ? st.fg : COLORS.cardBorder}`, background: on ? st.bg : '#fff', color: on ? st.fg : COLORS.textMuted }}>
+                                <Icon name={st.icon as never} /> {t(s.label)}
+                            </button>
+                        );
+                    })}
+                    {anyFilter && (
+                        <button onClick={() => { setStatusF(new Set()); setSkillF('all'); setClientF('all'); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>
+                    )}
+                    <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{filtered.length} {t('of')} {entries.length}</span>
+                </div>
+
+                {/* results */}
+                {groups.length === 0 ? (
+                    <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No activity matches these filters.')}</p></Card>
+                ) : (
+                    groups.map((g) => (
+                        <div key={g.b.key} className="mb-5">
+                            <div className="text-xs font-semibold uppercase tracking-wide py-2" style={{ color: COLORS.textMuted }}>{t(g.b.label)} · {g.items.length}</div>
+                            <div className="flex flex-col gap-2">
+                                {g.items.map((e) => e.status === 'waiting'
+                                    ? <WaitingRow key={e.id} entry={e} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
+                                    : <LogRow key={e.id} entry={e} {...rowProps(e)} />)}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+            <ActivityModals doc={A.doc} trace={A.trace} onCloseDoc={() => A.setDoc(null)} onCloseTrace={() => A.setTrace(null)} />
         </div>
     );
 }
