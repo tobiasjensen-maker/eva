@@ -3054,6 +3054,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .mb-7 {
   margin-bottom: 1.75rem;
 }
+.mb-8 {
+  margin-bottom: 2rem;
+}
 .mb-\[2px\] {
   margin-bottom: 2px;
 }
