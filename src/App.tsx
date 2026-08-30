@@ -36,6 +36,11 @@ import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from '.
 // re-enable the whole connected-agreement layer.
 const SHOW_CONNECTION = false;
 
+// Global UI density — scale the whole app down a touch so more fits on larger
+// screens (16"+). The shell compensates its width/height so it still fills the
+// viewport with no gap. Bump toward 1 for larger, down for denser.
+const APP_ZOOM = 0.85;
+
 // EVA's post-onboarding greeting, shown as the first message in the side-panel on Cockpit.
 const WELCOME_MSG =
     "Welcome! I'm EVA — I've just been through your whole portfolio. Across your 8 clients (4,80 mio. kr revenue) you have 214.500 kr overdue and 3 things worth a look first: Café Solsikke’s cash runway is under 2 months, Nordic Build ApS has your largest overdue exposure, and there’s an unusual 14.900 kr charge at Office Supplies Co. Where would you like to start?";
@@ -319,7 +324,7 @@ export default function App() {
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className="flex" style={{ height: '100vh', background: CANVAS, padding: 10, gap: 10 }}>
+        <div className="flex" style={{ zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
                 className="flex flex-col shrink-0 rounded-2xl"
