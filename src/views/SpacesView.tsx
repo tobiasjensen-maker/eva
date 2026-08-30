@@ -1,10 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, EmojiTile, PageHeader, StickyFooter, COLORS } from '../ui';
+import { Card, EmojiTile, Orb, PageHeader, StickyFooter, asset, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { TemplateGallery, type Template } from '../TemplateGallery';
 import { useLang } from '../i18n';
-import type { Space } from '../types';
+import type { Space, ViewSource } from '../types';
+
+// Where a view came from — built by EVA, or pre-defined as part of an integration.
+const SOURCE_META: Record<ViewSource, { label: string; sub: string; bg: string; fg: string }> = {
+    eva: { label: 'Created by EVA', sub: 'You built this view with EVA', bg: '#f3f0fb', fg: '#7c3aed' },
+    econ: { label: 'e-conomic', sub: 'Comes with e-conomic — the system default', bg: '#fff7ed', fg: '#b9842b' },
+    advisory: { label: 'Advisory Module', sub: 'Comes with the Advisory Module', bg: '#eef4fb', fg: '#2f6fb0' },
+};
+
+function SourceMark({ source, size = 14 }: { source: ViewSource; size?: number }) {
+    if (source === 'eva') return <Orb size={size} />;
+    if (source === 'econ') return <img src={asset('econ-symbol.png')} alt="e-conomic" style={{ width: size, height: size, objectFit: 'contain' }} />;
+    return <Icon name="chart-line" style={{ color: SOURCE_META.advisory.fg }} />;
+}
+
+function SourceBadge({ source }: { source: ViewSource }) {
+    const { t } = useLang();
+    const m = SOURCE_META[source];
+    return (
+        <span title={t(m.sub)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: m.bg, color: m.fg }}>
+            <SourceMark source={source} /> {t(m.label)}
+        </span>
+    );
+}
 
 interface Props {
     spaces: Space[];
@@ -36,6 +59,8 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
     const { t, lang } = useLang();
     const [gallery, setGallery] = useState(false);
     const [open, setOpen] = useState<Space | null>(null);
+    // Only EVA-created views count toward the free limit — integration views are included.
+    const evaCount = spaces.filter((s) => (s.source ?? 'eva') === 'eva').length;
 
     // Let the shell chat panel know which Space (if any) is open, so it can be contextual.
     useEffect(() => {
@@ -50,9 +75,9 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
             <PageHeader title={t('Views')} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New view')}</Button>} />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                 <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
-                    {spaces.length < FREE_SPACE_LIMIT
-                        ? (lang === 'da' ? `${spaces.length} af ${FREE_SPACE_LIMIT} gratis visninger brugt` : `${spaces.length} of ${FREE_SPACE_LIMIT} free views used`)
-                        : (lang === 'da' ? `${FREE_SPACE_LIMIT} gratis visninger brugt · ekstra visninger koster ${SPACE_PRICE} kr pr. stk.` : `${FREE_SPACE_LIMIT} free views used · extra views are ${SPACE_PRICE} kr each`)}
+                    {evaCount < FREE_SPACE_LIMIT
+                        ? (lang === 'da' ? `${evaCount} af ${FREE_SPACE_LIMIT} EVA-visninger brugt · integrationsvisninger er inkluderet` : `${evaCount} of ${FREE_SPACE_LIMIT} EVA views used · integration views included`)
+                        : (lang === 'da' ? `${FREE_SPACE_LIMIT} EVA-visninger brugt · ekstra koster ${SPACE_PRICE} kr pr. stk.` : `${FREE_SPACE_LIMIT} EVA views used · extra are ${SPACE_PRICE} kr each`)}
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 pb-10">
@@ -60,9 +85,10 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
                         <Card key={s.id} className="p-5 flex flex-col" hover onClick={() => setOpen(s)} style={{ minHeight: 150 }}>
                             <div className="flex items-start gap-3">
                                 <EmojiTile emoji={s.emoji} />
-                                <h3 className="text-base font-semibold leading-snug flex-1" style={{ color: COLORS.text }}>
-                                    {s.title}
-                                </h3>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-base font-semibold leading-snug" style={{ color: COLORS.text }}>{s.title}</h3>
+                                    <div className="mt-1.5"><SourceBadge source={s.source ?? 'eva'} /></div>
+                                </div>
                             </div>
                             <p className="text-sm mt-2 leading-relaxed" style={{ color: COLORS.textMuted }}>
                                 {s.description}
@@ -71,12 +97,11 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
                                 <span className="flex items-center gap-1.5 text-xs" style={{ color: COLORS.textMuted }}>
                                     <Icon name="calendar" /> {t('Updated')} {s.updated}
                                 </span>
-                                <span
-                                    className="rounded-md px-2 py-0.5 text-xs"
-                                    style={{ background: '#f1f1f3', color: COLORS.textMuted }}
-                                >
-                                    {s.messages} {t('messages')}
-                                </span>
+                                {s.messages > 0 && (
+                                    <span className="rounded-md px-2 py-0.5 text-xs" style={{ background: '#f1f1f3', color: COLORS.textMuted }}>
+                                        {s.messages} {t('messages')}
+                                    </span>
+                                )}
                             </div>
                         </Card>
                     ))}
@@ -107,9 +132,10 @@ function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
                 <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
                     <div className="flex items-start gap-3 mb-6">
                         <EmojiTile emoji={space.emoji} size={44} />
-                        <p className="text-sm mt-1.5 flex-1" style={{ color: COLORS.textMuted }}>
-                            {space.description}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                            <div className="mb-1.5"><SourceBadge source={space.source ?? 'eva'} /></div>
+                            <p className="text-sm" style={{ color: COLORS.textMuted }}>{space.description}</p>
+                        </div>
                     </div>
 
                     <ArtifactPreview space={space} />

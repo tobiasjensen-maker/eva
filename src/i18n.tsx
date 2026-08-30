@@ -832,6 +832,12 @@ const DA: Record<string, string> = {
     'All areas': 'Alle områder',
     'Clear filters': 'Ryd filtre',
     'of': 'af',
+    // Views — source of a view (EVA vs. integration)
+    'Created by EVA': 'Oprettet af EVA',
+    'Advisory Module': 'Rådgivningsmodul',
+    'You built this view with EVA': 'Du byggede denne visning med EVA',
+    'Comes with e-conomic — the system default': 'Følger med e-conomic — systemets standard',
+    'Comes with the Advisory Module': 'Følger med Rådgivningsmodulet',
     // Suggested routines (Routines page)
     'Suggested for you': 'Foreslået til dig',
     'Based on what EVA has been doing by hand': 'Baseret på hvad EVA har gjort manuelt',

@@ -21,6 +21,10 @@ export interface AgentMeta {
     color: string;
 }
 
+// Where a view came from: built by EVA, or pre-defined as part of an integration
+// (e-conomic is the system default; other modules ship their own views).
+export type ViewSource = 'eva' | 'econ' | 'advisory';
+
 export interface Space {
     id: string;
     title: string;
@@ -28,4 +32,5 @@ export interface Space {
     updated: string;
     messages: number;
     emoji: string;
+    source?: ViewSource; // undefined → treated as EVA-created
 }

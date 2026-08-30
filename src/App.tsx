@@ -309,7 +309,7 @@ export default function App() {
             : /budget|cost/.test(t)
             ? '💰'
             : '🗂️';
-        const space: Space = { id: `sp-${spaceSeq++}`, title, description, updated: 'Jun 4, 2026', messages: 1, emoji };
+        const space: Space = { id: `sp-${spaceSeq++}`, title, description, updated: 'Jun 4, 2026', messages: 1, emoji, source: 'eva' };
         setSpaces((prev) => [space, ...prev]);
         toast.success(`Created artifact “${title}”`);
     }

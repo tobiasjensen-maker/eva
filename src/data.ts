@@ -95,6 +95,7 @@ export const INITIAL_SKILLS: Skill[] = [
 ];
 
 export const INITIAL_SPACES: Space[] = [
+    // Built by EVA from a chat conversation
     {
         id: 'revenue',
         title: 'Revenue Dashboard',
@@ -102,7 +103,9 @@ export const INITIAL_SPACES: Space[] = [
         updated: 'Jan 20, 2025',
         messages: 12,
         emoji: '📊',
+        source: 'eva',
     },
+    // Pre-defined e-conomic views (the system default)
     {
         id: 'expense',
         title: 'Expense Report Form',
@@ -110,6 +113,7 @@ export const INITIAL_SPACES: Space[] = [
         updated: 'Jan 18, 2025',
         messages: 8,
         emoji: '🧾',
+        source: 'econ',
     },
     {
         id: 'invoice',
@@ -118,6 +122,35 @@ export const INITIAL_SPACES: Space[] = [
         updated: 'Jan 15, 2025',
         messages: 15,
         emoji: '📄',
+        source: 'econ',
+    },
+    // Views that ship with the Advisory Module
+    {
+        id: 'adv-health',
+        title: 'Portfolio Health Dashboard',
+        description: 'Risk, runway and margin signals across every client',
+        updated: 'Jan 22, 2025',
+        messages: 0,
+        emoji: '🩺',
+        source: 'advisory',
+    },
+    {
+        id: 'adv-risk',
+        title: 'Client Risk Report',
+        description: 'At-risk clients ranked by exposure and early-warning signs',
+        updated: 'Jan 22, 2025',
+        messages: 0,
+        emoji: '⚠️',
+        source: 'advisory',
+    },
+    {
+        id: 'adv-runway',
+        title: 'Liquidity Runway Monitor',
+        description: 'Projected cash runway per client, with sub-60-day alerts',
+        updated: 'Jan 22, 2025',
+        messages: 0,
+        emoji: '💧',
+        source: 'advisory',
     },
 ];
 
