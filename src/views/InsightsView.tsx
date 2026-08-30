@@ -504,17 +504,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Advisory')} right={<PeriodPicker value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} />} />
             <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
-                <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Advisory EVA surfaces across your book — proactive, per client, ready to act on.')}</p>
-
                 {/* KPI cards — the numbers at a glance */}
-                <p className="text-xs font-medium uppercase tracking-wide mb-2.5 flex items-center gap-2" style={{ color: COLORS.textMuted }}>
-                    {t('Overview')}
-                    {live && !liveLoading && liveData && (
-                        <span className="inline-flex items-center gap-1 normal-case tracking-normal" style={{ color: '#2f7d54' }}>
-                            <span className="rounded-full" style={{ width: 6, height: 6, background: '#22c55e' }} /> {t('Live · e-conomic')}
-                        </span>
-                    )}
-                </p>
                 {liveLoading ? (
                     <div className="flex items-center gap-2 py-12 justify-center text-sm mb-6" style={{ color: COLORS.textMuted }}>
                         <Icon name="refresh" className="animate-spin" /> {t('Loading from e-conomic…')}
