@@ -319,7 +319,7 @@ export default function App() {
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className="flex" style={{ height: '100vh', background: '#ececee', padding: 10, gap: 10 }}>
+        <div className="flex" style={{ height: '100vh', background: CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
                 className="flex flex-col shrink-0 rounded-2xl"
@@ -566,7 +566,7 @@ export default function App() {
             {/* Main content — floating */}
             <main
                 className="flex-grow overflow-hidden rounded-2xl"
-                style={{ background: CANVAS, border: `1px solid ${COLORS.cardBorder}`, boxShadow: panelShadow }}
+                style={{ background: view === 'chat' ? '#fff' : CANVAS }}
             >
                 {view === 'chat' && (
                     <ChatView
