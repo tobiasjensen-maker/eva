@@ -817,6 +817,7 @@ const DA: Record<string, string> = {
     'handled without you': 'håndteret uden dig',
     'Actions this month': 'Handlinger denne måned',
     'across {n} clients': 'på tværs af {n} klienter',
+    'for this client': 'for denne klient',
     '≈ 4 working weeks': '≈ 4 arbejdsuger',
     'Needs your review': 'Kræver din gennemgang',
     '{n} waiting on others': '{n} venter på andre',

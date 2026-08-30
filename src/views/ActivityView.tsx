@@ -765,6 +765,14 @@ const inRangeOf = (e: LogEntry, range: string) =>
 // Headline automation numbers for the Cockpit (curated, dashboard-scale).
 const COCKPIT_KPIS = { automatedPct: 94, actions: 1240, hoursSaved: 148, clients: 8 };
 
+// KPI figures for the Cockpit — portfolio-wide, or derived per client so the
+// headline numbers reflect whatever scope is being looked at.
+function cockpitStats(scope: string): { automatedPct: number; actions: number; hoursSaved: number; clients: number } {
+    if (scope === 'portfolio') return { ...COCKPIT_KPIS };
+    const h = [...scope].reduce((a, c) => a + c.charCodeAt(0), 0); // stable per-client variation
+    return { automatedPct: 82 + (h % 15), actions: 90 + (h % 11) * 12, hoursSaved: 10 + (h % 9) * 2, clients: 1 };
+}
+
 // Per-routine performance shown in the Cockpit's routines overview.
 const ROUTINE_OVERVIEW = [
     { name: 'Bank reconciliation', emoji: '🏦', automated: 94, actions: 612, hours: 71 },
@@ -807,11 +815,13 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
     const waiting = core.filter((e) => e.status === 'waiting');
     const recent = core.filter((e) => e.status === 'completed').sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time)).slice(0, 4);
     const needsCount = review.length;
+    const isPortfolio = scope === 'portfolio';
+    const stats = cockpitStats(scope);
 
     const kpis = [
-        { value: `${COCKPIT_KPIS.automatedPct}%`, label: t('Automated'), sub: t('handled without you'), color: '#16a34a', accent: false },
-        { value: nf(COCKPIT_KPIS.actions), label: t('Actions this month'), sub: t('across {n} clients').replace('{n}', String(COCKPIT_KPIS.clients)), color: COLORS.text, accent: false },
-        { value: `${COCKPIT_KPIS.hoursSaved} ${t('hrs')}`, label: t('Time saved'), sub: t('≈ 4 working weeks'), color: '#6366f1', accent: false },
+        { value: `${stats.automatedPct}%`, label: t('Automated'), sub: t('handled without you'), color: '#16a34a', accent: false },
+        { value: nf(stats.actions), label: t('Actions this month'), sub: isPortfolio ? t('across {n} clients').replace('{n}', String(stats.clients)) : t('for this client'), color: COLORS.text, accent: false },
+        { value: `${stats.hoursSaved} ${t('hrs')}`, label: t('Time saved'), sub: isPortfolio ? t('≈ 4 working weeks') : t('this month'), color: '#6366f1', accent: false },
         { value: String(needsCount), label: t('Needs your review'), sub: waiting.length ? t('{n} waiting on others').replace('{n}', String(waiting.length)) : t('nothing waiting'), color: '#b9842b', accent: true },
     ];
 
@@ -828,7 +838,7 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
             <PageHeader title={t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
             <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
                 <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>
-                    {t(clientName(scope))} · {t('{n} clients').replace('{n}', String(COCKPIT_KPIS.clients))} · {t('{n} routines running').replace('{n}', String(ROUTINE_OVERVIEW.length))} · {COCKPIT_KPIS.automatedPct}% {t('automated')}
+                    {t(clientName(scope))}{isPortfolio ? ` · ${t('{n} clients').replace('{n}', String(stats.clients))}` : ''} · {t('{n} routines running').replace('{n}', String(ROUTINE_OVERVIEW.length))} · {stats.automatedPct}% {t('automated')}
                 </p>
 
                 {/* automation KPIs */}
