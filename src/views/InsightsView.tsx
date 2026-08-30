@@ -516,14 +516,11 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                             : KPI_META.map((k, i) => ({ label: k.label, icon: k.icon, value: pd.kpis[i].value, delta: pd.kpis[i].delta, positive: pd.kpis[i].positive }))
                         ).map((c) => (
                             <Card key={c.label} className="p-4">
-                                <div className="flex items-start justify-between">
-                                    <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', color: '#52525b' }}>
-                                        <Icon name={c.icon as never} />
-                                    </span>
-                                    <span className="text-xs font-medium" style={{ color: c.positive ? '#2f7d54' : '#b9842b' }}>{t(c.delta)}</span>
+                                <div className="flex items-start justify-between gap-2">
+                                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(c.label)}</p>
+                                    <span className="text-xs font-medium shrink-0" style={{ color: c.positive ? '#2f7d54' : '#b9842b' }}>{t(c.delta)}</span>
                                 </div>
-                                <p className="text-xl font-semibold mt-2.5" style={{ color: COLORS.text }}>{c.value}</p>
-                                <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(c.label)}</p>
+                                <p className="text-xl font-semibold mt-1.5" style={{ color: COLORS.text }}>{c.value}</p>
                             </Card>
                         ))}
                     </div>
