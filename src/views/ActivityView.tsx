@@ -1,6 +1,6 @@
 import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, Orb, PageHeader, PeriodPicker, COLORS } from '../ui';
+import { Card, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
 import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
 
@@ -467,7 +467,7 @@ export default function ActivityView({
                                     <Orb size={15} /> {t(g.lane.label)} · {g.items.length}
                                 </div>
                             ) : (
-                                <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: '#fff' }}>
+                                <div className="sticky text-xs font-semibold uppercase tracking-wide py-2" style={{ top: 0, zIndex: 5, color: COLORS.textMuted, background: CANVAS }}>
                                     {t(g.lane.label)} · {g.items.length}
                                 </div>
                             )}
@@ -834,9 +834,7 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
     });
 
     return (
-        // Subtle canvas tint (lighter than the outer shell grey) so the white cards
-        // read as raised surfaces; the header stays white as a toolbar.
-        <div className="h-full overflow-y-auto" style={{ background: '#f7f8fa' }}>
+        <div className="h-full overflow-y-auto">
             <PageHeader title={t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
             <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
                 <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>

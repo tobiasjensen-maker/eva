@@ -297,7 +297,7 @@ export function PeriodPicker({ value, onChange, options }: { value: string; onCh
 // scrolls underneath while the CTAs stay visible.
 export function StickyFooter({ children }: { children: ReactNode }) {
     return (
-        <div className="shrink-0" style={{ background: '#fff', borderTop: `1px solid ${COLORS.cardBorder}` }}>
+        <div className="shrink-0" style={{ background: CANVAS, borderTop: `1px solid ${COLORS.cardBorder}` }}>
             <div className="mx-auto px-8 flex items-center justify-between gap-3" style={{ maxWidth: 1040, paddingTop: 12, paddingBottom: 12 }}>
                 {children}
             </div>
@@ -342,7 +342,7 @@ export function PageHeader({
     showScope?: boolean;
 }) {
     return (
-        <div className="sticky top-0 z-20" style={{ background: '#fff', borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+        <div className="sticky top-0 z-20" style={{ background: CANVAS }}>
             {/* flex-wrap: when title + pill + controls don't fit (e.g. longer Danish labels), controls wrap below instead of crushing the title */}
             <div className="mx-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 px-8 py-2" style={{ maxWidth, minHeight: 62 }}>
                 {onBack && (
@@ -368,6 +368,9 @@ export function PageHeader({
 
 // Shell background — the grey the floating panels sit on.
 export const SHELL_GREY = '#ececee';
+// Canvas tint inside the floating panels — a hair lighter than the shell so white
+// cards read as raised. Shared by the main panel and the (borderless) page header.
+export const CANVAS = '#f7f8fa';
 
 // A message in the assistant panel. `action` renders a button under an assistant reply.
 export interface PanelMsg {

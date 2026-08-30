@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button, Icon, useToast } from '@economic/taco';
 import {
     COLORS,
+    CANVAS,
     EconomicLogo,
     NodeMark,
     ProfileAvatar,
@@ -565,7 +566,7 @@ export default function App() {
             {/* Main content — floating */}
             <main
                 className="flex-grow overflow-hidden rounded-2xl"
-                style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}`, boxShadow: panelShadow }}
+                style={{ background: CANVAS, border: `1px solid ${COLORS.cardBorder}`, boxShadow: panelShadow }}
             >
                 {view === 'chat' && (
                     <ChatView
