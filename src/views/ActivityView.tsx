@@ -834,7 +834,9 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
     });
 
     return (
-        <div className="h-full overflow-y-auto">
+        // Subtle canvas tint (lighter than the outer shell grey) so the white cards
+        // read as raised surfaces; the header stays white as a toolbar.
+        <div className="h-full overflow-y-auto" style={{ background: '#f7f8fa' }}>
             <PageHeader title={t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
             <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
                 <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>
