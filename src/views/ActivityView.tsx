@@ -638,10 +638,10 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
 
 // Compact row for "waiting on someone else" items — the CTAs nudge or close the
 // loop (never "Accept", since the ball is in someone else's court).
-function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace }: { entry: LogEntry; reminded: boolean; onRemind: () => void; onReceived: () => void; onTrace: () => void }) {
+function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace, variant = 'card', last = false }: { entry: LogEntry; reminded: boolean; onRemind: () => void; onReceived: () => void; onTrace: () => void; variant?: 'card' | 'row'; last?: boolean }) {
     const { t } = useLang();
-    return (
-        <Card className="flex items-center gap-3 p-3.5">
+    const inner = (
+        <>
             <span title={`${SKILL_INFO[entry.skill]?.label ?? ''} · ${t('Waiting')}`} className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: `${STATUS_STYLE.waiting.fg}1a`, fontSize: 17 }}>
                 {SKILL_INFO[entry.skill]?.emoji ?? '•'}
             </span>
@@ -660,8 +660,12 @@ function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace }: { entry:
                 <Button onClick={onRemind}><Icon name="envelope" /> {t('Remind')}</Button>
             )}
             <Button appearance="primary" onClick={onReceived}><Icon name="circle-tick" /> {t('Mark resolved')}</Button>
-        </Card>
+        </>
     );
+    if (variant === 'row') {
+        return <div className="flex items-center gap-3 p-4" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>{inner}</div>;
+    }
+    return <Card className="flex items-center gap-3 p-3.5">{inner}</Card>;
 }
 
 // The trace — "what did you do and why", answerable in two clicks. The vision's
@@ -862,12 +866,11 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
                 {/* waiting on someone else */}
                 {waiting.length > 0 && (
                     <div className="mb-6">
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Waiting on someone else')} · {waiting.length}</p>
-                        <div className="flex flex-col gap-2">
-                            {waiting.map((e) => (
-                                <WaitingRow key={e.id} entry={e} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
+                        <SectionCard title={t('Waiting on someone else')} count={waiting.length}>
+                            {waiting.map((e, i) => (
+                                <WaitingRow key={e.id} entry={e} variant="row" last={i === waiting.length - 1} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
                             ))}
-                        </div>
+                        </SectionCard>
                     </div>
                 )}
 
@@ -1016,6 +1019,60 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                     ))
                 )}
             </div>
+            <ActivityModals doc={A.doc} trace={A.trace} onCloseDoc={() => A.setDoc(null)} onCloseTrace={() => A.setTrace(null)} />
+        </div>
+    );
+}
+
+// The advisory subset of the feed, as tables — EVA's flags & suggestions, plus
+// what's already been addressed. Embedded in the Advisory page.
+export function AdvisoryList({ entries, setEntries, scope = 'portfolio', onAskEva }: {
+    entries: LogEntry[];
+    setEntries: Dispatch<SetStateAction<LogEntry[]>>;
+    scope?: string;
+    onAskEva: (user: string, answer: string) => void;
+}) {
+    const { t } = useLang();
+    const A = useActivityActions(setEntries, onAskEva);
+    const client = scope === 'portfolio' ? 'all' : scope;
+    const adv = entries.filter((e) => isAdvisory(e) && (client === 'all' || e.client === client));
+    const flags = adv.filter((e) => e.status === 'needs-review' || e.status === 'failed')
+        .sort((a, b) => (Number(!!b.proactive) - Number(!!a.proactive)) || a.daysAgo - b.daysAgo || b.time.localeCompare(a.time));
+    const waiting = adv.filter((e) => e.status === 'waiting');
+    const done = adv.filter((e) => e.status === 'completed').sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time));
+
+    const rowProps = (e: LogEntry) => ({
+        open: A.expanded === e.id, acting: A.acting === e.id,
+        onToggle: () => A.setExpanded(A.expanded === e.id ? null : e.id),
+        onResolve: (action: string) => A.resolve(e.id, action),
+        onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
+        onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
+    });
+
+    return (
+        <div className="flex flex-col gap-6">
+            <SectionCard title={t('EVA flags & suggestions')} count={flags.length}>
+                {flags.length === 0 ? (
+                    <p className="text-sm text-center py-8" style={{ color: COLORS.textMuted }}>{t('Nothing flagged right now — EVA is watching your book. 🎉')}</p>
+                ) : (
+                    flags.map((e, i) => <LogRow key={e.id} entry={e} variant="row" last={i === flags.length - 1} {...rowProps(e)} />)
+                )}
+            </SectionCard>
+
+            {waiting.length > 0 && (
+                <SectionCard title={t('Waiting on someone else')} count={waiting.length}>
+                    {waiting.map((e, i) => (
+                        <WaitingRow key={e.id} entry={e} variant="row" last={i === waiting.length - 1} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
+                    ))}
+                </SectionCard>
+            )}
+
+            {done.length > 0 && (
+                <SectionCard title={t('What happened')} count={done.length}>
+                    {done.map((e, i) => <LogRow key={e.id} entry={e} variant="row" last={i === done.length - 1} {...rowProps(e)} />)}
+                </SectionCard>
+            )}
+
             <ActivityModals doc={A.doc} trace={A.trace} onCloseDoc={() => A.setDoc(null)} onCloseTrace={() => A.setTrace(null)} />
         </div>
     );

@@ -3,7 +3,7 @@ import { Button, Icon, BarChart } from '@economic/taco';
 import { Card, PageHeader, PeriodPicker, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { getAccounts, getCustomers, getInvoices } from '../eco';
-import ActivityView, { type LogEntry } from './ActivityView';
+import { AdvisoryList, type LogEntry } from './ActivityView';
 
 export const INSIGHTS_PRICE = 149; // kr / month
 
@@ -490,7 +490,6 @@ function useLiveInsights(enabled: boolean): LiveInsights | null | 'loading' {
 
 export default function InsightsView({ scope = 'portfolio', scopeName = 'All agreements', live = false, pro, onUpgrade, activity, setActivity, onAskEva }: Props) {
     const { t, lang } = useLang();
-    const [insTab, setInsTab] = useState<'advisory' | 'financial'>('advisory');
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const liveData = useLiveInsights(live);
     // Mock profile drives the (blurred) Deep-analysis section; live data, when present, drives the overview + chart.
@@ -503,148 +502,128 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
 
     return (
         <div className="h-full overflow-y-auto">
-                <PageHeader title={t('Advisory')} right={insTab === 'financial' ? <PeriodPicker value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} /> : undefined} />
-                {/* Insights tabs: Advisory (what to do about it) + Financial (the numbers) */}
-                <div className="mx-auto px-8 pt-4" style={{ maxWidth: 1040 }}>
-                    <div className="flex items-center gap-7" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                        {([['advisory', 'Advisory'], ['financial', 'Financial']] as const).map(([k, label]) => {
-                            const on = insTab === k;
-                            return (
-                                <button key={k} onClick={() => setInsTab(k)} className="relative" style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}>
-                                    {t(label)}
-                                    {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+            <PageHeader title={t('Advisory')} right={<PeriodPicker value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} />} />
+            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
+                <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{t('Advisory EVA surfaces across your book — proactive, per client, ready to act on.')}</p>
 
-                {insTab === 'advisory' && (
-                    <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
-                        <p className="text-sm mb-4" style={{ color: COLORS.textMuted }}>{t('Advisory EVA surfaces across your book — proactive, per client, ready to act on.')}</p>
-                        {activity && setActivity && onAskEva ? (
-                            <ActivityView kind="advisory" embedded entries={activity} setEntries={setActivity} status="all" onStatusChange={() => {}} scope={scope} onAskEva={onAskEva} />
-                        ) : (
-                            <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No advisory items right now.')}</p></Card>
-                        )}
-                    </div>
-                )}
-
-                {insTab === 'financial' && (
-                <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
-                    {/* upgrade banner */}
-                    {!pro && (
-                        <div className="rounded-2xl p-5 mb-6 flex items-center gap-4" style={{ background: 'linear-gradient(110deg, #2b283e 0%, #4a3d6b 100%)' }}>
-                            <span className="flex items-center justify-center shrink-0 rounded-xl" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', color: '#ed9b2c' }}>
-                                <Icon name="ai-stars" />
-                            </span>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white">{t('Unlock full Financial Insights')}</p>
-                                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                                    {lang === 'da'
-                                        ? `Dyb analyse af likviditet, marginer, afvigelser og prognoser for ${subjectLabel} — og EVA kan svare på analysespørgsmål direkte i chatten.`
-                                        : `Deep cash-flow, margin, anomaly and forecast analysis for ${subjectLabel} — plus EVA can answer analysis questions right in chat.`}
-                                </p>
-                            </div>
-                            <Button appearance="primary" onClick={onUpgrade}>{t('Upgrade')} · {INSIGHTS_PRICE} kr/{t('mo')}</Button>
-                        </div>
+                {/* KPI cards — the numbers at a glance */}
+                <p className="text-xs font-medium uppercase tracking-wide mb-2.5 flex items-center gap-2" style={{ color: COLORS.textMuted }}>
+                    {t('Overview')}
+                    {live && !liveLoading && liveData && (
+                        <span className="inline-flex items-center gap-1 normal-case tracking-normal" style={{ color: '#2f7d54' }}>
+                            <span className="rounded-full" style={{ width: 6, height: 6, background: '#22c55e' }} /> {t('Live · e-conomic')}
+                        </span>
                     )}
-
-                    {/* basic insights — always visible (free preview) */}
-                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5 flex items-center gap-2" style={{ color: COLORS.textMuted }}>
-                        {t('Overview')}
-                        {live && !liveLoading && liveData && (
-                            <span className="inline-flex items-center gap-1 normal-case tracking-normal" style={{ color: '#2f7d54' }}>
-                                <span className="rounded-full" style={{ width: 6, height: 6, background: '#22c55e' }} /> {t('Live · e-conomic')}
-                            </span>
-                        )}
-                    </p>
-                    {liveLoading ? (
-                        <div className="flex items-center gap-2 py-12 justify-center text-sm mb-4" style={{ color: COLORS.textMuted }}>
-                            <Icon name="refresh" className="animate-spin" /> {t('Loading from e-conomic…')}
-                        </div>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                {(liveData
-                                    ? liveData.cards
-                                    : KPI_META.map((k, i) => ({ label: k.label, icon: k.icon, value: pd.kpis[i].value, delta: pd.kpis[i].delta, positive: pd.kpis[i].positive }))
-                                ).map((c) => (
-                                    <Card key={c.label} className="p-4">
-                                        <div className="flex items-start justify-between">
-                                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', color: '#52525b' }}>
-                                                <Icon name={c.icon as never} />
-                                            </span>
-                                            <span className="text-xs font-medium" style={{ color: c.positive ? '#2f7d54' : '#b9842b' }}>{t(c.delta)}</span>
-                                        </div>
-                                        <p className="text-xl font-semibold mt-2.5" style={{ color: COLORS.text }}>{c.value}</p>
-                                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(c.label)}</p>
-                                    </Card>
-                                ))}
-                            </div>
-
-                            <Card className="p-5 mb-7">
-                                <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('Revenue trend')}</p>
-                                <p className="text-xs mb-4" style={{ color: COLORS.textMuted }}>{pd.chartSub}</p>
-                                <div className="va-chart" style={{ width: '100%', maxWidth: 760 }}>
-                                    <BarChart data={pd.chart} dataKey="month" showYAxis yAxisTickFormatter={(v) => `${(v as number) / 1000}M`} tooltipTitle={t('Revenue')}>
-                                        <BarChart.Bar dataKey="revenue" label={t('Revenue')} color="orange" formatter={(v) => `${v}k DKK`} />
-                                    </BarChart>
-                                </div>
-                            </Card>
-                        </>
-                    )}
-
-                    {/* premium insights */}
-                    <div className="flex items-center justify-between mb-2.5">
-                        <p className="text-xs font-medium uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Deep analysis')}</p>
-                        {!pro && (
-                            <span className="flex items-center gap-1 text-xs font-medium" style={{ color: '#92710f' }}>
-                                <Icon name="lock" /> Insights Pro
-                            </span>
-                        )}
+                </p>
+                {liveLoading ? (
+                    <div className="flex items-center gap-2 py-12 justify-center text-sm mb-6" style={{ color: COLORS.textMuted }}>
+                        <Icon name="refresh" className="animate-spin" /> {t('Loading from e-conomic…')}
                     </div>
-
-                    <div className="relative pb-10">
-                        <div
-                            className="grid grid-cols-2 gap-4"
-                            style={!pro ? { filter: 'blur(3.5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.65 } : undefined}
-                            aria-hidden={!pro}
-                        >
-                            {(liveReady ? LIVE_PREMIUM_META : PREMIUM_META).map((p) => (
-                                <Card key={p.key} className="p-5">
-                                    <div className="flex items-center gap-2.5 mb-3">
-                                        <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: '#f1f1f3', color: '#52525b' }}>
-                                            <Icon name={p.icon as never} />
-                                        </span>
-                                        <div>
-                                            <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{t(p.title)}</p>
-                                            <p className="text-xs leading-tight" style={{ color: COLORS.textMuted }}>{t(p.desc)}</p>
-                                        </div>
-                                    </div>
-                                    {liveReady ? renderLivePremium(p.key, liveReady.premium, t) : renderPremium(p.key, profile, t)}
-                                </Card>
-                            ))}
-                        </div>
-
-                        {!pro && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="rounded-2xl bg-white text-center px-7 py-6 anim-in" style={{ maxWidth: 380, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 16px 40px rgba(0,0,0,0.16)' }}>
-                                    <span className="flex items-center justify-center mx-auto rounded-xl" style={{ width: 46, height: 46, background: '#fbf3e0', color: '#b9842b' }}>
-                                        <Icon name="lock" />
+                ) : (
+                    <div className="grid grid-cols-4 gap-3 mb-6">
+                        {(liveData
+                            ? liveData.cards
+                            : KPI_META.map((k, i) => ({ label: k.label, icon: k.icon, value: pd.kpis[i].value, delta: pd.kpis[i].delta, positive: pd.kpis[i].positive }))
+                        ).map((c) => (
+                            <Card key={c.label} className="p-4">
+                                <div className="flex items-start justify-between">
+                                    <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#f1f1f3', color: '#52525b' }}>
+                                        <Icon name={c.icon as never} />
                                     </span>
-                                    <p className="text-base font-semibold mt-3" style={{ color: COLORS.text }}>{t('Unlock 6 deeper analyses')}</p>
-                                    <p className="text-sm mt-1.5" style={{ color: COLORS.textMuted }}>
-                                        {t('Cash flow, margins, expense breakdown, anomaly detection, forecasting and peer benchmarking — kept up to date automatically.')}
-                                    </p>
-                                    <Button appearance="primary" className="mt-4" onClick={onUpgrade}>{t('Upgrade for')} {INSIGHTS_PRICE} kr/{t('mo')}</Button>
-                                    <p className="text-xs mt-2.5" style={{ color: COLORS.textMuted }}>{t('Cancel anytime · also unlocks analysis in chat')}</p>
+                                    <span className="text-xs font-medium" style={{ color: c.positive ? '#2f7d54' : '#b9842b' }}>{t(c.delta)}</span>
                                 </div>
-                            </div>
-                        )}
+                                <p className="text-xl font-semibold mt-2.5" style={{ color: COLORS.text }}>{c.value}</p>
+                                <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(c.label)}</p>
+                            </Card>
+                        ))}
                     </div>
-                </div>
                 )}
+
+                {/* EVA flags & suggestions */}
+                {activity && setActivity && onAskEva && (
+                    <div className="mb-8"><AdvisoryList entries={activity} setEntries={setActivity} scope={scope} onAskEva={onAskEva} /></div>
+                )}
+
+                {/* revenue trend graph */}
+                {!liveLoading && (
+                    <Card className="p-5 mb-6">
+                        <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('Revenue trend')}</p>
+                        <p className="text-xs mb-4" style={{ color: COLORS.textMuted }}>{pd.chartSub}</p>
+                        <div className="va-chart" style={{ width: '100%', maxWidth: 760 }}>
+                            <BarChart data={pd.chart} dataKey="month" showYAxis yAxisTickFormatter={(v) => `${(v as number) / 1000}M`} tooltipTitle={t('Revenue')}>
+                                <BarChart.Bar dataKey="revenue" label={t('Revenue')} color="orange" formatter={(v) => `${v}k DKK`} />
+                            </BarChart>
+                        </div>
+                    </Card>
+                )}
+
+                {/* upgrade banner */}
+                {!pro && (
+                    <div className="rounded-2xl p-5 mb-6 flex items-center gap-4" style={{ background: 'linear-gradient(110deg, #2b283e 0%, #4a3d6b 100%)' }}>
+                        <span className="flex items-center justify-center shrink-0 rounded-xl" style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', color: '#ed9b2c' }}>
+                            <Icon name="ai-stars" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white">{t('Unlock full Financial Insights')}</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                                {lang === 'da'
+                                    ? `Dyb analyse af likviditet, marginer, afvigelser og prognoser for ${subjectLabel} — og EVA kan svare på analysespørgsmål direkte i chatten.`
+                                    : `Deep cash-flow, margin, anomaly and forecast analysis for ${subjectLabel} — plus EVA can answer analysis questions right in chat.`}
+                            </p>
+                        </div>
+                        <Button appearance="primary" onClick={onUpgrade}>{t('Upgrade')} · {INSIGHTS_PRICE} kr/{t('mo')}</Button>
+                    </div>
+                )}
+
+                {/* deep analysis graphs */}
+                <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-xs font-medium uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Deep analysis')}</p>
+                    {!pro && (
+                        <span className="flex items-center gap-1 text-xs font-medium" style={{ color: '#92710f' }}>
+                            <Icon name="lock" /> Insights Pro
+                        </span>
+                    )}
+                </div>
+
+                <div className="relative pb-2">
+                    <div
+                        className="grid grid-cols-2 gap-4"
+                        style={!pro ? { filter: 'blur(3.5px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.65 } : undefined}
+                        aria-hidden={!pro}
+                    >
+                        {(liveReady ? LIVE_PREMIUM_META : PREMIUM_META).map((p) => (
+                            <Card key={p.key} className="p-5">
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 32, height: 32, background: '#f1f1f3', color: '#52525b' }}>
+                                        <Icon name={p.icon as never} />
+                                    </span>
+                                    <div>
+                                        <p className="text-sm font-semibold leading-tight" style={{ color: COLORS.text }}>{t(p.title)}</p>
+                                        <p className="text-xs leading-tight" style={{ color: COLORS.textMuted }}>{t(p.desc)}</p>
+                                    </div>
+                                </div>
+                                {liveReady ? renderLivePremium(p.key, liveReady.premium, t) : renderPremium(p.key, profile, t)}
+                            </Card>
+                        ))}
+                    </div>
+
+                    {!pro && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="rounded-2xl bg-white text-center px-7 py-6 anim-in" style={{ maxWidth: 380, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 16px 40px rgba(0,0,0,0.16)' }}>
+                                <span className="flex items-center justify-center mx-auto rounded-xl" style={{ width: 46, height: 46, background: '#fbf3e0', color: '#b9842b' }}>
+                                    <Icon name="lock" />
+                                </span>
+                                <p className="text-base font-semibold mt-3" style={{ color: COLORS.text }}>{t('Unlock 6 deeper analyses')}</p>
+                                <p className="text-sm mt-1.5" style={{ color: COLORS.textMuted }}>
+                                    {t('Cash flow, margins, expense breakdown, anomaly detection, forecasting and peer benchmarking — kept up to date automatically.')}
+                                </p>
+                                <Button appearance="primary" className="mt-4" onClick={onUpgrade}>{t('Upgrade for')} {INSIGHTS_PRICE} kr/{t('mo')}</Button>
+                                <p className="text-xs mt-2.5" style={{ color: COLORS.textMuted }}>{t('Cancel anytime · also unlocks analysis in chat')}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

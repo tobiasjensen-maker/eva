@@ -832,6 +832,8 @@ const DA: Record<string, string> = {
     'All areas': 'Alle områder',
     'Clear filters': 'Ryd filtre',
     'of': 'af',
+    'EVA flags & suggestions': 'EVA-flag & forslag',
+    'Nothing flagged right now — EVA is watching your book. 🎉': 'Intet flaget lige nu — EVA holder øje med din forretning. 🎉',
     // Views — source of a view (EVA vs. integration)
     'Created by EVA': 'Oprettet af EVA',
     'Advisory Module': 'Rådgivningsmodul',
