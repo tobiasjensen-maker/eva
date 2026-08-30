@@ -832,6 +832,16 @@ const DA: Record<string, string> = {
     'All areas': 'Alle områder',
     'Clear filters': 'Ryd filtre',
     'of': 'af',
+    // Suggested routines (Routines page)
+    'Suggested for you': 'Foreslået til dig',
+    'Based on what EVA has been doing by hand': 'Baseret på hvad EVA har gjort manuelt',
+    '~5 hrs / close': '~5 t / afslutning',
+    '~4 hrs / mo': '~4 t / md.',
+    '~2 hrs / quarter': '~2 t / kvartal',
+    'EVA chased 5 missing receipts by hand this week across 3 clients.': 'EVA rykkede for 5 manglende bilag manuelt i denne uge på tværs af 3 klienter.',
+    'Month-end is coming up for Nordic Build and 2 more — prep the checklist.': 'Månedsafslutning nærmer sig for Nordic Build og 2 mere — forbered tjeklisten.',
+    'An unusual 14.900 kr card charge slipped through — a policy check would catch these.': 'En usædvanlig kortpostering på 14.900 kr slap igennem — et politiktjek ville fange dem.',
+    'You reconciled Q4 VAT documentation by hand — automate it before filing.': 'Du afstemte Q4-momsdokumentation manuelt — automatisér det før indberetning.',
     // Onboarding portfolio brief
     "Welcome! I'm EVA — I've just been through your whole portfolio. Across your 8 clients (4,80 mio. kr revenue) you have 214.500 kr overdue and 3 things worth a look first: Café Solsikke’s cash runway is under 2 months, Nordic Build ApS has your largest overdue exposure, and there’s an unusual 14.900 kr charge at Office Supplies Co. Where would you like to start?":
         'Velkommen! Jeg er EVA — jeg har lige været igennem hele din portefølje. På tværs af dine 8 klienter (4,80 mio. kr i omsætning) er der 214.500 kr forfaldent og 3 ting værd at se på først: Café Solsikkes likviditet rækker under 2 måneder, Nordic Build ApS har din største forfaldne eksponering, og der er en usædvanlig postering på 14.900 kr hos Office Supplies Co. Hvor vil du gerne starte?',

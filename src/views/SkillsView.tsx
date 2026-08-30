@@ -127,36 +127,14 @@ const skillCount = (c: Capability): number => capSkills(c).length;
 // A connector's live connection status once installed.
 type ConnStatus = 'connected' | 'off' | 'lost';
 
-// ---- Performance tab — how much EVA is automating, time saved, breakdown by job ----
-const PERF = {
-    automatedPct: 82,
-    hoursSaved: 148,
-    actions: 1240,
-    reviewRate: 8,
-    // Core jobs to be done — actions handled, hours saved, share fully automated.
-    jobs: [
-        { name: 'Bank reconciliation', actions: 612, hours: 71, pct: 94 },
-        { name: 'Payment reminders', actions: 318, hours: 22, pct: 99 },
-        { name: 'Document collection', actions: 142, hours: 18, pct: 78 },
-        { name: 'Client monitoring', actions: 96, hours: 24, pct: 61 },
-        { name: 'Anomaly detection', actions: 48, hours: 9, pct: 42 },
-        { name: 'Period close', actions: 24, hours: 4, pct: 70 },
-    ],
-    extra: [
-        { label: 'Avg. confidence', value: '91%' },
-        { label: 'Auto-resolved', value: '1,032' },
-        { label: 'Active flows', value: '4' },
-        { label: 'Clients covered', value: '8' },
-    ],
-    // What EVA could take over but isn't yet — surfaced to drive adoption.
-    untappedHours: 18,
-    opportunities: [
-        { name: 'Match supplier payments', saving: '~6 hrs / mo', note: 'Still matched by hand across 5 clients.', kind: 'flow' as const },
-        { name: 'Prepare VAT settlements', saving: '~4 hrs / quarter', note: 'EVA can draft and pre-check before you file.', kind: 'flow' as const },
-        { name: 'Chase missing documents', saving: '~3 hrs / mo', note: 'Only partly automated for 3 clients.', kind: 'flow' as const },
-        { name: 'Forecast client liquidity', saving: '~5 hrs / mo', note: 'Needs the Budget123 capability installed.', kind: 'capability' as const },
-    ],
-};
+// ---- Suggested routines — surfaced from what EVA has been doing by hand in the
+// activity feed. Each maps to a template the firm can set up in one click.
+const SUGGESTED_ROUTINES: { id: string; note: string; saving: string }[] = [
+    { id: 't-receipts', note: 'EVA chased 5 missing receipts by hand this week across 3 clients.', saving: '~3 hrs / mo' },
+    { id: 't-close', note: 'Month-end is coming up for Nordic Build and 2 more — prep the checklist.', saving: '~5 hrs / close' },
+    { id: 't-firmakort', note: 'An unusual 14.900 kr card charge slipped through — a policy check would catch these.', saving: '~4 hrs / mo' },
+    { id: 't-vatrecon', note: 'You reconciled Q4 VAT documentation by hand — automate it before filing.', saving: '~2 hrs / quarter' },
+];
 
 // ---- Flow templates shown in the "Create New Flow" modal ----
 interface FlowTemplate {
@@ -414,6 +392,8 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     // Installed flows: the doc-based pre-installed set, plus anything created/trialled this session.
     const [localFlows, setLocalFlows] = useState<LocalFlow[]>(() => preinstalledFlows());
     const [trials, setTrials] = useState<Set<string>>(new Set());
+    // A suggested template to open the "Create routine" modal straight onto.
+    const [preselect, setPreselect] = useState<string | null>(null);
 
     // Flows created from chat ("Automate this") arrive as custom-* skills on the App.
     const customFlows: LocalFlow[] = skills
@@ -421,6 +401,13 @@ export default function AutomationsView({ skills, onEnable }: Props) {
         .map((s) => ({ skill: s, seed: { starter: 'schedule', conditions: [], steps: [] } }));
     const flows = [...localFlows, ...customFlows];
     const allFlows = flows.map((f) => f.skill);
+
+    // Suggestions EVA surfaces — hide any whose routine is already set up.
+    const suggestions = SUGGESTED_ROUTINES.filter((s) => {
+        const tpl = FLOW_TEMPLATES.find((tp) => tp.id === s.id);
+        return tpl && !flows.some((f) => f.skill.title === tpl.title);
+    });
+    const openSuggested = (id: string) => { setPreselect(id); setNewFlow(true); };
 
     // Which installed connectors exist (any status) — used to gate routine templates.
     const installedCaps = useMemo(() => new Set(Object.keys(connStatus)), [connStatus]);
@@ -509,27 +496,36 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                 </div>
 
                 {tab === 'flows' && (
-                    <>
-                        <div className="mb-6"><PerfKpis /></div>
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('Your routines')}</p>
+                    <div className="flex flex-col gap-6 pb-10">
+                        {/* Suggested routines, drawn from what EVA has been doing by hand */}
+                        {suggestions.length > 0 && (
+                            <SectionCard title={t('Suggested for you')} count={suggestions.length} sub={t('Based on what EVA has been doing by hand')}>
+                                {suggestions.map((s, i) => {
+                                    const tpl = FLOW_TEMPLATES.find((tp) => tp.id === s.id)!;
+                                    return <SuggestedRow key={s.id} tpl={tpl} note={s.note} saving={s.saving} last={i === suggestions.length - 1} onSetUp={() => openSuggested(s.id)} />;
+                                })}
+                            </SectionCard>
+                        )}
+
                         {allFlows.length === 0 ? (
                             <Card className="p-10 text-center">
                                 <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No routines set up yet. Start one from a template.')}</p>
                             </Card>
                         ) : (
-                            <div className="flex flex-col gap-3 pb-10">
-                                {flows.map((f) => (
-                                    <FlowRow
+                            <SectionCard title={t('Your routines')} count={allFlows.length}>
+                                {flows.map((f, i) => (
+                                    <RoutineRow
                                         key={f.skill.id}
                                         skill={f.skill}
                                         trial={trials.has(f.skill.id)}
                                         capLabel={f.capId ? CAPABILITIES.find((c) => c.id === f.capId)?.name ?? '' : 'e-conomic'}
+                                        last={i === flows.length - 1}
                                         onOpen={() => setOpenId(f.skill.id)}
                                     />
                                 ))}
-                            </div>
+                            </SectionCard>
                         )}
-                    </>
+                    </div>
                 )}
 
                 {tab === 'capabilities' && (
@@ -550,9 +546,10 @@ export default function AutomationsView({ skills, onEnable }: Props) {
             {newFlow && (
                 <NewFlowModal
                     installed={installedCaps}
+                    preselectId={preselect}
                     onScratch={createScratch}
                     onStartTrial={startTrial}
-                    onClose={() => setNewFlow(false)}
+                    onClose={() => { setNewFlow(false); setPreselect(null); }}
                 />
             )}
 
@@ -815,26 +812,35 @@ function OfficeView() {
     );
 }
 
-// Headline KPI cards, shared by the Performance tab and the top of Flows.
-function PerfKpis() {
-    const { t, lang } = useLang();
-    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
-    const kpis = [
-        { value: `${PERF.automatedPct}%`, label: t('Automated'), sub: t('of all actions handled without you'), accent: '#16a34a' },
-        { value: `${PERF.hoursSaved} ${t('hrs')}`, label: t('Time saved'), sub: t('this quarter · ≈ 4 working weeks'), accent: '#6366f1' },
-        { value: nf(PERF.actions), label: t('Actions taken'), sub: t('across 8 clients'), accent: COLORS.text },
-        { value: `${PERF.reviewRate}%`, label: t('Flagged for review'), sub: t('needed your input'), accent: '#b9842b' },
-    ];
+// A titled container with stacked rows — matches the Cockpit's "Needs your review" table.
+function SectionCard({ title, count, sub, action, children }: { title: string; count?: number; sub?: string; action?: ReactNode; children: ReactNode }) {
     return (
-        <div className="grid grid-cols-4 gap-3">
-            {kpis.map((k) => (
-                <Card key={k.label} className="p-4">
-                    <p className="text-2xl font-semibold leading-none" style={{ color: k.accent }}>{k.value}</p>
-                    <p className="text-sm font-medium mt-2" style={{ color: COLORS.text }}>{k.label}</p>
-                    <p className="text-xs mt-0.5 leading-snug" style={{ color: COLORS.textMuted }}>{k.sub}</p>
-                </Card>
-            ))}
-        </div>
+        <Card className="overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <div>
+                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{title}{count !== undefined ? ` · ${count}` : ''}</p>
+                    {sub && <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{sub}</p>}
+                </div>
+                {action}
+            </div>
+            {children}
+        </Card>
+    );
+}
+
+// A suggested-routine row inside the Suggested container.
+function SuggestedRow({ tpl, note, saving, last, onSetUp }: { tpl: FlowTemplate; note: string; saving: string; last?: boolean; onSetUp: () => void }) {
+    const { t } = useLang();
+    return (
+        <button onClick={onSetUp} className="w-full flex items-center gap-3 p-4 text-left" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+            <EmojiTile emoji={tpl.emoji} size={36} />
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t(tpl.title)}</p>
+                <p className="text-xs mt-0.5 leading-snug" style={{ color: COLORS.textMuted }}>{t(note)}</p>
+            </div>
+            <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#eef7ef', color: '#15803d' }}>{t(saving)}</span>
+            <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
+        </button>
     );
 }
 
@@ -1105,8 +1111,8 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
     );
 }
 
-// Full-width flow row: icon, title, its own automation stat, status, open.
-function FlowRow({ skill, trial, capLabel, onOpen }: { skill: Skill; trial?: boolean; capLabel?: string; onOpen: () => void }) {
+// A routine row inside the "Your routines" container — matches the Cockpit rows.
+function RoutineRow({ skill, trial, capLabel, last, onOpen }: { skill: Skill; trial?: boolean; capLabel?: string; last?: boolean; onOpen: () => void }) {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const active = skill.state === 'active';
@@ -1116,18 +1122,11 @@ function FlowRow({ skill, trial, capLabel, onOpen }: { skill: Skill; trial?: boo
         ? `${p.pct}% ${t('automated')} · ${nf(p.actions)} ${t('actions')} · ${p.hours} ${t('hrs')} ${t('saved')}`
         : t('No runs yet');
     return (
-        <Card className="px-4 py-3.5 flex items-center gap-4" hover onClick={onOpen}>
+        <button onClick={onOpen} className="w-full flex items-center gap-3 p-4 text-left" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
             <EmojiTile emoji={skill.emoji} size={36} />
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{t(skill.title)}</p>
-                <div className="flex items-center gap-2.5 mt-1">
-                    {p && (
-                        <span className="rounded-full" style={{ width: 64, height: 6, background: '#f1f1f3', display: 'inline-block', position: 'relative' }}>
-                            <span className="rounded-full" style={{ position: 'absolute', left: 0, top: 0, height: 6, width: `${p.pct}%`, background: p.pct >= 80 ? '#16a34a' : p.pct >= 60 ? '#6366f1' : '#b9842b' }} />
-                        </span>
-                    )}
-                    <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{perfLine}</p>
-                </div>
+                <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(skill.title)}</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{perfLine}</p>
             </div>
             {capLabel && (
                 <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: partner ? '#f3f0fb' : '#fff7ed', color: partner ? '#7c3aed' : '#b9842b' }}>{capLabel}</span>
@@ -1141,7 +1140,7 @@ function FlowRow({ skill, trial, capLabel, onOpen }: { skill: Skill; trial?: boo
                 </span>
             )}
             <Icon name="chevron-right" style={{ color: '#c4c4cc' }} />
-        </Card>
+        </button>
     );
 }
 
@@ -1793,9 +1792,9 @@ function MarketFilters({ query, onQuery, cat, onCat, categories, placeholder }: 
     );
 }
 
-function NewFlowModal({ installed, onScratch, onStartTrial, onClose }: { installed: Set<string>; onScratch: () => void; onStartTrial: (tpl: FlowTemplate) => void; onClose: () => void }) {
+function NewFlowModal({ installed, preselectId, onScratch, onStartTrial, onClose }: { installed: Set<string>; preselectId?: string | null; onScratch: () => void; onStartTrial: (tpl: FlowTemplate) => void; onClose: () => void }) {
     const { t, lang } = useLang();
-    const [sel, setSel] = useState<FlowTemplate | null>(null);
+    const [sel, setSel] = useState<FlowTemplate | null>(() => (preselectId ? FLOW_TEMPLATES.find((tp) => tp.id === preselectId) ?? null : null));
     const [query, setQuery] = useState('');
     const [cat, setCat] = useState('All');
     const host = CAPABILITIES.find((c) => c.id === 'economic')!;

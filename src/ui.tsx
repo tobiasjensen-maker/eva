@@ -365,13 +365,11 @@ export function PageHeader({
     );
 }
 
-// Shell background — the soft grey the floating side panels sit on (also the
-// main content, which shares it).
+// Shell background — the soft grey the floating side panels (sidebar + EVA) sit on.
 export const SHELL_GREY = '#f2f3f5';
-// The main content shares the shell grey — it no longer floats (only the sidebar
-// and the EVA panel do). The borderless page header/footer sit on the same grey,
-// so white cards read as the raised surfaces.
-export const CANVAS = SHELL_GREY;
+// The main content — a lighter near-white the borderless page header/footer share,
+// so it reads as a brighter canvas without floating (no border or shadow).
+export const CANVAS = '#fafafa';
 
 // A message in the assistant panel. `action` renders a button under an assistant reply.
 export interface PanelMsg {
