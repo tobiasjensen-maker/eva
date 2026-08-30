@@ -365,10 +365,9 @@ export function PageHeader({
     );
 }
 
-// Shell background — the soft grey the floating side panels (sidebar + EVA) sit on.
-export const SHELL_GREY = '#f2f3f5';
-// The main content — a lighter near-white the borderless page header/footer share,
-// so it reads as a brighter canvas without floating (no border or shadow).
+// The single app background — used by BOTH the outer shell and the main content,
+// which must always match (the sidebar + EVA panel are the only floating surfaces).
+// One token so the two can never drift apart.
 export const CANVAS = '#fafafa';
 
 // A message in the assistant panel. `action` renders a button under an assistant reply.

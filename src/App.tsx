@@ -3,7 +3,6 @@ import { Button, Icon, useToast } from '@economic/taco';
 import {
     COLORS,
     CANVAS,
-    SHELL_GREY,
     EconomicLogo,
     NodeMark,
     ProfileAvatar,
@@ -320,7 +319,7 @@ export default function App() {
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className="flex" style={{ height: '100vh', background: SHELL_GREY, padding: 10, gap: 10 }}>
+        <div className="flex" style={{ height: '100vh', background: CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
                 className="flex flex-col shrink-0 rounded-2xl"
