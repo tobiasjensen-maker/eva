@@ -9,6 +9,7 @@ import {
     ReviewIcon,
     InsightsIcon,
     RoutinesIcon,
+    TasksIcon,
     SpacesIcon,
     CustomersIcon,
     SidebarTooltip,
@@ -23,6 +24,7 @@ import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, CockpitView, ActivityFeedView } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
+import TaskManagementView, { tasksAnswer } from './views/TaskManagementView';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
@@ -48,6 +50,7 @@ const WELCOME_MSG =
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
     { id: 'activity', label: 'Cockpit', Icon: ReviewIcon },
+    { id: 'tasks', label: 'Task Management', Icon: TasksIcon },
     { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
@@ -55,12 +58,12 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'spaces', label: 'Views', Icon: SpacesIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'activitylog', 'skills', 'spaces', 'customers'];
+const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', activitylog: 'activity', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', activity: 'activitylog', tasks: 'tasks', praksis: 'tasks', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -226,7 +229,14 @@ export default function App() {
     // The contextual EVA chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
-        view === 'activity' || view === 'activitylog'
+        view === 'tasks'
+            ? {
+                  subtitle: 'practice assistant',
+                  intro: "I'm EVA. Ask me what's overdue across the office, who's overloaded, or what's due this week.",
+                  chips: ['What’s overdue across the office?', 'Who has the most on their plate?', 'What’s due this week?'],
+                  respond: (q: string) => tasksAnswer(q, lang),
+              }
+        : view === 'activity' || view === 'activitylog'
             ? {
                   subtitle: 'review assistant',
                   intro: "I'm EVA. Ask me about your review queue — or hit “Ask EVA” on a flagged item and I'll explain my thinking.",
@@ -612,6 +622,7 @@ export default function App() {
                         onBack={() => goView('activity')}
                     />
                 )}
+                {view === 'tasks' && <TaskManagementView />}
                 {view === 'customers' && <CustomersView />}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}

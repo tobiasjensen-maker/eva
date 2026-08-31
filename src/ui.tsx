@@ -688,6 +688,17 @@ export function SkillsIcon({ active }: { active: boolean }) {
     );
 }
 
+// A checklist — the AO-house task overview.
+export function TasksIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <path d="M3.5 6.4l1.5 1.5 2.6-2.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M3.5 16.4l1.5 1.5 2.6-2.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M11 6.7h9.5M11 16.7h9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 export function SpacesIcon({ active }: { active: boolean }) {
     return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>

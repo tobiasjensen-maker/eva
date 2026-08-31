@@ -1,4 +1,4 @@
-export type ViewId = 'chat' | 'insights' | 'activity' | 'activitylog' | 'skills' | 'spaces' | 'customers';
+export type ViewId = 'chat' | 'insights' | 'activity' | 'activitylog' | 'tasks' | 'skills' | 'spaces' | 'customers';
 
 export type SkillState = 'active' | 'idle' | 'locked';
 
