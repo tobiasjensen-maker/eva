@@ -10,7 +10,7 @@ import { useLang } from '../i18n';
 // following what EVA did is a first-class part of that overview.
 
 // Human statuses + EVA's own states (running / drafted-for-review / auto-done).
-type TStatus = 'todo' | 'in-progress' | 'waiting' | 'review' | 'done' | 'eva-running' | 'eva-review' | 'eva-done';
+type TStatus = 'todo' | 'in-progress' | 'waiting' | 'review' | 'done' | 'eva-scheduled' | 'eva-running' | 'eva-review' | 'eva-done';
 type TPriority = 'high' | 'medium' | 'low';
 type Bucket = 'overdue' | 'today' | 'week' | 'later';
 const isEva = (s: TStatus) => s.startsWith('eva-');
@@ -24,6 +24,7 @@ interface Task {
     bucket: Bucket;
     status: TStatus;
     priority: TPriority;
+    evaWhen?: string;   // when EVA is scheduled to run it (eva-scheduled)
 }
 
 const ME = 'Tobias Holm Jensen'; // the logged-in accountant (matches the sidebar profile)
@@ -36,6 +37,7 @@ const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; dot: str
     'waiting': { label: 'Waiting on client', bg: '#fbf3e0', fg: '#92710f', dot: '#b9842b' },
     'review': { label: 'In review', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'done': { label: 'Done', bg: '#e9f7ef', fg: '#15803d', dot: '#16a34a' },
+    'eva-scheduled': { label: 'Scheduled by EVA', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'eva-running': { label: 'EVA working', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'eva-review': { label: 'EVA drafted — review', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'eva-done': { label: 'Auto-completed by EVA', bg: '#eef7ef', fg: '#15803d', dot: '#16a34a' },
@@ -55,8 +57,8 @@ const BUCKETS: { key: Bucket; label: string }[] = [
 const dueColor = (b: Bucket) => (b === 'overdue' ? '#dc2626' : b === 'today' ? '#b9842b' : COLORS.textMuted);
 
 let seq = 0;
-const T = (title: string, company: string, accountant: string, dueLabel: string, bucket: Bucket, status: TStatus, priority: TPriority): Task =>
-    ({ id: `t${seq++}`, title, company, accountant, dueLabel, bucket, status, priority });
+const T = (title: string, company: string, accountant: string, dueLabel: string, bucket: Bucket, status: TStatus, priority: TPriority, evaWhen?: string): Task =>
+    ({ id: `t${seq++}`, title, company, accountant, dueLabel, bucket, status, priority, evaWhen });
 
 const TASKS: Task[] = [
     // EVA has drafted these and handed them back for sign-off
@@ -67,6 +69,10 @@ const TASKS: Task[] = [
     T('Missing receipts (5)', 'Tech Equipment AS', ME, 'Overdue 3 days', 'overdue', 'eva-running', 'medium'),
     T('Debtor follow-up', 'Bryg & Co ApS', 'Jonas Vestergaard', 'In 2 days', 'week', 'eva-running', 'low'),
     T('Month-end close', 'Fjord Fitness', 'Anders Holm', 'In 6 days', 'week', 'eva-running', 'medium'),
+    // EVA has these scheduled to run soon
+    T('Bank reconciliation', 'Café Solsikke', ME, 'Tonight', 'today', 'eva-scheduled', 'medium', 'Tonight at 22:00'),
+    T('VAT return — Q1', 'Cloud Hosting Ltd', ME, 'Tomorrow', 'week', 'eva-scheduled', 'high', 'Tomorrow at 06:00'),
+    T('Payroll run — June', 'Aarhus Tandklinik', 'Camilla Berg', 'In 2 days', 'week', 'eva-scheduled', 'medium', 'Fri at 06:00'),
     // EVA already completed these autonomously
     T('Bank reconciliation', 'Nordic Build ApS', ME, 'Done yesterday', 'week', 'eva-done', 'low'),
     T('Missing receipts (3)', 'Lys Design', 'Sofie Lund', 'Done today', 'today', 'eva-done', 'medium'),
@@ -97,6 +103,19 @@ function evaStepsFor(title: string): string[] {
     if (s.includes('close')) return ['Ran completeness checks', 'Reconciled the control accounts', 'Generated the close checklist', 'Flagged 2 items for review'];
     if (s.includes('payroll')) return ['Gathered hours and salaries', 'Ran the payroll calculation', 'Prepared the journals', 'Validated — 0 discrepancies'];
     return ['Read the source data', 'Completed the task', 'Prepared it for your review'];
+}
+// What EVA specifically needs the accountant to check on a drafted task.
+function evaFlagFor(title: string): string {
+    const s = title.toLowerCase();
+    if (s.includes('vat return')) return 'One VAT line looks unusual (reverse-charge on an EU purchase) — confirm it before I file to SKAT.';
+    if (s.includes('vat')) return 'Two VAT codes don’t reconcile by 340 kr — check before filing.';
+    if (s.includes('bank')) return '8 of 150 transactions couldn’t be matched automatically — take a look before I book them.';
+    if (s.includes('receipt')) return 'The client still hasn’t sent 2 of the receipts — decide whether to book without them.';
+    if (s.includes('debtor') || s.includes('reminder')) return 'One customer is in a payment dispute — confirm before the reminder goes out.';
+    if (s.includes('supplier') || s.includes('invoice')) return 'The amount is 12% above the usual for this supplier — confirm it’s correct.';
+    if (s.includes('close')) return '2 accruals need your judgement before the period can be locked.';
+    if (s.includes('payroll')) return 'One employee’s hours changed vs. last month — confirm before I run it.';
+    return 'Review my work and approve, or take it over.';
 }
 function evaDoingFor(title: string): string {
     const s = title.toLowerCase();
@@ -179,6 +198,7 @@ export default function TaskManagementView() {
 
     const evaReview = all.filter((x) => x.status === 'eva-review');
     const evaRunning = all.filter((x) => x.status === 'eva-running');
+    const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
     const evaDone = all.filter((x) => x.status === 'eva-done');
 
     // --- overview KPIs (on the perspective's scope) ---
@@ -244,9 +264,7 @@ export default function TaskManagementView() {
                                         <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
                                         <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{x.company} · <span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span></p>
                                     </div>
-                                    <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See what EVA did')}</button>
-                                    <Button onClick={() => setStatus(x.id, 'review')}>{t('Take over')}</Button>
-                                    <Button appearance="primary" onClick={() => approve(x.id)}><Icon name="circle-tick" /> {t('Approve')}</Button>
+                                    <Button appearance="primary" onClick={() => setTrace(x)}>{t('Review')}</Button>
                                 </div>
                             ))}
                         </SectionCard>
@@ -264,6 +282,23 @@ export default function TaskManagementView() {
                                     </div>
                                     <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE }}><span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> {t('Working')}</span>
                                     <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('Follow')}</button>
+                                </div>
+                            ))}
+                        </SectionCard>
+                    )}
+
+                    {/* EVA has these scheduled to run soon */}
+                    {evaScheduled.length > 0 && (
+                        <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled by EVA')}</span></span>} count={evaScheduled.length}>
+                            {evaScheduled.map((x, i) => (
+                                <div key={x.id} className="flex items-center gap-3 p-4" style={i === evaScheduled.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                    <ClientAvatar name={x.company} size={30} />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
+                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{x.company} · <span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA will run this')}</span></p>
+                                    </div>
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE }}><Icon name="time" /> {x.evaWhen}</span>
+                                    <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See plan')}</button>
                                 </div>
                             ))}
                         </SectionCard>
@@ -390,7 +425,7 @@ function EvaTraceModal({ task, onClose, onApprove, onSendBack }: { task: Task; o
                     <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
                 </div>
                 <div className="px-5 py-4">
-                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t('What EVA did')}</p>
+                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t(task.status === 'eva-scheduled' ? 'What EVA will do' : 'What EVA did')}</p>
                     <ol className="flex flex-col gap-2">
                         {steps.map((s, i) => (
                             <li key={i} className="flex items-start gap-2.5">
@@ -399,6 +434,15 @@ function EvaTraceModal({ task, onClose, onApprove, onSendBack }: { task: Task; o
                             </li>
                         ))}
                     </ol>
+                    {task.status === 'eva-review' && (
+                        <div className="rounded-lg p-3 mt-4 flex items-start gap-2.5" style={{ background: '#fbf3e0', border: '1px solid #efdcb0' }}>
+                            <span className="shrink-0" style={{ color: '#b9842b' }}><Icon name="circle-warning" /></span>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#92710f' }}>{t('Needs your review')}</p>
+                                <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(evaFlagFor(task.title))}</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="px-5 py-4 flex items-center justify-between gap-2" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Full trace · you can always see what EVA did')}</span>
