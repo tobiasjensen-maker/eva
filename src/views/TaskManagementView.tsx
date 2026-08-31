@@ -212,13 +212,13 @@ export default function TaskManagementView() {
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Cockpit')} showScope={false} right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>} />
+            <PageHeader
+                title={t('Cockpit')}
+                showScope={false}
+                badge={<SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />}
+                right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>}
+            />
             <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
-                {/* perspective — my work vs. the whole practice */}
-                <div className="mb-5">
-                    <SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />
-                </div>
-
                 {/* overview KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
                     {kpis.map((k) => {
