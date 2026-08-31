@@ -26,7 +26,8 @@ interface Task {
     priority: TPriority;
 }
 
-const ACCOUNTANTS = ['Mette Sørensen', 'Jonas Vestergaard', 'Sofie Lund', 'Anders Holm', 'Camilla Berg'];
+const ME = 'Tobias Holm Jensen'; // the logged-in accountant (matches the sidebar profile)
+const ACCOUNTANTS = [ME, 'Mette Sørensen', 'Jonas Vestergaard', 'Sofie Lund', 'Anders Holm', 'Camilla Berg'];
 const COMPANIES = ['Nordic Build ApS', 'Café Solsikke', 'Tech Equipment AS', 'Office Supplies Co', 'Digital Marketing Pro', 'Cloud Hosting Ltd', 'Bryg & Co ApS', 'Lys Design', 'Fjord Fitness', 'Aarhus Tandklinik'];
 
 const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; dot: string }> = {
@@ -59,27 +60,27 @@ const T = (title: string, company: string, accountant: string, dueLabel: string,
 
 const TASKS: Task[] = [
     // EVA has drafted these and handed them back for sign-off
-    T('VAT return — Q1', 'Nordic Build ApS', 'Mette Sørensen', 'Due today', 'today', 'eva-review', 'high'),
+    T('VAT return — Q1', 'Nordic Build ApS', ME, 'Due today', 'today', 'eva-review', 'high'),
+    T('Supplier invoice approval', 'Digital Marketing Pro', ME, 'Today', 'today', 'eva-review', 'medium'),
     T('Bank reconciliation', 'Cloud Hosting Ltd', 'Anders Holm', 'Today', 'today', 'eva-review', 'medium'),
-    T('Supplier invoice approval', 'Digital Marketing Pro', 'Mette Sørensen', 'Today', 'today', 'eva-review', 'medium'),
     // EVA is working on these right now
-    T('Missing receipts (5)', 'Tech Equipment AS', 'Jonas Vestergaard', 'Overdue 3 days', 'overdue', 'eva-running', 'medium'),
+    T('Missing receipts (5)', 'Tech Equipment AS', ME, 'Overdue 3 days', 'overdue', 'eva-running', 'medium'),
     T('Debtor follow-up', 'Bryg & Co ApS', 'Jonas Vestergaard', 'In 2 days', 'week', 'eva-running', 'low'),
     T('Month-end close', 'Fjord Fitness', 'Anders Holm', 'In 6 days', 'week', 'eva-running', 'medium'),
     // EVA already completed these autonomously
+    T('Bank reconciliation', 'Nordic Build ApS', ME, 'Done yesterday', 'week', 'eva-done', 'low'),
     T('Missing receipts (3)', 'Lys Design', 'Sofie Lund', 'Done today', 'today', 'eva-done', 'medium'),
     T('Payroll run — June', 'Café Solsikke', 'Sofie Lund', 'Done today', 'week', 'eva-done', 'medium'),
-    T('Bank reconciliation', 'Nordic Build ApS', 'Mette Sørensen', 'Done yesterday', 'week', 'eva-done', 'low'),
     // Still with the team
+    T('Payroll run — June', 'Office Supplies Co', ME, 'Today', 'today', 'todo', 'high'),
+    T('VAT reconciliation', 'Digital Marketing Pro', ME, 'In 10 days', 'later', 'todo', 'low'),
     T('Month-end close', 'Café Solsikke', 'Sofie Lund', 'Overdue 1 day', 'overdue', 'waiting', 'high'),
-    T('Payroll run — June', 'Office Supplies Co', 'Camilla Berg', 'Today', 'today', 'todo', 'high'),
     T('Quarterly report', 'Lys Design', 'Sofie Lund', 'In 3 days', 'week', 'in-progress', 'medium'),
     T('VAT return — Q1', 'Fjord Fitness', 'Anders Holm', 'In 3 days', 'week', 'todo', 'high'),
     T('Month-end close', 'Aarhus Tandklinik', 'Camilla Berg', 'In 4 days', 'week', 'todo', 'medium'),
     T('Annual report draft', 'Tech Equipment AS', 'Jonas Vestergaard', 'In 9 days', 'later', 'todo', 'high'),
     T('Year-end close', 'Office Supplies Co', 'Camilla Berg', 'In 12 days', 'later', 'todo', 'medium'),
     T('Supplier invoice approval', 'Cloud Hosting Ltd', 'Anders Holm', 'In 8 days', 'later', 'todo', 'low'),
-    T('VAT reconciliation', 'Digital Marketing Pro', 'Mette Sørensen', 'In 10 days', 'later', 'todo', 'low'),
     T('Debtor follow-up', 'Aarhus Tandklinik', 'Camilla Berg', 'In 5 days', 'week', 'todo', 'low'),
     T('Payroll run — June', 'Bryg & Co ApS', 'Jonas Vestergaard', 'In 7 days', 'week', 'todo', 'high'),
 ];
@@ -151,10 +152,12 @@ const PURPLE = '#7c3aed';
 export default function TaskManagementView() {
     const { t } = useLang();
     const [tasks, setTasks] = useState<Task[]>(TASKS);
-    const [groupBy, setGroupBy] = useState<GroupBy>('accountant');
+    const [perspective, setPerspective] = useState<'mine' | 'practice'>('mine');
+    const [groupBy, setGroupBy] = useState<GroupBy>('deadline');
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<TStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
+    const mine = perspective === 'mine';
 
     const patch = (id: string, p: Partial<Task>) => setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
     const setStatus = (id: string, s: TStatus) => patch(id, { status: s });
@@ -168,42 +171,54 @@ export default function TaskManagementView() {
     }
     const toggleStatusF = (s: TStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
+    // Perspective — "My work" (the logged-in accountant) vs. the whole practice.
+    const scoped = mine ? tasks.filter((x) => x.accountant === ME) : tasks;
     const ql = q.trim().toLowerCase();
     const matchQ = (x: Task) => !ql || t(x.title).toLowerCase().includes(ql) || x.company.toLowerCase().includes(ql) || x.accountant.toLowerCase().includes(ql);
-    const all = tasks.filter(matchQ);
+    const all = scoped.filter(matchQ);
 
     const evaReview = all.filter((x) => x.status === 'eva-review');
     const evaRunning = all.filter((x) => x.status === 'eva-running');
     const evaDone = all.filter((x) => x.status === 'eva-done');
 
-    // --- overview KPIs ---
-    const activeAll = tasks.filter((x) => x.status !== 'done' && x.status !== 'eva-done');
-    const evaAll = tasks.filter((x) => isEva(x.status));
-    const automatedPct = tasks.length ? Math.round((evaAll.length / tasks.length) * 100) : 0;
+    // --- overview KPIs (on the perspective's scope) ---
+    const activeAll = scoped.filter((x) => x.status !== 'done' && x.status !== 'eva-done');
+    const evaAll = scoped.filter((x) => isEva(x.status));
+    const automatedPct = scoped.length ? Math.round((evaAll.length / scoped.length) * 100) : 0;
     const overdue = activeAll.filter((x) => x.bucket === 'overdue');
+    const companyCount = new Set(scoped.map((x) => x.company)).size;
     const kpis = [
-        { label: t('Open tasks'), value: String(activeAll.length), sub: t('across {n} companies').replace('{n}', String(COMPANIES.length)), color: COLORS.text, accent: '' },
+        { label: t('Open tasks'), value: String(activeAll.length), sub: t(mine ? 'across {n} of your clients' : 'across {n} companies').replace('{n}', String(companyCount)), color: COLORS.text, accent: '' },
         { label: t('Handled by EVA'), value: String(evaAll.length), sub: t('{n}% of the workload').replace('{n}', String(automatedPct)), color: '#16a34a', accent: '' },
-        { label: t('Ready for your review'), value: String(tasks.filter((x) => x.status === 'eva-review').length), sub: t('EVA drafts to approve'), color: PURPLE, accent: PURPLE },
+        { label: t('Ready for your review'), value: String(scoped.filter((x) => x.status === 'eva-review').length), sub: t('EVA drafts to approve'), color: PURPLE, accent: PURPLE },
         { label: t('Overdue'), value: String(overdue.length), sub: t('need attention'), color: '#dc2626', accent: '#dc2626' },
     ];
 
-    // --- human tasks (everything EVA hasn't taken) grouped by the chosen dimension ---
+    // --- tasks still with a human, grouped (accountant grouping only in the practice view) ---
+    const groupOptions: [GroupBy, string][] = mine
+        ? [['deadline', 'By deadline'], ['company', 'By client'], ['status', 'By status']]
+        : [['accountant', 'By accountant'], ['company', 'By company'], ['deadline', 'By deadline'], ['status', 'By status']];
+    const effGroup: GroupBy = groupOptions.some(([k]) => k === groupBy) ? groupBy : 'deadline';
     const human = all.filter((x) => !isEva(x.status) && (statusF.size === 0 || statusF.has(x.status)));
-    const order = groupBy === 'accountant' ? ACCOUNTANTS : groupBy === 'company' ? COMPANIES : groupBy === 'status' ? HUMAN_STATUSES : BUCKETS.map((b) => b.key);
-    const keyOf = (x: Task) => (groupBy === 'accountant' ? x.accountant : groupBy === 'company' ? x.company : groupBy === 'status' ? x.status : x.bucket);
+    const order = effGroup === 'accountant' ? ACCOUNTANTS : effGroup === 'company' ? COMPANIES : effGroup === 'status' ? HUMAN_STATUSES : BUCKETS.map((b) => b.key);
+    const keyOf = (x: Task) => (effGroup === 'accountant' ? x.accountant : effGroup === 'company' ? x.company : effGroup === 'status' ? x.status : x.bucket);
     const groups = (order as string[]).map((k) => ({ key: k, items: human.filter((x) => keyOf(x) === k) })).filter((g) => g.items.length > 0);
 
     const groupTitle = (k: string): ReactNode => {
-        if (groupBy === 'accountant' || groupBy === 'company') return <><ClientAvatar name={k} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{k}</span></>;
-        if (groupBy === 'status') return <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: COLORS.text }}><span className="rounded-full" style={{ width: 8, height: 8, background: TSTATUS[k as TStatus].dot }} />{t(TSTATUS[k as TStatus].label)}</span>;
+        if (effGroup === 'accountant' || effGroup === 'company') return <><ClientAvatar name={k} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{k}</span></>;
+        if (effGroup === 'status') return <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: COLORS.text }}><span className="rounded-full" style={{ width: 8, height: 8, background: TSTATUS[k as TStatus].dot }} />{t(TSTATUS[k as TStatus].label)}</span>;
         return <span className="text-sm font-semibold" style={{ color: k === 'overdue' ? '#dc2626' : COLORS.text }}>{t(BUCKETS.find((b) => b.key === k)!.label)}</span>;
     };
 
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Task Management')} showScope={false} right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>} />
+            <PageHeader title={t('Cockpit')} showScope={false} right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>} />
             <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
+                {/* perspective — my work vs. the whole practice */}
+                <div className="mb-5">
+                    <SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />
+                </div>
+
                 {/* overview KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
                     {kpis.map((k) => {
@@ -254,15 +269,11 @@ export default function TaskManagementView() {
                         </SectionCard>
                     )}
 
-                    {/* Handled by your team — grouped, with a Hand-to-EVA action */}
+                    {/* the tasks still with a human — grouped, with a Hand-to-EVA action */}
                     <div className="pt-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t(mine ? 'On my plate' : 'Handled by your team')}</p>
                         <div className="flex flex-wrap items-center gap-2 mb-3">
-                            <SegmentedTabs value={groupBy} onChange={(v) => setGroupBy(v as GroupBy)} options={[
-                                { value: 'accountant', label: t('By accountant') },
-                                { value: 'company', label: t('By company') },
-                                { value: 'deadline', label: t('By deadline') },
-                                { value: 'status', label: t('By status') },
-                            ]} />
+                            <SegmentedTabs value={effGroup} onChange={(v) => setGroupBy(v as GroupBy)} options={groupOptions.map(([value, label]) => ({ value, label: t(label) }))} />
                             <div className="relative flex-1" style={{ minWidth: 200 }}>
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search tasks…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
@@ -278,11 +289,11 @@ export default function TaskManagementView() {
                                 );
                             })}
                             {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
-                            <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t('{n} still with the team').replace('{n}', String(human.length))}</span>
+                            <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t(mine ? '{n} on my plate' : '{n} still with the team').replace('{n}', String(human.length))}</span>
                         </div>
 
                         {groups.length === 0 ? (
-                            <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t('EVA has taken everything here — nothing left with the team. 🎉')}</p></Card>
+                            <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t(mine ? 'EVA has taken everything — nothing left on your plate. 🎉' : 'EVA has taken everything here — nothing left with the team. 🎉')}</p></Card>
                         ) : (
                             <div className="flex flex-col gap-4">
                                 {groups.map((g) => {
@@ -290,7 +301,7 @@ export default function TaskManagementView() {
                                     return (
                                         <SectionCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{groupTitle(g.key)}</span>} count={g.items.length} right={od > 0 ? <span className="text-xs font-medium shrink-0" style={{ color: '#dc2626' }}>{od} {t('overdue')}</span> : undefined}>
                                             {g.items.map((x, i) => (
-                                                <TaskRow key={x.id} task={x} groupBy={groupBy} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onHandToEva={() => handToEva(x.id)} />
+                                                <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onHandToEva={() => handToEva(x.id)} />
                                             ))}
                                         </SectionCard>
                                     );
@@ -322,7 +333,7 @@ export default function TaskManagementView() {
     );
 }
 
-function TaskRow({ task, groupBy, last, onStatus, onReassign, onHandToEva }: { task: Task; groupBy: GroupBy; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onHandToEva: () => void }) {
+function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, onHandToEva }: { task: Task; groupBy: GroupBy; showAccountant: boolean; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onHandToEva: () => void }) {
     const { t } = useLang();
     const st = TSTATUS[task.status];
     const prio = TPRIO[task.priority];
@@ -346,7 +357,7 @@ function TaskRow({ task, groupBy, last, onStatus, onReassign, onHandToEva }: { t
                 <Orb size={14} /> {t('Hand to EVA')}
             </button>
 
-            {groupBy !== 'accountant' && (
+            {showAccountant && (
                 <PopMenu
                     trigger={<span className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} title={t('Responsible: {name}').replace('{name}', task.accountant)}><ClientAvatar name={task.accountant} size={18} /><span className="text-xs hidden lg:inline" style={{ color: COLORS.text }}>{task.accountant.split(' ')[0]}</span></span>}
                     items={ACCOUNTANTS.map((a) => ({ label: a, active: a === task.accountant, mark: <ClientAvatar name={a} size={16} />, onClick: () => onReassign(a) }))}

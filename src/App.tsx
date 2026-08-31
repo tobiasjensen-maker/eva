@@ -6,7 +6,6 @@ import {
     EconomicLogo,
     NodeMark,
     ProfileAvatar,
-    ReviewIcon,
     InsightsIcon,
     RoutinesIcon,
     TasksIcon,
@@ -22,7 +21,7 @@ import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
-import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, CockpitView, ActivityFeedView } from './views/ActivityView';
+import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import TaskManagementView, { tasksAnswer } from './views/TaskManagementView';
 import SpacesView from './views/SpacesView';
@@ -49,8 +48,8 @@ const WELCOME_MSG =
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
-    { id: 'activity', label: 'Cockpit', Icon: ReviewIcon },
-    { id: 'tasks', label: 'Task Management', Icon: TasksIcon },
+    // Cockpit is now the merged task-management home ("My work" / "Whole practice").
+    { id: 'activity', label: 'Cockpit', Icon: TasksIcon },
     { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
@@ -63,7 +62,7 @@ const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'activitylog', 'task
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
 const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', activity: 'activitylog', tasks: 'tasks', praksis: 'tasks', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -229,14 +228,14 @@ export default function App() {
     // The contextual EVA chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
-        view === 'tasks'
+        view === 'activity'
             ? {
                   subtitle: 'practice assistant',
-                  intro: "I'm EVA. Ask me what's overdue across the office, who's overloaded, or what's due this week.",
-                  chips: ['What’s overdue across the office?', 'Who has the most on their plate?', 'What’s due this week?'],
+                  intro: "I'm EVA. Ask me what I've taken over, what's waiting on your approval, who's overloaded, or what's due this week.",
+                  chips: ['What has EVA taken over?', 'What’s waiting on my approval?', 'Who has the most on their plate?'],
                   respond: (q: string) => tasksAnswer(q, lang),
               }
-        : view === 'activity' || view === 'activitylog'
+        : view === 'activitylog'
             ? {
                   subtitle: 'review assistant',
                   intro: "I'm EVA. Ask me about your review queue — or hit “Ask EVA” on a flagged item and I'll explain my thinking.",
@@ -603,16 +602,7 @@ export default function App() {
                     />
                 )}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                {view === 'activity' && (
-                    <CockpitView
-                        entries={activity}
-                        setEntries={setActivity}
-                        scope={scope}
-                        onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }}
-                        onSeeActivity={() => goView('activitylog')}
-                        onOpenRoutines={() => goView('skills')}
-                    />
-                )}
+                {view === 'activity' && <TaskManagementView />}
                 {view === 'activitylog' && (
                     <ActivityFeedView
                         entries={activity}
@@ -622,7 +612,6 @@ export default function App() {
                         onBack={() => goView('activity')}
                     />
                 )}
-                {view === 'tasks' && <TaskManagementView />}
                 {view === 'customers' && <CustomersView />}
                 {view === 'skills' && <SkillsView skills={skills} onEnable={enableSkill} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
