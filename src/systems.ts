@@ -20,4 +20,5 @@ export const SYSTEMS: System[] = [
     { id: 'minuba', name: 'Minuba', role: 'Field-service jobs & costs', color: '#d97706', mark: 'M', category: 'Field service' },
     { id: 'hubspot', name: 'HubSpot', role: 'Client CRM & pipeline', color: '#e8603c', mark: 'H', category: 'CRM' },
     { id: 'stripe', name: 'Stripe', role: 'Card & subscription payments', color: '#635bff', mark: '$', category: 'Payments' },
+    { id: 'outlook', name: 'Outlook', role: 'Calendar, meetings & deadlines', color: '#0f6cbd', mark: 'O', category: 'Calendar' },
 ];

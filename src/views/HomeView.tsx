@@ -12,6 +12,23 @@ import { KIND, type DecisionItem, type ValueItem } from '../day';
 const ME_FIRST = 'Tobias';
 const ACCENT = '#1c1b3a'; // dark navy — the user's own voice (proceed chip + send button)
 
+// What's coming up — pulled from the AO's calendar (the Outlook connector).
+const SKED: Record<string, { bg: string; fg: string }> = {
+    'Deadline': { bg: '#fdecec', fg: '#c0392b' },
+    'Advisory': { bg: '#f3f0fb', fg: '#7c3aed' },
+    'Payroll': { bg: '#fbf3e0', fg: '#92710f' },
+    'Period close': { bg: '#eef4fb', fg: '#2f6fb0' },
+    'Meeting': { bg: '#e9f7ef', fg: '#15803d' },
+};
+type Event = { when: string; title: string; kind: keyof typeof SKED; client?: string; note?: string };
+const SCHEDULE: Event[] = [
+    { when: 'Thu 14:00', title: 'Runway call — Café Solsikke', kind: 'Advisory', client: 'Café Solsikke' },
+    { when: 'Fri 09:00', title: 'VAT filing deadline', kind: 'Deadline', note: '3 clients' },
+    { when: 'Fri 06:00', title: 'Payroll run — Aarhus Tandklinik', kind: 'Payroll', client: 'Aarhus Tandklinik' },
+    { when: 'Fri', title: 'Month-end close — Fjord Fitness', kind: 'Period close', client: 'Fjord Fitness' },
+    { when: 'Mon 10:00', title: 'Quarterly review — Nordic Build ApS', kind: 'Meeting', client: 'Nordic Build ApS' },
+];
+
 // The briefing, kept to a few messages: an opening, the decisions as ONE message,
 // the advisory items as ONE message, and a close. A `next` chip gates the reveal;
 // the card groups advance on their own once you've dealt with them.
@@ -19,11 +36,13 @@ type Beat =
     | { intro: true; next: string }
     | { decisions: true }
     | { values: true; next: string }
+    | { schedule: true }
     | { close: true };
 const BEATS: Beat[] = [
     { intro: true, next: 'What needs me?' },
     { decisions: true },
     { values: true, next: 'That’s enough for now' },
+    { schedule: true },
     { close: true },
 ];
 
@@ -32,6 +51,7 @@ type Item =
     | { key: string; who: 'eva'; type: 'intro' }
     | { key: string; who: 'eva'; type: 'decisions'; ids: string[] }
     | { key: string; who: 'eva'; type: 'values'; ids: string[] }
+    | { key: string; who: 'eva'; type: 'schedule' }
     | { key: string; who: 'user'; type: 'text'; node: ReactNode };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -117,6 +137,8 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
             shownAny.current = true;
             if ('next' in beat && beat.next) setPendingChip(beat.next);
         }
+        // A forward look at the week — always shown, informational, then on to the close.
+        if ('schedule' in beat) { push({ key: key(), who: 'eva', type: 'schedule' }); await advance(); return; }
     }
     async function advance() {
         setPendingChip(null);
@@ -202,6 +224,12 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
                                         <div className="flex flex-col gap-2.5">
                                             <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{shownAny.current && feed.some((f) => f.type === 'decisions') ? t('That’s the books clear. 🎯 Here’s where your time is worth most:') : t('Here’s where your time is worth most:')}</p>
                                             {it.ids.map((id) => values.find((x) => x.id === id)).filter((v): v is ValueItem => !!v).map((v) => <ValueCard key={v.id} v={v} t={t} onAct={actValue} />)}
+                                        </div>
+                                    )}
+                                    {it.type === 'schedule' && (
+                                        <div className="flex flex-col gap-2.5">
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('And here’s what’s coming up on your calendar:')}</p>
+                                            <ScheduleCard t={t} />
                                         </div>
                                     )}
                                 </div>
@@ -300,6 +328,26 @@ function SummaryCard({ t }: { t: (s: string) => string }) {
                 ))}
             </div>
             <p className="text-xs mt-3 pt-3" style={{ color: COLORS.textMuted, borderTop: `1px solid ${COLORS.cardBorder}` }}>{t('The rest are mid-flight. Nothing’s on fire.')}</p>
+        </Card>
+    );
+}
+
+function ScheduleCard({ t }: { t: (s: string) => string }) {
+    return (
+        <Card className="overflow-hidden mt-1" style={{ maxWidth: 520 }}>
+            {SCHEDULE.map((e, i) => {
+                const k = SKED[e.kind];
+                return (
+                    <div key={e.title} className="flex items-center gap-3 px-3.5 py-2.5" style={i === SCHEDULE.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                        <span className="shrink-0 text-xs font-semibold text-right" style={{ color: COLORS.text, width: 58 }}>{t(e.when)}</span>
+                        <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: k.fg }} />
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate" style={{ color: COLORS.text }}>{t(e.title)}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: k.bg, color: k.fg }}>{e.note ? `${t(e.kind)} · ${t(e.note)}` : t(e.kind)}</span>
+                    </div>
+                );
+            })}
         </Card>
     );
 }

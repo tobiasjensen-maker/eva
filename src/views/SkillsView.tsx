@@ -58,6 +58,7 @@ const SYSTEM_DESC: Record<string, string> = {
     minuba: 'Field-service jobs and their costs, booked automatically.',
     hubspot: 'Client CRM and pipeline, kept in sync with the books.',
     stripe: 'Card and subscription payments, matched back to invoices.',
+    outlook: 'Your calendar — deadlines, filings and client meetings, surfaced by EVA.',
 };
 const SYSTEM_AREAS: Record<string, ConnArea[]> = {
     bank: [{ name: 'Bank feed', skills: [
@@ -83,6 +84,11 @@ const SYSTEM_AREAS: Record<string, ConnArea[]> = {
     stripe: [{ name: 'Payments', skills: [
         { title: 'Reconcile card payments', desc: 'Match Stripe charges to open invoices.', actions: [R('Read the charges and payouts'), N('Match to invoices'), W('Book the payment and fees')] },
         { title: 'Handle subscriptions', desc: 'Book recurring subscription revenue.', actions: [R('Read subscription invoices'), W('Post the recurring revenue')] },
+    ] }],
+    outlook: [{ name: 'Schedule', skills: [
+        { title: 'Surface deadlines', desc: 'Put filing and close deadlines on your calendar.', actions: [R('Read upcoming filing & close dates'), W('Add the deadlines to your calendar')] },
+        { title: 'Book client meetings', desc: 'Find a slot and set up a client meeting.', actions: [R('Read your availability'), N('Pick the best slot'), W('Create the meeting and invite the client')] },
+        { title: 'Daily briefing', desc: 'Summarise what’s coming up on your day.', actions: [R('Read the day’s events and deadlines'), N('Rank what matters most')] },
     ] }],
 };
 const SYSTEM_CAPS: Capability[] = SYSTEMS.filter((s) => !s.native).map((s) => ({
