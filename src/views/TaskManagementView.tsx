@@ -504,16 +504,38 @@ export function tasksAnswer(q: string, lang: 'en' | 'da' = 'en'): string {
         : 'I can give you an overview of the office — what I’m handling, what’s waiting on your approval, and what’s still with the team. Try “What has EVA taken over?”';
 }
 
-// ---- Focus mode: the calm, exception-first Cockpit ----------------------------
-// The books run themselves; only the last few judgement calls reach the AO,
-// pre-analysed with a recommendation. Success is measured by how little reaches you.
+// ---- Focus mode: the Business OS front-door -----------------------------------
+// Bookkeeping isn't a queue you burn down to zero and stop — it's the floor,
+// and EVA holds it. Reaching zero in the books is the *start* of the work that
+// matters: advising the client's business. And EVA is the front door onto that
+// whole business — every system the client runs flows through here.
 const TOUCH = { pct: 3, prev: 22 };
 const HANDLED_WEEK = 1240;
 const CLIENTS_CURRENT = 40;
 
-const ADVISORY_MOMENTS: { id: string; company: string; text: string; action: string }[] = [
-    { id: 'adv1', company: 'Café Solsikke', text: 'is on track to run out of cash in ~6 weeks at the current burn.', action: 'Draft the conversation' },
-    { id: 'adv2', company: 'Digital Marketing Pro', text: 'now has one client at 41% of revenue — a concentration risk worth raising.', action: 'Add to next review' },
+// The advisory / business work — the reason the books running themselves matters.
+const KIND: Record<string, { bg: string; fg: string }> = {
+    'Cash flow': { bg: '#fbf3e0', fg: '#92710f' },
+    'Compliance': { bg: '#eef4fb', fg: '#2f6fb0' },
+    'Risk': { bg: '#fdecec', fg: '#c0392b' },
+    'Growth': { bg: '#e9f7ef', fg: '#15803d' },
+};
+const VALUE_MOMENTS: { id: string; company: string; extra?: string; kind: keyof typeof KIND; text: string; sub: string; action: string }[] = [
+    { id: 'v1', company: 'Café Solsikke', kind: 'Cash flow', text: 'will run low on cash in ~6 weeks at the current burn.', sub: 'EVA drafted a runway conversation with three options to walk through.', action: 'Book a call' },
+    { id: 'v2', company: 'Nordic Build ApS', extra: '+5 others', kind: 'Compliance', text: 'and 5 others are affected by the new SKAT reporting rule.', sub: 'EVA worked out exactly who it hits and drafted what each client needs to hear.', action: 'Review 6 drafts' },
+    { id: 'v3', company: 'Digital Marketing Pro', kind: 'Risk', text: 'now earns 41% of its revenue from a single client.', sub: 'A concentration risk worth raising before the contract renews next quarter.', action: 'Add to review' },
+    { id: 'v4', company: 'Fjord Fitness', kind: 'Growth', text: 'has grown into a flat-rate VAT scheme that would save ~14,000 kr/yr.', sub: 'EVA prepared the switch and a short note to send the client.', action: 'Draft proposal' },
+];
+
+// The front door: every system the client's business runs on, pulled in behind EVA.
+const SYSTEMS: { name: string; role: string; color: string; mark: string }[] = [
+    { name: 'e-conomic', role: 'Ledger & books · core', color: '#1c1b3a', mark: 'e' },
+    { name: 'Bank feeds', role: 'Live transactions · 40 clients', color: '#2f6fb0', mark: 'B' },
+    { name: 'Zenegy', role: 'Payroll & salaries', color: '#7c3aed', mark: 'Z' },
+    { name: 'Shopify', role: 'Till & online sales', color: '#15803d', mark: 'S' },
+    { name: 'Minuba', role: 'Field-service jobs & costs', color: '#d97706', mark: 'M' },
+    { name: 'HubSpot', role: 'Client CRM & pipeline', color: '#e8603c', mark: 'H' },
+    { name: 'Stripe', role: 'Card & subscription payments', color: '#635bff', mark: '$' },
 ];
 
 const AUTONOMY: { name: string; at: number; of: number; soon?: boolean }[] = [
@@ -542,33 +564,42 @@ function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const [advActed, setAdvActed] = useState<Set<string>>(new Set());
     const decisions = tasks.filter((x) => x.status === 'eva-review' && x.accountant === ME);
+    const n = decisions.length;
 
     return (
         <div className="flex flex-col gap-5">
-            {/* calm status + touch rate */}
-            <Card className="p-6">
+            {/* Bookkeeping is the floor, and it's held — not a queue you burn to zero */}
+            <Card className="p-6" style={{ background: 'linear-gradient(180deg,#ffffff 0%,#fbfbfd 100%)' }}>
                 <div className="flex items-center gap-4">
-                    <span className="flex items-center justify-center shrink-0 rounded-full" style={{ width: 48, height: 48, background: decisions.length ? '#f3f0fb' : '#eef7ef', color: decisions.length ? PURPLE : '#16a34a' }}>
-                        <Icon name={decisions.length ? 'ai-stars' : 'circle-tick'} />
+                    <span className="flex items-center justify-center shrink-0 rounded-full" style={{ width: 48, height: 48, background: '#eef7ef', color: '#16a34a' }}>
+                        <Icon name="circle-tick" />
                     </span>
                     <div className="flex-1 min-w-0">
-                        <p className="text-xl font-semibold" style={{ color: COLORS.text }}>{decisions.length ? (decisions.length === 1 ? t('1 decision needs you') : t('{n} decisions need you').replace('{n}', String(decisions.length))) : t('You’re all clear')}</p>
-                        <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('All {n} clients current · EVA handled {h} items this week').replace('{n}', String(CLIENTS_CURRENT)).replace('{h}', nf(HANDLED_WEEK))}</p>
+                        <p className="text-xl font-semibold" style={{ color: COLORS.text }}>{t('Bookkeeping is handled')}</p>
+                        <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('EVA closed {h} items across {n} clients this week — every ledger current.').replace('{h}', nf(HANDLED_WEEK)).replace('{n}', String(CLIENTS_CURRENT))}</p>
                     </div>
                     <div className="text-right shrink-0 pl-4" style={{ borderLeft: `1px solid ${COLORS.cardBorder}` }}>
                         <p className="text-3xl font-semibold leading-none" style={{ color: '#16a34a' }}>{TOUCH.pct}%</p>
-                        <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{t('you touched')} · ↓ {t('from')} {TOUCH.prev}%</p>
+                        <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{t('of it needed you')} · ↓ {t('from')} {TOUCH.prev}%</p>
                     </div>
+                </div>
+                <div className="mt-4 pt-4 flex items-center gap-2 text-sm" style={{ borderTop: `1px solid ${COLORS.cardBorder}`, color: COLORS.textMuted }}>
+                    <Orb size={16} />
+                    {n > 0 ? (
+                        <span>{(n === 1 ? t('1 quick call in the books, then the day is yours for the work below.') : t('{n} quick calls in the books, then the day is yours for the work below.').replace('{n}', String(n)))}</span>
+                    ) : (
+                        <span>{t('Nothing left in the books. This is where your time is worth most.')}</span>
+                    )}
                 </div>
             </Card>
 
-            {/* only you can decide — the 5% */}
-            {decisions.length > 0 && (
-                <SectionCard accent={PURPLE} title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Only you can decide')}</span></span>} count={decisions.length}>
+            {/* the 5% — quick judgement calls, framed as small */}
+            {n > 0 && (
+                <SectionCard accent={PURPLE} title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('A couple of quick calls')}</span></span>} count={n}>
                     {decisions.map((d, i) => {
                         const dec = evaDecisionFor(d.title);
                         return (
-                            <div key={d.id} className="p-4" style={i === decisions.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <div key={d.id} className="p-4" style={i === n - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                 <div className="flex items-start gap-3">
                                     <ClientAvatar name={d.company} size={30} />
                                     <div className="flex-1 min-w-0">
@@ -588,25 +619,63 @@ function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks
                 </SectionCard>
             )}
 
-            {/* worth your time — advisory EVA surfaced */}
-            <SectionCard title={<span className="flex items-center gap-2"><Icon name="lightbulb" style={{ color: '#b9842b' }} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Worth your time')}</span></span>} count={ADVISORY_MOMENTS.length}>
-                {ADVISORY_MOMENTS.map((a, i) => {
-                    const done = advActed.has(a.id);
-                    return (
-                        <div key={a.id} className="flex items-center gap-3 p-4" style={i === ADVISORY_MOMENTS.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                            <ClientAvatar name={a.company} size={30} />
-                            <p className="flex-1 min-w-0 text-sm" style={{ color: COLORS.text }}><span className="font-medium">{a.company}</span> {t(a.text)}</p>
-                            {done ? (
-                                <span className="text-sm shrink-0 flex items-center gap-1.5" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Done')}</span>
-                            ) : (
-                                <Button onClick={() => setAdvActed((p) => new Set(p).add(a.id))}>{t(a.action)}</Button>
-                            )}
-                        </div>
-                    );
-                })}
-            </SectionCard>
+            {/* THE HERO: where the freed time goes — advisory / the client's business */}
+            <div>
+                <div className="flex items-baseline gap-2 mb-1 px-0.5">
+                    <h2 className="text-lg font-semibold" style={{ color: COLORS.text }}>{t('Where your time is worth most')}</h2>
+                </div>
+                <p className="text-sm mb-3 px-0.5" style={{ color: COLORS.textMuted }}>{t('The books are done. This is the advisory work that grows the firm — EVA has already done the analysis and drafted the first move.')}</p>
+                <Card className="overflow-hidden">
+                    {VALUE_MOMENTS.map((a, i) => {
+                        const done = advActed.has(a.id);
+                        const k = KIND[a.kind];
+                        return (
+                            <div key={a.id} className="flex items-start gap-3 p-4" style={i === VALUE_MOMENTS.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                <ClientAvatar name={a.company} size={30} />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: k.bg, color: k.fg }}>{t(a.kind)}</span>
+                                        <p className="text-sm" style={{ color: COLORS.text }}><span className="font-medium">{a.company}</span>{a.extra ? <span style={{ color: COLORS.textMuted }}> {a.extra}</span> : null} {t(a.text)}</p>
+                                    </div>
+                                    <p className="text-sm mt-1.5 flex items-start gap-1.5" style={{ color: COLORS.textMuted }}><span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t(a.sub)}</span></p>
+                                </div>
+                                {done ? (
+                                    <span className="text-sm shrink-0 flex items-center gap-1.5 mt-0.5" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Done')}</span>
+                                ) : (
+                                    <Button appearance="primary" onClick={() => setAdvActed((p) => new Set(p).add(a.id))}>{t(a.action)}</Button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </Card>
+            </div>
 
-            {/* running itself */}
+            {/* Business OS: EVA as the front door onto the client's whole business */}
+            <div>
+                <div className="flex items-baseline gap-2 mb-1 px-0.5">
+                    <h2 className="text-lg font-semibold" style={{ color: COLORS.text }}>{t('One front door for the whole business')}</h2>
+                </div>
+                <p className="text-sm mb-3 px-0.5" style={{ color: COLORS.textMuted }}>{t('Every system your clients run flows through EVA — so you manage the business, not just the books.')}</p>
+                <Card className="p-4">
+                    <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))' }}>
+                        {SYSTEMS.map((s) => (
+                            <div key={s.name} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                <span className="flex items-center justify-center shrink-0 rounded-md text-white text-sm font-semibold" style={{ width: 32, height: 32, background: s.color }}>{s.mark}</span>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{s.name}</p>
+                                    <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{t(s.role)}</p>
+                                </div>
+                                <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: '#16a34a' }} title={t('Connected')} />
+                            </div>
+                        ))}
+                        <button className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium" style={{ border: `1px dashed ${COLORS.cardBorder}`, color: COLORS.textMuted }}>
+                            <span className="text-base leading-none">+</span> {t('Add a system')}
+                        </button>
+                    </div>
+                </Card>
+            </div>
+
+            {/* running itself — the machine behind the calm */}
             <Card className="flex items-center gap-3 p-4">
                 <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#eef7ef', color: '#16a34a' }}><Icon name="circle-tick" /></span>
                 <div className="flex-1 min-w-0">
