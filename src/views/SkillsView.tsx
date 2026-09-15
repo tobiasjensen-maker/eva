@@ -5,6 +5,7 @@ import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import { AGREEMENTS } from '../data';
 import { useLang } from '../i18n';
 import type { Skill } from '../types';
+import { SYSTEMS } from '../systems';
 
 interface Props {
     skills: Skill[];
@@ -33,8 +34,10 @@ interface ConnArea { name: string; skills: ConnSkill[] }
 interface Capability {
     id: string;
     name: string;
-    logo: string; // public asset path
+    logo: string; // public asset path (empty → render a letter mark instead)
     bg: string; // tile background behind the logo
+    mark?: string; // letter/glyph for systems without a logo asset
+    color?: string; // filled tile colour when using a letter mark
     category: string;
     native: boolean; // e-conomic core → always connected, can't be removed
     desc: string;
@@ -45,6 +48,47 @@ interface Capability {
 const R = (text: string): ConnAction => ({ text, kind: 'read' });
 const N = (text: string): ConnAction => ({ text, kind: 'reasoning' });
 const W = (text: string): ConnAction => ({ text, kind: 'write' });
+
+// The client-business systems EVA pulls in (shared with the Focus cockpit's front
+// door) — installed by default so the two surfaces always show the same set.
+const SYSTEM_DESC: Record<string, string> = {
+    bank: 'Live bank transactions across every client, ready to reconcile.',
+    zenegy: 'Payroll and salaries, run and posted straight to the ledger.',
+    shopify: 'Till and online sales, reconciled against payouts.',
+    minuba: 'Field-service jobs and their costs, booked automatically.',
+    hubspot: 'Client CRM and pipeline, kept in sync with the books.',
+    stripe: 'Card and subscription payments, matched back to invoices.',
+};
+const SYSTEM_AREAS: Record<string, ConnArea[]> = {
+    bank: [{ name: 'Bank feed', skills: [
+        { title: 'Import transactions', desc: 'Pull the latest bank lines for reconciliation.', actions: [R('Read the bank feed'), W('Post lines to the reconciliation inbox')] },
+        { title: 'Confirm payment status', desc: 'Check whether a payment cleared.', actions: [R('Read the transaction status')] },
+    ] }],
+    zenegy: [{ name: 'Payroll', skills: [
+        { title: 'Run payroll', desc: 'Calculate and run the monthly payroll.', actions: [R('Read hours and salaries'), N('Run the payroll calculation'), W('Post the salary journals')] },
+        { title: 'Sync payslips', desc: 'Keep payslips and journals in sync with the ledger.', actions: [R('Read the payroll run'), W('Book the salary entries')] },
+    ] }],
+    shopify: [{ name: 'Sales & payouts', skills: [
+        { title: 'Sync orders', desc: 'Book sales as revenue with the right VAT.', actions: [R('Read the day’s orders'), N('Determine revenue and VAT'), W('Post the sales entry')] },
+        { title: 'Reconcile payouts', desc: 'Match Shopify payouts and fees to the bank.', actions: [R('Read the payout report'), W('Book the payout and fees')] },
+    ] }],
+    minuba: [{ name: 'Jobs & costs', skills: [
+        { title: 'Import job costs', desc: 'Book materials and hours from field-service jobs.', actions: [R('Read completed jobs'), W('Post the job costs')] },
+        { title: 'Invoice jobs', desc: 'Turn completed jobs into customer invoices.', actions: [R('Read the job details'), N('Assemble the invoice lines'), W('Create the invoice')] },
+    ] }],
+    hubspot: [{ name: 'Clients', skills: [
+        { title: 'Sync new clients', desc: 'Create a customer when a deal closes.', actions: [R('Read won deals'), W('Create the customer in e-conomic')] },
+        { title: 'Enrich contacts', desc: 'Keep contact and billing details current.', actions: [R('Read contact changes'), W('Update the customer record')] },
+    ] }],
+    stripe: [{ name: 'Payments', skills: [
+        { title: 'Reconcile card payments', desc: 'Match Stripe charges to open invoices.', actions: [R('Read the charges and payouts'), N('Match to invoices'), W('Book the payment and fees')] },
+        { title: 'Handle subscriptions', desc: 'Book recurring subscription revenue.', actions: [R('Read subscription invoices'), W('Post the recurring revenue')] },
+    ] }],
+};
+const SYSTEM_CAPS: Capability[] = SYSTEMS.filter((s) => !s.native).map((s) => ({
+    id: s.id, name: s.name, logo: '', bg: '#ffffff', mark: s.mark, color: s.color,
+    category: s.category, native: false, desc: SYSTEM_DESC[s.id] ?? '', areas: SYSTEM_AREAS[s.id] ?? [],
+}));
 
 const CAPABILITIES: Capability[] = [
     // e-conomic core — the foundation, always connected, can't be removed
@@ -71,6 +115,8 @@ const CAPABILITIES: Capability[] = [
                 { title: 'Period close', desc: 'Run the month-end and year-end close.', actions: [R('Read the period’s entries'), N('Identify risks and adjustments'), W('Lock the period and post closing entries')] },
             ] },
         ] },
+    // Client-business systems pulled in behind EVA (shared with the Focus cockpit).
+    ...SYSTEM_CAPS,
     // 3rd-party partners — installable from the connector directory
     { id: 'likvido', name: 'Likvido', logo: 'partners/likvido.svg', bg: '#eef0f7', category: 'Receivables', native: false,
         desc: 'Automated debtor management, reminders and debt collection.',
@@ -382,9 +428,12 @@ export default function AutomationsView({ skills, onEnable }: Props) {
     const [tab, setTab] = useState<AutoTab>('flows');
     const [openId, setOpenId] = useState<string | null>(null);
     const [newFlow, setNewFlow] = useState(false);
-    // Installed partner connectors → their live connection status. e-conomic (core)
-    // is always connected and isn't tracked here.
-    const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>({});
+    // Installed connectors → their live connection status. e-conomic (core) is always
+    // connected and isn't tracked here. The client-business systems (shared with the
+    // Focus cockpit's front door) ship installed and connected.
+    const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() =>
+        Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus]))
+    );
     // The connector sheet: directory / drill-down / consent, all one surface.
     const [sheet, setSheet] = useState<{ start: 'grid' | 'detail' | 'reconnect'; id?: string } | null>(null);
     // Confirm before switching off a connector that routines depend on.
@@ -845,6 +894,11 @@ function SuggestedRow({ tpl, note, saving, last, onSetUp }: { tpl: FlowTemplate;
 }
 
 function CapabilityLogo({ cap, size = 40 }: { cap: Capability; size?: number }) {
+    if (!cap.logo && cap.mark) {
+        return (
+            <span className="flex items-center justify-center shrink-0 rounded-xl text-white font-semibold" style={{ width: size, height: size, background: cap.color, fontSize: size * 0.42 }}>{cap.mark}</span>
+        );
+    }
     return (
         <span className="flex items-center justify-center shrink-0 rounded-xl overflow-hidden" style={{ width: size, height: size, background: cap.bg, border: `1px solid ${COLORS.cardBorder}` }}>
             <img src={asset(cap.logo)} alt={cap.name} style={{ maxWidth: '74%', maxHeight: '58%', width: 'auto', height: 'auto', display: 'block' }} />
@@ -854,6 +908,11 @@ function CapabilityLogo({ cap, size = 40 }: { cap: Capability; size?: number }) 
 
 // A small logo mark used on template cards and the consent step.
 function ConnMark({ cap, size = 18 }: { cap: Capability; size?: number }) {
+    if (!cap.logo && cap.mark) {
+        return (
+            <span className="inline-flex items-center justify-center shrink-0 rounded-md text-white font-semibold" style={{ width: size, height: size, background: cap.color, fontSize: size * 0.5 }}>{cap.mark}</span>
+        );
+    }
     return (
         <span className="inline-flex items-center justify-center shrink-0 rounded-md overflow-hidden" style={{ width: size, height: size, background: cap.bg, border: `1px solid ${COLORS.cardBorder}` }}>
             <img src={asset(cap.logo)} alt={cap.name} style={{ maxWidth: '72%', maxHeight: '60%', width: 'auto', height: 'auto', display: 'block' }} />

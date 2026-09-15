@@ -30,8 +30,8 @@ const BEATS: Beat[] = [
 type Item =
     | { key: string; who: 'eva'; type: 'text'; node: ReactNode }
     | { key: string; who: 'eva'; type: 'intro' }
-    | { key: string; who: 'eva'; type: 'decisions' }
-    | { key: string; who: 'eva'; type: 'values' }
+    | { key: string; who: 'eva'; type: 'decisions'; ids: string[] }
+    | { key: string; who: 'eva'; type: 'values'; ids: string[] }
     | { key: string; who: 'user'; type: 'text'; node: ReactNode };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -69,6 +69,7 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
     const idxRef = useRef(-1);
     const started = useRef(false);
     const dealt = useRef<Set<string>>(new Set()); // advisory items acted on or deferred
+    const shownAny = useRef(false); // did anything actually need the user this visit?
     const key = () => `m${seq.current++}`;
     const push = (it: Item) => setFeed((f) => [...f, it]);
     const pushUser = (text: string) => push({ key: key(), who: 'user', type: 'text', node: text });
@@ -94,20 +95,28 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
         setTyping(true);
         await sleep(700);
         setTyping(false);
-        if ('intro' in beat) push({ key: key(), who: 'eva', type: 'intro' });
-        if ('close' in beat) { push({ key: key(), who: 'eva', type: 'text', node: t('That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.') }); setReady(true); }
-        let allDone = false;
+        if ('intro' in beat) { push({ key: key(), who: 'eva', type: 'intro' }); setPendingChip(beat.next); return; }
+        if ('close' in beat) {
+            // If nothing needed the user this visit, EVA just reassures rather than recap.
+            push({ key: key(), who: 'eva', type: 'text', node: shownAny.current ? t('That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.') : t('You’re all caught up — everything’s handled and every ledger’s current. I’ll flag anything that comes up. Ask me anything.') });
+            setReady(true);
+            return;
+        }
+        // Only surface items that still need the user; skip anything already handled.
         if ('decisions' in beat) {
-            push({ key: key(), who: 'eva', type: 'decisions' });
-            allDone = itemsRef.current.decisions.every((d) => d.done);
+            const ids = itemsRef.current.decisions.filter((d) => !d.done).map((d) => d.id);
+            if (ids.length === 0) { await advance(); return; }
+            push({ key: key(), who: 'eva', type: 'decisions', ids });
+            shownAny.current = true;
+            return; // advances when the user has dealt with them
         }
         if ('values' in beat) {
-            push({ key: key(), who: 'eva', type: 'values' });
-            allDone = itemsRef.current.values.every((v) => v.done || dealt.current.has(v.id));
+            const ids = itemsRef.current.values.filter((v) => !v.done && !dealt.current.has(v.id)).map((v) => v.id);
+            if (ids.length === 0) { await advance(); return; }
+            push({ key: key(), who: 'eva', type: 'values', ids });
+            shownAny.current = true;
+            if ('next' in beat && beat.next) setPendingChip(beat.next);
         }
-        if ('next' in beat && beat.next) setPendingChip(beat.next);
-        // If everything in this group is already handled (e.g. in the Cockpit), move on.
-        if (allDone && !('intro' in beat)) { await sleep(450); await advance(); }
     }
     async function advance() {
         setPendingChip(null);
@@ -185,14 +194,14 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
                                     )}
                                     {it.type === 'decisions' && (
                                         <div className="flex flex-col gap-2.5">
-                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Two quick calls before I can close the books:')}</p>
-                                            {decisions.map((d) => <DecisionCard key={d.id} d={d} t={t} onAct={actDecision} />)}
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{it.ids.length > 1 ? t('Two quick calls before I can close the books:') : t('One quick call before I can close the books:')}</p>
+                                            {it.ids.map((id) => decisions.find((x) => x.id === id)).filter((d): d is DecisionItem => !!d).map((d) => <DecisionCard key={d.id} d={d} t={t} onAct={actDecision} />)}
                                         </div>
                                     )}
                                     {it.type === 'values' && (
                                         <div className="flex flex-col gap-2.5">
-                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('That’s the books clear. 🎯 Here’s where your time is worth most:')}</p>
-                                            {values.map((v) => <ValueCard key={v.id} v={v} t={t} onAct={actValue} />)}
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{shownAny.current && feed.some((f) => f.type === 'decisions') ? t('That’s the books clear. 🎯 Here’s where your time is worth most:') : t('Here’s where your time is worth most:')}</p>
+                                            {it.ids.map((id) => values.find((x) => x.id === id)).filter((v): v is ValueItem => !!v).map((v) => <ValueCard key={v.id} v={v} t={t} onAct={actValue} />)}
                                         </div>
                                     )}
                                 </div>

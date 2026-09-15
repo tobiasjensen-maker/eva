@@ -3,6 +3,7 @@ import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { KIND, type DecisionItem, type ValueItem } from '../day';
+import { SYSTEMS } from '../systems';
 
 type DayProps = {
     decisions: DecisionItem[];
@@ -520,17 +521,6 @@ export function tasksAnswer(q: string, lang: 'en' | 'da' = 'en'): string {
 const TOUCH = { pct: 3, prev: 22 };
 const HANDLED_WEEK = 1240;
 const CLIENTS_CURRENT = 40;
-
-// The front door: every system the client's business runs on, pulled in behind EVA.
-const SYSTEMS: { name: string; role: string; color: string; mark: string }[] = [
-    { name: 'e-conomic', role: 'Ledger & books · core', color: '#1c1b3a', mark: 'e' },
-    { name: 'Bank feeds', role: 'Live transactions · 40 clients', color: '#2f6fb0', mark: 'B' },
-    { name: 'Zenegy', role: 'Payroll & salaries', color: '#7c3aed', mark: 'Z' },
-    { name: 'Shopify', role: 'Till & online sales', color: '#15803d', mark: 'S' },
-    { name: 'Minuba', role: 'Field-service jobs & costs', color: '#d97706', mark: 'M' },
-    { name: 'HubSpot', role: 'Client CRM & pipeline', color: '#e8603c', mark: 'H' },
-    { name: 'Stripe', role: 'Card & subscription payments', color: '#635bff', mark: '$' },
-];
 
 const AUTONOMY: { name: string; at: number; of: number; soon?: boolean }[] = [
     { name: 'Bank reconciliation', at: 40, of: 40 },
