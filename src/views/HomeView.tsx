@@ -33,13 +33,13 @@ const VALUES: Value[] = [
 // The briefing, as an ordered list of beats. `next` (when present) is the label
 // of a continue-chip that reveals the following beat; card beats advance when you act.
 type Beat =
-    | { say: string; summary?: true; next?: string; auto?: true }
+    | { intro: true; next: string }
+    | { say: string; next?: string; done?: true }
     | { decision: number }
-    | { value: number }
-    | { say: string; done: true };
+    | { value: number };
 const BEATS: Beat[] = [
-    { say: 'Good morning, {name}. 👋 Here’s your Tuesday — I went through all 40 clients overnight.', auto: true },
-    { say: 'Here’s where things stand.', summary: true, next: 'What needs me?' },
+    // Greeting + overnight summary arrive together as EVA's opening message.
+    { intro: true, next: 'What needs me?' },
     { decision: 0 },
     { decision: 1 },
     { say: 'That’s the books clear for today. 🎯 Now the part that actually grows the firm — want to see it?', next: 'Show me' },
@@ -51,7 +51,7 @@ const BEATS: Beat[] = [
 
 type Item =
     | { key: string; who: 'eva'; type: 'text'; node: ReactNode }
-    | { key: string; who: 'eva'; type: 'summary' }
+    | { key: string; who: 'eva'; type: 'intro' }
     | { key: string; who: 'eva'; type: 'decision'; dId: string }
     | { key: string; who: 'eva'; type: 'value'; vId: string }
     | { key: string; who: 'user'; type: 'text'; node: ReactNode };
@@ -114,14 +114,12 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
         setTyping(true);
         await sleep(700);
         setTyping(false);
+        if ('intro' in beat) push({ key: key(), who: 'eva', type: 'intro' });
         if ('say' in beat) push({ key: key(), who: 'eva', type: 'text', node: t(beat.say).replace('{name}', ME_FIRST) });
-        if ('summary' in beat && beat.summary) push({ key: key(), who: 'eva', type: 'summary' });
         if ('decision' in beat) push({ key: key(), who: 'eva', type: 'decision', dId: DECISIONS[beat.decision].id });
         if ('value' in beat) push({ key: key(), who: 'eva', type: 'value', vId: VALUES[beat.value].id });
         if ('next' in beat && beat.next) setPendingChip(beat.next);
-        if ('done' in beat) setReady(true);
-        // The opening greeting flows straight into the summary — no tap needed.
-        if ('auto' in beat && beat.auto) { await sleep(500); await advance(); }
+        if ('done' in beat && beat.done) setReady(true);
     }
     async function advance() {
         setPendingChip(null);
@@ -189,7 +187,13 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
                                 <span className="shrink-0 mt-0.5"><Orb size={26} /></span>
                                 <div className="min-w-0 flex-1">
                                     {it.type === 'text' && <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{it.node}</p>}
-                                    {it.type === 'summary' && <SummaryCard t={t} />}
+                                    {it.type === 'intro' && (
+                                        <div className="flex flex-col gap-2.5">
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Good morning, {name}. 👋 Here’s your Tuesday — I went through all 40 clients overnight.').replace('{name}', ME_FIRST)}</p>
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{t('Here’s where things stand.')}</p>
+                                            <SummaryCard t={t} />
+                                        </div>
+                                    )}
                                     {it.type === 'decision' && <DecisionCard d={decisions.find((x) => x.id === it.dId)!} t={t} onAct={actDecision} />}
                                     {it.type === 'value' && <ValueCard v={values.find((x) => x.id === it.vId)!} t={t} onAct={actValue} />}
                                 </div>
