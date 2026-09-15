@@ -5,8 +5,8 @@ import { useLang } from '../i18n';
 
 // ---- Home · "My day" ----------------------------------------------------------
 // Not the Cockpit. This is EVA talking you through your day like a personal
-// assistant — a conversational briefing that reveals itself, with the things
-// that need you surfaced inline as one-tap cards, and a composer to talk back.
+// assistant — one beat at a time. Nothing dumps on screen at once: EVA says a
+// thing, waits for you to act or say "go", and only then reveals the next.
 
 const ME_FIRST = 'Tobias';
 const PURPLE = '#7c3aed';
@@ -19,22 +19,41 @@ const KIND: Record<string, { bg: string; fg: string }> = {
 type Decision = { id: string; company: string; label: string; question: string; recommend: string; confirm: string; alt: string; ack: string; ackAlt: string; done?: boolean };
 type Value = { id: string; company: string; extra?: string; kind: keyof typeof KIND; text: string; sub: string; action: string; ack: string; done?: boolean };
 
-const DECISIONS0: Decision[] = [
+const DECISIONS: Decision[] = [
     { id: 'd1', company: 'Nordic Build ApS', label: 'VAT return — Q1', question: 'A reverse-charge VAT line on an EU purchase looks unusual.', recommend: 'Book it as an EU acquisition and file to SKAT.', confirm: 'Confirm & file', alt: 'It’s domestic', ack: 'Done — Nordic Build’s Q1 VAT return is filed to SKAT. ✅', ackAlt: 'Got it — I’ll rebook it as domestic and hold the return for you.' },
     { id: 'd2', company: 'Café Solsikke', label: 'Bank reconciliation', question: '8 of 150 bank lines couldn’t be matched automatically.', recommend: 'Post them to a suspense account and ask the client.', confirm: 'Approve', alt: 'Let me look', ack: 'Approved — parked in suspense and I’ve messaged the client. ✅', ackAlt: 'Opening the eight lines for you — I’ll wait on your call.' },
 ];
 
-const VALUES0: Value[] = [
+const VALUES: Value[] = [
     { id: 'v1', company: 'Café Solsikke', kind: 'Cash flow', text: 'will run low on cash in about six weeks at the current burn.', sub: 'I drafted a runway conversation with three options to walk through.', action: 'Book a call', ack: 'I’ve put 30 minutes on Thursday and attached the runway note.' },
     { id: 'v2', company: 'Nordic Build ApS', extra: '+5 others', kind: 'Compliance', text: 'and five others are affected by the new SKAT reporting rule.', sub: 'I worked out exactly who it hits and drafted what each client needs to hear.', action: 'Review 6 drafts', ack: 'Opening the six drafts — approve each and I’ll send it in your tone.' },
     { id: 'v3', company: 'Fjord Fitness', kind: 'Growth', text: 'has grown into a flat-rate VAT scheme that would save it ~14,000 kr/yr.', sub: 'I prepared the switch and a short note to send the client.', action: 'Draft proposal', ack: 'Proposal drafted — it’s in your outbox ready to review.' },
 ];
 
+// The briefing, as an ordered list of beats. `next` (when present) is the label
+// of a continue-chip that reveals the following beat; card beats advance when you act.
+type Beat =
+    | { say: string; summary?: true; next: string }
+    | { decision: number }
+    | { value: number }
+    | { say: string; done: true };
+const BEATS: Beat[] = [
+    { say: 'Good morning, {name}. 👋 I went through all 40 clients overnight. Want the rundown?', next: 'Yes, go' },
+    { say: 'Here’s where things stand.', summary: true, next: 'What needs me?' },
+    { decision: 0 },
+    { decision: 1 },
+    { say: 'That’s the books clear for today. 🎯 Now the part that actually grows the firm — want to see it?', next: 'Show me' },
+    { value: 0 },
+    { value: 1 },
+    { value: 2 },
+    { say: 'That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.', done: true },
+];
+
 type Item =
     | { key: string; who: 'eva'; type: 'text'; node: ReactNode }
     | { key: string; who: 'eva'; type: 'summary' }
-    | { key: string; who: 'eva'; type: 'decisions' }
-    | { key: string; who: 'eva'; type: 'value' }
+    | { key: string; who: 'eva'; type: 'decision'; dId: string }
+    | { key: string; who: 'eva'; type: 'value'; vId: string }
     | { key: string; who: 'user'; type: 'text'; node: ReactNode };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -62,78 +81,86 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
     const [feed, setFeed] = useState<Item[]>([]);
     const [typing, setTyping] = useState(false);
     const [ready, setReady] = useState(false);
-    const [decisions, setDecisions] = useState<Decision[]>(DECISIONS0);
-    const [values, setValues] = useState<Value[]>(VALUES0);
+    const [pendingChip, setPendingChip] = useState<string | null>(null);
+    const [decisions, setDecisions] = useState<Decision[]>(DECISIONS);
+    const [values, setValues] = useState<Value[]>(VALUES);
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
     const seq = useRef(0);
+    const idxRef = useRef(-1);
+    const started = useRef(false);
     const key = () => `m${seq.current++}`;
-
     const push = (it: Item) => setFeed((f) => [...f, it]);
+    const pushUser = (text: string) => push({ key: key(), who: 'user', type: 'text', node: text });
 
     // Stick to the bottom as the conversation grows.
     useEffect(() => {
         const el = scrollRef.current;
         if (el) el.scrollTop = el.scrollHeight;
-    }, [feed, typing]);
+    }, [feed, typing, pendingChip, ready]);
 
-    // Play the morning briefing once, revealing beat by beat.
-    useEffect(() => {
-        let alive = true;
-        const evaText = (node: ReactNode) => push({ key: key(), who: 'eva', type: 'text', node });
-        const steps: { delay: number; run: () => void }[] = [
-            { delay: 500, run: () => evaText(<>{t('Good morning, {name}. 👋 Here’s your Tuesday, 15 September.').replace('{name}', ME_FIRST)}</>) },
-            { delay: 850, run: () => evaText(<>{t('While you were away, I ran overnight routines across your practice. Here’s where things stand.')}</>) },
-            { delay: 700, run: () => push({ key: key(), who: 'eva', type: 'summary' }) },
-            { delay: 950, run: () => evaText(<>{t('Two of them need a quick call from you before I can close them. Let’s clear those first.')}</>) },
-            { delay: 700, run: () => push({ key: key(), who: 'eva', type: 'decisions' }) },
-            { delay: 1100, run: () => evaText(<>{t('That’s the books handled. 🎯 Now the part that actually grows the firm — I’ve done the analysis, you just decide.')}</>) },
-            { delay: 800, run: () => push({ key: key(), who: 'eva', type: 'value' }) },
-            { delay: 1000, run: () => evaText(<>{t('That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. What do you want to dig into?')}</>) },
-        ];
-        (async () => {
-            for (const step of steps) {
-                if (!alive) return;
-                setTyping(true);
-                await sleep(step.delay);
-                if (!alive) return;
-                setTyping(false);
-                step.run();
-                await sleep(200);
-            }
-            if (alive) setReady(true);
-        })();
-        return () => { alive = false; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const evaSay = async (text: string, opts?: { openCockpit?: boolean }) => {
+    async function evaSay(text: string, opts?: { openCockpit?: boolean }) {
         setTyping(true);
         await sleep(650);
         setTyping(false);
         push({ key: key(), who: 'eva', type: 'text', node: text });
-        if (opts?.openCockpit) setTimeout(onOpenCockpit, 700);
-    };
+        if (opts?.openCockpit) setTimeout(onOpenCockpit, 800);
+    }
 
-    function actDecision(d: Decision, took: boolean) {
+    // Reveal one beat, then wait for the user (a continue-chip, or acting on a card).
+    async function present(i: number) {
+        idxRef.current = i;
+        const beat = BEATS[i];
+        setTyping(true);
+        await sleep(700);
+        setTyping(false);
+        if ('say' in beat) push({ key: key(), who: 'eva', type: 'text', node: t(beat.say).replace('{name}', ME_FIRST) });
+        if ('summary' in beat && beat.summary) push({ key: key(), who: 'eva', type: 'summary' });
+        if ('decision' in beat) push({ key: key(), who: 'eva', type: 'decision', dId: DECISIONS[beat.decision].id });
+        if ('value' in beat) push({ key: key(), who: 'eva', type: 'value', vId: VALUES[beat.value].id });
+        if ('next' in beat) setPendingChip(beat.next);
+        if ('done' in beat) setReady(true);
+    }
+    async function advance() {
+        setPendingChip(null);
+        if (idxRef.current + 1 < BEATS.length) await present(idxRef.current + 1);
+    }
+
+    // Kick off the briefing (guard against StrictMode double-mount).
+    useEffect(() => {
+        if (started.current) return;
+        started.current = true;
+        present(0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    async function onContinue(label: string) {
+        setPendingChip(null);
+        pushUser(label);
+        await advance();
+    }
+    async function actDecision(d: Decision, took: boolean) {
         setDecisions((ds) => ds.map((x) => (x.id === d.id ? { ...x, done: true } : x)));
-        evaSay(t(took ? d.ackAlt : d.ack));
+        pushUser(t(took ? d.alt : d.confirm));
+        await evaSay(t(took ? d.ackAlt : d.ack));
+        await advance();
     }
-    function actValue(v: Value) {
+    async function actValue(v: Value, take: boolean) {
         setValues((vs) => vs.map((x) => (x.id === v.id ? { ...x, done: true } : x)));
-        evaSay(t(v.ack));
+        if (take) { pushUser(t(v.action)); await evaSay(t(v.ack)); }
+        else { pushUser(t('Later')); }
+        await advance();
     }
-
     function submit(text: string) {
         const q = text.trim();
         if (!q) return;
         setInput('');
-        push({ key: key(), who: 'user', type: 'text', node: q });
+        pushUser(q);
         const a = homeAnswer(q, lang);
         evaSay(a.text, { openCockpit: a.openCockpit });
     }
 
-    const chips = [t('How’s the week ahead?'), t('Who’s waiting on clients?'), t('Open the Cockpit')];
+    const exploreChips = [t('How’s the week ahead?'), t('Who’s waiting on clients?'), t('Open the Cockpit')];
 
     return (
         <div className="h-full flex flex-col">
@@ -161,8 +188,8 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
                                 <div className="min-w-0 flex-1">
                                     {it.type === 'text' && <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{it.node}</p>}
                                     {it.type === 'summary' && <SummaryCard t={t} />}
-                                    {it.type === 'decisions' && <DecisionCards decisions={decisions} t={t} onAct={actDecision} />}
-                                    {it.type === 'value' && <ValueCards values={values} t={t} onAct={actValue} />}
+                                    {it.type === 'decision' && <DecisionCard d={decisions.find((x) => x.id === it.dId)!} t={t} onAct={actDecision} />}
+                                    {it.type === 'value' && <ValueCard v={values.find((x) => x.id === it.vId)!} t={t} onAct={actValue} />}
                                 </div>
                             </div>
                         )
@@ -181,20 +208,30 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
             {/* composer */}
             <div className="shrink-0 px-5 pb-5 pt-2">
                 <div className="mx-auto" style={{ maxWidth: 680 }}>
-                    {ready && (
-                        <div className="flex flex-wrap gap-2 mb-2.5 anim-in">
-                            {chips.map((c, i) => (
+                    {(pendingChip || ready) && (
+                        <div className="flex flex-wrap gap-2 mb-2.5">
+                            {pendingChip ? (
                                 <button
-                                    key={c}
-                                    onClick={() => (i === chips.length - 1 ? (push({ key: key(), who: 'user', type: 'text', node: c }), evaSay(t('Opening the Cockpit — that’s the full board across every client.'), { openCockpit: true })) : submit(c))}
-                                    className="rounded-full px-3 py-1.5 text-sm anim-in"
-                                    style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff', color: COLORS.text }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                                    onClick={() => onContinue(pendingChip)}
+                                    className="rounded-full px-3.5 py-1.5 text-sm font-medium anim-in flex items-center gap-1.5"
+                                    style={{ background: PURPLE, color: '#fff' }}
                                 >
-                                    {c}
+                                    {pendingChip} <span aria-hidden>→</span>
                                 </button>
-                            ))}
+                            ) : (
+                                exploreChips.map((c, i) => (
+                                    <button
+                                        key={c}
+                                        onClick={() => (i === exploreChips.length - 1 ? (pushUser(c), evaSay(t('Opening the Cockpit — that’s the full board across every client.'), { openCockpit: true })) : submit(c))}
+                                        className="rounded-full px-3 py-1.5 text-sm anim-in"
+                                        style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff', color: COLORS.text }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                                    >
+                                        {c}
+                                    </button>
+                                ))
+                            )}
                         </div>
                     )}
                     <form
@@ -251,60 +288,53 @@ function SummaryCard({ t }: { t: (s: string) => string }) {
     );
 }
 
-function DecisionCards({ decisions, t, onAct }: { decisions: Decision[]; t: (s: string) => string; onAct: (d: Decision, took: boolean) => void }) {
+function DecisionCard({ d, t, onAct }: { d: Decision; t: (s: string) => string; onAct: (d: Decision, took: boolean) => void }) {
     return (
-        <div className="flex flex-col gap-2.5 mt-1">
-            {decisions.map((d) => (
-                <Card key={d.id} className="p-3.5" style={{ maxWidth: 520, borderColor: d.done ? undefined : PURPLE }}>
-                    <div className="flex items-start gap-2.5">
-                        <ClientAvatar name={d.company} size={26} />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(d.label)} · {d.company}</p>
-                            <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
-                            {!d.done && <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: PURPLE }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t('My call')}: {t(d.recommend)}</span></p>}
-                        </div>
-                    </div>
-                    {d.done ? (
-                        <p className="text-sm mt-2 pl-9 flex items-center gap-1.5" style={{ color: '#15803d' }}>✓ {t('Handled')}</p>
-                    ) : (
-                        <div className="flex items-center gap-2 mt-3 pl-9">
-                            <Button onClick={() => onAct(d, true)}>{t(d.alt)}</Button>
-                            <Button appearance="primary" onClick={() => onAct(d, false)}>{t(d.confirm)}</Button>
-                        </div>
-                    )}
-                </Card>
-            ))}
-        </div>
+        <Card className="p-3.5 mt-1" style={{ maxWidth: 520, borderColor: d.done ? undefined : PURPLE }}>
+            <div className="flex items-start gap-2.5">
+                <ClientAvatar name={d.company} size={26} />
+                <div className="min-w-0 flex-1">
+                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(d.label)} · {d.company}</p>
+                    <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                    {!d.done && <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: PURPLE }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t('My call')}: {t(d.recommend)}</span></p>}
+                </div>
+            </div>
+            {d.done ? (
+                <p className="text-sm mt-2 pl-9 flex items-center gap-1.5" style={{ color: '#15803d' }}>✓ {t('Handled')}</p>
+            ) : (
+                <div className="flex items-center gap-2 mt-3 pl-9">
+                    <Button onClick={() => onAct(d, true)}>{t(d.alt)}</Button>
+                    <Button appearance="primary" onClick={() => onAct(d, false)}>{t(d.confirm)}</Button>
+                </div>
+            )}
+        </Card>
     );
 }
 
-function ValueCards({ values, t, onAct }: { values: Value[]; t: (s: string) => string; onAct: (v: Value) => void }) {
+function ValueCard({ v, t, onAct }: { v: Value; t: (s: string) => string; onAct: (v: Value, take: boolean) => void }) {
+    const k = KIND[v.kind];
     return (
-        <div className="flex flex-col gap-2.5 mt-1">
-            {values.map((v) => {
-                const k = KIND[v.kind];
-                return (
-                    <Card key={v.id} className="p-3.5" style={{ maxWidth: 520 }}>
-                        <div className="flex items-start gap-2.5">
-                            <ClientAvatar name={v.company} size={26} />
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: k.bg, color: k.fg }}>{t(v.kind)}</span>
-                                    <p className="text-sm" style={{ color: COLORS.text }}><span className="font-medium">{v.company}</span>{v.extra ? <span style={{ color: COLORS.textMuted }}> {v.extra}</span> : null} {t(v.text)}</p>
-                                </div>
-                                <p className="text-sm mt-1.5 flex items-start gap-1.5" style={{ color: COLORS.textMuted }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t(v.sub)}</span></p>
-                                <div className="mt-2.5">
-                                    {v.done ? (
-                                        <span className="text-sm flex items-center gap-1.5" style={{ color: '#15803d' }}>✓ {t('On it')}</span>
-                                    ) : (
-                                        <Button appearance="primary" onClick={() => onAct(v)}>{t(v.action)}</Button>
-                                    )}
-                                </div>
+        <Card className="p-3.5 mt-1" style={{ maxWidth: 520 }}>
+            <div className="flex items-start gap-2.5">
+                <ClientAvatar name={v.company} size={26} />
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: k.bg, color: k.fg }}>{t(v.kind)}</span>
+                        <p className="text-sm" style={{ color: COLORS.text }}><span className="font-medium">{v.company}</span>{v.extra ? <span style={{ color: COLORS.textMuted }}> {v.extra}</span> : null} {t(v.text)}</p>
+                    </div>
+                    <p className="text-sm mt-1.5 flex items-start gap-1.5" style={{ color: COLORS.textMuted }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t(v.sub)}</span></p>
+                    <div className="mt-2.5">
+                        {v.done ? (
+                            <span className="text-sm flex items-center gap-1.5" style={{ color: '#15803d' }}>✓ {t('On it')}</span>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Button appearance="primary" onClick={() => onAct(v, true)}>{t(v.action)}</Button>
+                                <button onClick={() => onAct(v, false)} className="text-sm" style={{ color: COLORS.textMuted }}>{t('Later')}</button>
                             </div>
-                        </div>
-                    </Card>
-                );
-            })}
-        </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </Card>
     );
 }
