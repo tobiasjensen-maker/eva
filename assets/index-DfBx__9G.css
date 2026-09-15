@@ -3958,6 +3958,12 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   border-top-left-radius: 0px;
   border-top-right-radius: 0px;
 }
+.rounded-br-md {
+  border-bottom-right-radius: 0.375rem;
+}
+.rounded-tl-md {
+  border-top-left-radius: 0.375rem;
+}
 .\!border-0 {
   border-width: 0px !important;
 }
@@ -4402,6 +4408,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .py-6 {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
+}
+.py-7 {
+  padding-top: 1.75rem;
+  padding-bottom: 1.75rem;
 }
 .py-8 {
   padding-top: 2rem;
@@ -5000,6 +5010,10 @@ h1, h2, h3, h4, h5, h6, p {
 @keyframes evaSpin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+@keyframes evaBlink {
+    0%, 80%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
 }
 @keyframes animSlide {
     from { transform: translateX(100%); }
