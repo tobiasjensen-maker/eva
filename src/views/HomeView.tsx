@@ -33,12 +33,12 @@ const VALUES: Value[] = [
 // The briefing, as an ordered list of beats. `next` (when present) is the label
 // of a continue-chip that reveals the following beat; card beats advance when you act.
 type Beat =
-    | { say: string; summary?: true; next: string }
+    | { say: string; summary?: true; next?: string; auto?: true }
     | { decision: number }
     | { value: number }
     | { say: string; done: true };
 const BEATS: Beat[] = [
-    { say: 'Good morning, {name}. 👋 I went through all 40 clients overnight. Want the rundown?', next: 'Yes, go' },
+    { say: 'Good morning, {name}. 👋 Here’s your Tuesday — I went through all 40 clients overnight.', auto: true },
     { say: 'Here’s where things stand.', summary: true, next: 'What needs me?' },
     { decision: 0 },
     { decision: 1 },
@@ -118,8 +118,10 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
         if ('summary' in beat && beat.summary) push({ key: key(), who: 'eva', type: 'summary' });
         if ('decision' in beat) push({ key: key(), who: 'eva', type: 'decision', dId: DECISIONS[beat.decision].id });
         if ('value' in beat) push({ key: key(), who: 'eva', type: 'value', vId: VALUES[beat.value].id });
-        if ('next' in beat) setPendingChip(beat.next);
+        if ('next' in beat && beat.next) setPendingChip(beat.next);
         if ('done' in beat) setReady(true);
+        // The opening greeting flows straight into the summary — no tap needed.
+        if ('auto' in beat && beat.auto) { await sleep(500); await advance(); }
     }
     async function advance() {
         setPendingChip(null);

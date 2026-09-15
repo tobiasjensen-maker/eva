@@ -1357,7 +1357,7 @@ const DA: Record<string, string> = {
     'with EVA': 'med EVA',
     'Ask EVA anything about your day…': 'Spørg EVA om din dag…',
     'Send': 'Send',
-    'Good morning, {name}. 👋 Here’s your Tuesday, 15 September.': 'Godmorgen, {name}. 👋 Her er din tirsdag den 15. september.',
+    'Good morning, {name}. 👋 Here’s your Tuesday — I went through all 40 clients overnight.': 'Godmorgen, {name}. 👋 Her er din tirsdag — jeg gennemgik alle 40 kunder i nat.',
     'While you were away, I ran overnight routines across your practice. Here’s where things stand.': 'Mens du var væk, kørte jeg natlige routiner på tværs af dit kontor. Her er status.',
     'Two of them need a quick call from you before I can close them. Let’s clear those first.': 'To af dem kræver en hurtig beslutning fra dig, før jeg kan lukke dem. Lad os klare dem først.',
     'That’s the books handled. 🎯 Now the part that actually grows the firm — I’ve done the analysis, you just decide.': 'Så er bøgerne klaret. 🎯 Nu den del, der faktisk får firmaet til at vokse — jeg har lavet analysen, du beslutter bare.',
