@@ -89,4 +89,14 @@ separate GitHub Pages deploy — don't remove it.
   The full-width chat is the sole white surface.
 - Shared row/table components live in `src/views/ActivityView.tsx` (`SectionCard`, `LogRow`
   with a flat `variant="row"`, `WaitingRow`, `useActivityActions`) and are reused across the
-  Cockpit, the Activity log, and the Advisory list.
+  Activity log and the Advisory list.
+- **Cockpit is now the AO-house task overview** (`src/views/TaskManagementView.tsx`,
+  inspired by "Praksis"). It replaced the old bookkeeping dashboard as the home. It has a
+  **My work / Whole practice** toggle in the header — "My work" is the logged-in accountant's
+  personal cockpit; "Whole practice" is the manager view (group by accountant/company/
+  deadline/status). The model is task-centric with **EVA taking over**: an EVA-drafted
+  "Ready for your review" queue (a single *Review* CTA opens a modal showing what EVA did +
+  a "Needs your review" callout, with Approve / Take over), an "EVA is handling" live lane, a
+  "Scheduled by EVA" upcoming lane, a "Completed by EVA" trail, and a "Hand to EVA" action on
+  human tasks. `#/review`, `#/cockpit`, `#/tasks`, `#/praksis` all route here. The old
+  `CockpitView` dashboard code remains in `ActivityView.tsx` but is unused.

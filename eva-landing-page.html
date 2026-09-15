@@ -1,0 +1,1624 @@
+<title>Agent Space</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   EVA — landing page
+   tokens: light is the base, dark redefines only the values
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --canvas:#fafafa;
+  --card:#ffffff;
+  --card-2:#f4f3f6;
+  --ink:#191622;
+  --ink-2:#3d3849;
+  --muted:#6d6779;
+  --line:rgba(25,22,34,.10);
+  --line-2:rgba(25,22,34,.055);
+  --brand-amber:#e89c2e;
+  --eva-dot:#e89539;
+  --rule:rgba(25,22,34,.042);
+  --cell:rgba(255,255,255,.85);
+  --cell-d:rgba(25,22,34,.028);
+  --orange:#a1620d;
+  --orange-soft:rgba(232,156,46,.15);
+  --violet:#7c3aed;
+  --violet-ink:#5b21b6;
+  --violet-soft:rgba(124,58,237,.09);
+  --violet-line:rgba(124,58,237,.24);
+  --green:#0f7a4f;
+  --green-soft:rgba(15,122,79,.10);
+  --warn:#a5341c;
+  --warn-soft:rgba(165,52,28,.10);
+  --shadow-card:0 1px 2px rgba(25,22,34,.05), 0 8px 24px -12px rgba(25,22,34,.12);
+  --shadow-frame:0 2px 4px rgba(25,22,34,.04), 0 28px 70px -30px rgba(25,22,34,.28);
+  --display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --body:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --rail:104px;
+  --gap-rail:clamp(18px,3.4vw,52px);
+  --pad:clamp(20px,5vw,56px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --canvas:#100f14;
+    --card:#191821;
+    --card-2:#201f2a;
+    --ink:#f3f1f7;
+    --ink-2:#d7d3e0;
+    --muted:#9b95a8;
+    --line:rgba(255,255,255,.11);
+    --line-2:rgba(255,255,255,.06);
+    --orange:#e8a54f;
+    --orange-soft:rgba(232,165,79,.14);
+    --rule:rgba(255,255,255,.045);
+    --cell:rgba(255,255,255,.04);
+    --cell-d:rgba(0,0,0,.16);
+    --violet:#a78bfa;
+    --violet-ink:#c4b5fd;
+    --violet-soft:rgba(167,139,250,.13);
+    --violet-line:rgba(167,139,250,.30);
+    --green:#4ade80;
+    --green-soft:rgba(74,222,128,.13);
+    --warn:#f0876a;
+    --warn-soft:rgba(240,135,106,.13);
+    --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.6);
+    --shadow-frame:0 2px 6px rgba(0,0,0,.4), 0 34px 80px -34px rgba(0,0,0,.85);
+  }
+}
+:root[data-theme="dark"]{
+  --canvas:#100f14;
+  --card:#191821;
+  --card-2:#201f2a;
+  --ink:#f3f1f7;
+  --ink-2:#d7d3e0;
+  --muted:#9b95a8;
+  --line:rgba(255,255,255,.11);
+  --line-2:rgba(255,255,255,.06);
+  --orange:#e8a54f;
+  --orange-soft:rgba(232,165,79,.14);
+  --rule:rgba(255,255,255,.045);
+  --cell:rgba(255,255,255,.04);
+  --cell-d:rgba(0,0,0,.16);
+  --violet:#a78bfa;
+  --violet-ink:#c4b5fd;
+  --violet-soft:rgba(167,139,250,.13);
+  --violet-line:rgba(167,139,250,.30);
+  --green:#4ade80;
+  --green-soft:rgba(74,222,128,.13);
+  --warn:#f0876a;
+  --warn-soft:rgba(240,135,106,.13);
+  --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.6);
+  --shadow-frame:0 2px 6px rgba(0,0,0,.4), 0 34px 80px -34px rgba(0,0,0,.85);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.6;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;line-height:1.04;margin:0;text-wrap:balance;letter-spacing:-.024em}
+p{margin:0}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--violet);outline-offset:3px;border-radius:4px}
+
+.wrap{max-width:1200px;margin-inline:auto;padding-inline:var(--pad)}
+.mono{font-family:var(--mono);font-size:11px;letter-spacing:.10em;text-transform:uppercase;font-weight:500}
+
+/* ── nav ───────────────────────────────────────────────── */
+.nav{
+  position:sticky;top:0;z-index:60;
+  background:color-mix(in srgb,var(--canvas) 84%,transparent);
+  backdrop-filter:blur(14px) saturate(1.4);
+  border-bottom:1px solid var(--line-2);
+}
+.nav-in{display:flex;align-items:center;gap:18px;height:62px}
+.brand{display:flex;align-items:baseline;gap:10px;text-decoration:none;flex:0 0 auto}
+.brand-word{font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:-.03em}
+.brand-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--violet);transform:translateY(-4px)}
+.eco-logo{height:26px;width:auto;display:block;color:var(--ink)}
+.nav-links{display:flex;gap:26px;margin-inline:auto}
+.nav-links a{
+  text-decoration:none;font-size:14px;color:var(--muted);font-weight:500;
+  padding-bottom:2px;border-bottom:1px solid transparent;transition:color .18s,border-color .18s;
+}
+.nav-links a:hover{color:var(--ink);border-color:var(--orange)}
+.nav-right{display:flex;align-items:center;gap:14px;flex:0 0 auto}
+.lang{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-size:11px;letter-spacing:.06em}
+.lang button{
+  background:none;border:0;padding:3px 6px;border-radius:4px;color:var(--muted);
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;transition:color .15s,background .15s;
+}
+.lang button:hover{color:var(--ink)}
+.lang button[aria-pressed="true"]{color:var(--ink);background:var(--line-2)}
+.lang .sep{color:var(--line);user-select:none}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;
+  font-weight:600;font-size:14.5px;border-radius:999px;border:1px solid transparent;
+  padding:13px 24px;transition:transform .15s,background .18s,border-color .18s,box-shadow .18s;
+}
+.btn-primary{background:var(--ink);color:var(--canvas);box-shadow:0 8px 22px -12px rgba(25,22,34,.5)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 26px -12px rgba(25,22,34,.6)}
+.btn-ghost{border-color:transparent;color:var(--ink);background:var(--card-2)}
+.btn-ghost:hover{background:var(--line-2);transform:translateY(-1px)}
+.btn-sm{padding:8px 15px;font-size:13.5px}
+.btn-stack{flex-direction:column;align-items:center;gap:0;padding:11px 26px;line-height:1.3}
+.btn-stack .l2{font-size:11.5px;font-weight:500;opacity:.6;letter-spacing:.005em}
+.play{
+  width:0;height:0;flex:0 0 auto;
+  border-left:8px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent;
+}
+.nav-cta{
+  text-decoration:none;font-size:14px;font-weight:600;color:var(--ink);
+  border-bottom:1px solid var(--ink);padding-bottom:2px;transition:opacity .15s;
+}
+.nav-cta:hover{opacity:.6}
+@media (max-width:900px){.nav-links{display:none}.nav-in{gap:12px}.nav-right{margin-left:auto}}
+@media (max-width:520px){.nav-cta{display:none}}
+
+/* ── section scaffolding ───────────────────────────────── */
+.sec{border-top:1px solid var(--line-2);padding-block:clamp(88px,11vw,172px);scroll-margin-top:62px}
+.sec-grid{display:grid;grid-template-columns:minmax(0,1fr)}
+.rail-label{color:var(--muted)}
+@media (max-width:860px){
+  .sec-grid{grid-template-columns:1fr;gap:22px}
+  }
+
+/* ── hero ──────────────────────────────────────────────── */
+.hero{
+  padding-top:clamp(52px,7vw,96px);padding-bottom:clamp(30px,4vw,48px);
+  position:relative;text-align:center;
+}
+.ledger{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:100vw;height:660px;z-index:0;pointer-events:none;overflow:hidden;
+  background:
+    repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 96px),
+    repeating-linear-gradient(0deg,var(--rule) 0 1px,transparent 1px 36px);
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 46%,transparent 92%);
+  mask-image:linear-gradient(180deg,#000 0,#000 46%,transparent 92%);
+}
+.ledger i{
+  position:absolute;display:block;background:var(--cell);filter:blur(11px);
+  opacity:.6;animation:cell var(--t,11s) ease-in-out var(--d,0s) infinite;
+}
+.ledger i.d{background:var(--cell-d)}
+.ledger::after{
+  content:"";position:absolute;top:0;bottom:0;width:34%;left:-34%;
+  background:linear-gradient(90deg,transparent,var(--cell),transparent);
+  opacity:.5;animation:pass 26s linear infinite;
+}
+@keyframes cell{0%,100%{opacity:.34}50%{opacity:1}}
+@keyframes pass{0%{left:-34%}100%{left:100%}}
+.hero > *:not(.ledger){position:relative;z-index:1}
+@media (max-width:900px){.ledger{opacity:.6}}
+.ann{
+  display:inline-flex;align-items:center;gap:9px;margin-bottom:clamp(20px,2.4vw,28px);
+  text-decoration:none;font-size:13.5px;background:var(--card);
+  border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 14px;
+  box-shadow:var(--shadow-card);transition:transform .16s,box-shadow .16s;
+}
+.ann:hover{transform:translateY(-1px);box-shadow:0 2px 4px rgba(25,22,34,.06),0 14px 30px -14px rgba(25,22,34,.3)}
+.ann b{font-weight:600;color:var(--ink)}
+.ann-link{color:var(--muted)}
+.ann .ann-sep{color:var(--line)}
+/* EVA's five-dot mark, as it runs in the product: pentagon geometry,
+   a 60s idle rotation about the centre, and a gooey blend so the dots merge */
+.eva-mark{display:inline-block;overflow:visible;flex-shrink:0}
+.eva-mark .stage-group{
+  filter:url(#eva-goo-filter);
+  animation:eva-idle-spin 60s linear infinite;
+}
+.eva-mark .c{fill:var(--eva-dot);stroke:none}
+@keyframes eva-idle-spin{
+  0%{transform:translate(50px,50px) rotate(0deg) translate(-50px,-50px)}
+  100%{transform:translate(50px,50px) rotate(360deg) translate(-50px,-50px)}
+}
+.ann .eva-mark{width:16px;height:16px}
+.eva-defs{position:absolute;width:0;height:0;overflow:hidden}
+.ann-arrow{
+  width:22px;height:22px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;background:var(--card-2);color:var(--ink);
+  font-size:11px;line-height:1;
+}
+.hero h1{
+  font-size:clamp(2.15rem,5.1vw,3.65rem);font-weight:400;letter-spacing:-.026em;
+  line-height:1.02;max-width:20ch;margin-inline:auto;text-wrap:normal;
+}
+.hero h1 .turn{color:var(--muted)}
+.hero-sub{
+  margin:24px auto 0;max-width:50ch;font-size:clamp(1rem,1.45vw,1.17rem);
+  line-height:1.5;color:var(--muted);
+}
+.hero-sub em{font-style:normal;color:var(--ink);font-weight:600}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;margin-top:34px}
+
+/* ── cockpit frame ─────────────────────────────────────── */
+.frame-band{padding-bottom:clamp(56px,7vw,100px)}
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:var(--canvas);box-shadow:var(--shadow-frame);
+}
+.frame-bar{
+  display:flex;align-items:center;gap:14px;padding:11px 16px;
+  border-bottom:1px solid var(--line-2);background:var(--canvas);
+}
+.dots{display:flex;gap:6px}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);display:block}
+.frame-title{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.supervisor{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px clamp(16px,2.6vw,28px);border-bottom:1px solid var(--line-2);
+  background:var(--canvas);font-family:var(--mono);font-size:11px;
+  letter-spacing:.04em;color:var(--muted);
+}
+.supervisor .eva-mark{width:15px;height:15px}
+.sup-need{
+  margin-left:auto;color:var(--orange);border:1px solid var(--orange);
+  border-radius:999px;padding:2px 9px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+}
+@media (max-width:560px){.sup-need{margin-left:0}}
+.frame-body{padding:clamp(16px,2.6vw,28px);background:var(--canvas)}
+.lanes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2vw,22px);align-items:start}
+@media (max-width:1000px){.lanes{grid-template-columns:1fr;max-width:620px;margin-inline:auto}}
+.lane-head{display:flex;align-items:center;gap:8px;padding:2px 4px 12px}
+.lane-head .dotmark{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.lane-head h3{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:600;color:var(--ink-2)}
+.lane-head .count{
+  margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);
+  background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 8px;
+}
+.lane-review .dotmark{background:var(--brand-amber)}
+.lane-doing .dotmark{background:var(--violet)}
+.lane-sched .dotmark{background:var(--muted)}
+.lane-col{display:flex;flex-direction:column;gap:12px}
+.tcard{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+  box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:9px;
+}
+.lane-doing .tcard{border-left:2px solid var(--violet-line)}
+.tc-top{display:flex;align-items:flex-start;gap:8px}
+.tc-client{font-weight:600;font-size:14px;letter-spacing:-.012em;line-height:1.3}
+.tc-task{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.02em;margin-top:2px}
+.pill{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  padding:3px 7px;border-radius:5px;white-space:nowrap;flex:0 0 auto;margin-left:auto;
+}
+.p-violet{background:var(--violet-soft);color:var(--violet-ink);border:1px solid var(--violet-line)}
+.p-green{background:var(--green-soft);color:var(--green);border:1px solid transparent}
+.p-warn{background:var(--warn-soft);color:var(--warn);border:1px solid transparent}
+.p-plain{background:var(--card-2);color:var(--muted);border:1px solid transparent}
+.tc-body{font-size:13px;line-height:1.5;color:var(--ink-2)}
+.tc-foot{display:flex;align-items:center;gap:9px;padding-top:3px;border-top:1px solid var(--line-2);margin-top:1px}
+.avatar{
+  width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.02em;
+  background:var(--card-2);color:var(--ink-2);border:1px solid var(--line);
+}
+.avatar.eva{background:var(--violet);color:#fff;border-color:transparent}
+.tc-amount{font-family:var(--mono);font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tc-act{
+  margin-left:auto;background:none;border:1px solid var(--line);border-radius:7px;
+  padding:4px 11px;font-size:12.5px;font-weight:600;transition:border-color .15s,background .15s;
+}
+.tc-act:hover{border-color:var(--orange);background:var(--orange-soft);color:var(--orange)}
+.bar{height:3px;border-radius:2px;background:var(--card-2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:2px;background:var(--violet)}
+.tc-step{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:.01em}
+.tc-step b{color:var(--ink-2);font-weight:500}
+.srow{
+  display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:11px 13px;box-shadow:var(--shadow-card);
+}
+.srow .when{font-family:var(--mono);font-size:10.5px;color:var(--violet-ink);letter-spacing:.04em;width:74px;flex:0 0 auto;line-height:1.3}
+.srow .what{font-size:13.5px;font-weight:500;line-height:1.3}
+.srow .scope{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+.frame-foot{
+  display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;
+  padding:12px 18px;border-top:1px solid var(--line-2);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;
+}
+.frame-foot .ff{display:flex;align-items:center;gap:7px}
+.frame-foot .ff::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--green)}
+.frame-cap{margin-top:14px;font-size:12.5px;color:var(--muted);max-width:70ch}
+
+/* ── pillars ───────────────────────────────────────────── */
+.pillars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+@media (max-width:860px){.pillars{grid-template-columns:1fr}}
+.pillar{padding:0 clamp(18px,2.4vw,30px);border-left:1px solid var(--line-2)}
+.pillar:first-child{padding-left:0;border-left:0}
+@media (max-width:860px){
+  .pillar{padding:26px 0 0;border-left:0;border-top:1px solid var(--line-2)}
+  .pillar:first-child{padding-top:0;border-top:0}
+}
+.pillar .step{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.pillar .step .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em}
+.pillar .step .verb{font-family:var(--mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.pillar .step .line{flex:1;height:1px;background:var(--line-2)}
+.pillar h3{font-size:clamp(1.32rem,2.1vw,1.62rem);margin-bottom:12px}
+.pillar p{color:var(--muted);font-size:15.5px;line-height:1.7;max-width:30ch}
+.pillar p em{font-style:normal;color:var(--ink-2);font-weight:500}
+
+/* ── section heading block ─────────────────────────────── */
+.sec-h{font-size:clamp(1.85rem,4vw,3.1rem);max-width:22ch;letter-spacing:-.026em;font-weight:500}
+.sec-lead{margin-top:22px;max-width:46ch;font-size:clamp(1rem,1.35vw,1.14rem);color:var(--ink-2);line-height:1.62}
+
+/* ── usp grid ──────────────────────────────────────────── */
+.usps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(30px,4vw,58px) clamp(28px,4vw,62px);margin-top:clamp(46px,6vw,76px)}
+@media (max-width:980px){.usps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.usps{grid-template-columns:1fr}}
+.usp{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:20px}
+.usp h4{font-size:1.14rem;letter-spacing:-.02em;line-height:1.3;display:flex;align-items:baseline;gap:9px}
+.usp h4 .g{width:6px;height:6px;border-radius:2px;background:var(--muted);flex:0 0 auto;transform:translateY(-2px)}
+.usp.is-eva h4 .g{background:var(--violet)}
+.usp .claim{font-size:15px;color:var(--muted);line-height:1.65}
+
+/* ── benefit sections ──────────────────────────────────── */
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.04fr);gap:clamp(26px,4vw,64px);align-items:center}
+@media (max-width:900px){.split{grid-template-columns:1fr;gap:30px}}
+.split.rev .s-text{order:2}
+@media (max-width:900px){.split.rev .s-text{order:0}}
+.s-text h2{font-size:clamp(1.62rem,2.9vw,2.3rem);letter-spacing:-.024em;max-width:18ch;font-weight:500}
+.s-text p{margin-top:22px;color:var(--muted);font-size:16.5px;line-height:1.72;max-width:38ch}
+.mock{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-frame);overflow:hidden}
+.mock-bar{
+  display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line-2);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+}
+.mock-bar .live{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--green)}
+.mock-bar .live::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--green)}
+.mock-body{padding:16px;background:var(--canvas)}
+
+/* A · workload rows */
+.wl{display:flex;flex-direction:column;gap:8px}
+.wl-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.wl-row.over{border-color:var(--warn);background:var(--warn-soft)}
+.wl-name{font-weight:600;font-size:13.5px;line-height:1.25}
+.wl-meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+.wl-load{display:flex;align-items:center;gap:9px}
+.wl-bar{width:clamp(60px,14vw,110px);height:5px;border-radius:3px;background:var(--card-2);overflow:hidden}
+.wl-bar i{display:block;height:100%;background:var(--ink-2)}
+.wl-row.over .wl-bar i{background:var(--warn)}
+.wl-row.eva-row{border-color:var(--violet-line);background:var(--violet-soft)}
+.wl-row.eva-row .wl-bar i{background:var(--violet)}
+.wl-num{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;width:34px;text-align:right}
+
+/* B · work type chips */
+.types{display:flex;flex-wrap:wrap;gap:8px}
+.type{
+  display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px 7px 10px;font-size:13.5px;font-weight:500;
+}
+.type .n{font-family:var(--mono);font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.type .g{width:6px;height:6px;border-radius:50%;background:var(--violet)}
+.types-note{margin-top:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+
+/* C · trace card */
+.trace{display:flex;flex-direction:column;gap:0}
+.tr-row{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line-2)}
+.tr-row:last-child{border-bottom:0}
+.tr-ico{
+  width:18px;height:18px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;margin-top:1px;
+  font-size:10px;font-weight:700;font-family:var(--mono);
+  background:var(--green-soft);color:var(--green);
+}
+.tr-ico.ask{background:var(--orange-soft);color:var(--orange)}
+.tr-txt{font-size:13px;line-height:1.5;color:var(--ink-2)}
+.tr-txt b{color:var(--ink);font-weight:600}
+.tr-sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+.ask-box{
+  margin-top:12px;background:var(--card);border:1px solid var(--orange);border-radius:11px;padding:13px 14px;
+}
+.ask-box .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--orange);font-weight:600}
+.ask-box p{font-size:13.5px;line-height:1.5;margin-top:7px;color:var(--ink)}
+.ask-box .conf{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:8px}
+.ask-btns{display:flex;gap:8px;margin-top:12px}
+.ask-btns button{border-radius:8px;padding:6px 13px;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card)}
+.ask-btns button.pri{background:var(--orange);color:#fff;border-color:transparent}
+:root[data-theme="dark"] .ask-btns button.pri,:root:not([data-theme="light"]) .ask-btns button.pri{color:#1a0d05}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .ask-btns button.pri{color:#fff}}
+
+/* D · routine setup */
+.rt{display:flex;flex-direction:column;gap:14px}
+.rt-line{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.rt-line .k{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);width:78px;flex:0 0 auto}
+.rt-val{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-weight:500;font-size:13px}
+.seg{display:flex;gap:3px;background:var(--card-2);padding:3px;border-radius:9px;flex-wrap:wrap}
+.seg span{font-size:12.5px;font-weight:500;padding:5px 11px;border-radius:6px;color:var(--muted);white-space:nowrap}
+.seg span.on{background:var(--violet);color:#fff;box-shadow:0 2px 8px -3px rgba(124,58,237,.7)}
+.conns{display:flex;flex-wrap:wrap;gap:6px}
+.conn{
+  font-family:var(--mono);font-size:11px;letter-spacing:.02em;padding:5px 10px;border-radius:7px;
+  background:var(--card);border:1px solid var(--line);color:var(--ink-2);
+}
+.conn.off{color:var(--muted);border-style:dashed}
+
+/* E · advisory shift */
+.shift{display:flex;flex-direction:column;gap:22px;margin-top:6px}
+.shift-row .st-lab{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
+.shift-row .st-lab .mono{color:var(--muted)}
+.shift-bar{display:flex;height:38px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+.shift-bar span{
+  display:flex;align-items:center;padding-inline:12px;font-size:12.5px;font-weight:600;white-space:nowrap;
+  font-family:var(--mono);letter-spacing:.02em;
+}
+.shift-bar .comp{background:var(--card-2);color:var(--muted)}
+.shift-bar .adv{background:var(--violet);color:#fff}
+.shift-key{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.shift-key i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px}
+
+/* F · audit trail */
+.audit{display:flex;flex-direction:column}
+.au{display:grid;grid-template-columns:88px 1fr auto;gap:12px;align-items:baseline;
+  padding:10px 0;border-bottom:1px solid var(--line-2);font-size:13px}
+.au:last-child{border-bottom:0}
+.au .ts{font-family:var(--mono);font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.au .who{font-weight:600;font-size:12.5px}
+.au .who.is-eva{color:var(--violet-ink)}
+.au .act{color:var(--ink-2);line-height:1.45;font-size:12.5px;margin-top:2px}
+.au .rev{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--line);border-radius:6px;padding:3px 7px;background:var(--card)}
+
+/* ── stat band ─────────────────────────────────────────── */
+.model{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:clamp(20px,2.8vw,40px);margin:clamp(40px,5vw,66px) 0 0;padding:0;list-style:none;
+}
+@media (max-width:900px){.model{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.model{grid-template-columns:1fr}}
+.model li{display:flex;flex-direction:column;gap:9px;border-top:1px solid var(--line);padding-top:18px}
+.model .m-step{color:var(--muted)}
+.model h4{font-size:1.08rem;letter-spacing:-.018em;font-weight:500}
+.model p{font-size:14px;line-height:1.62;color:var(--muted)}
+/* ── pricing ──────────────────────────────────────────── */
+.pricing-head{text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px}
+.pricing-head h2{font-size:clamp(1.85rem,4vw,3.1rem);letter-spacing:-.026em;font-weight:500}
+.contact-pill{
+  display:inline-flex;align-items:center;text-decoration:none;font-size:14.5px;font-weight:500;
+  background:var(--card-2);color:var(--ink);border-radius:999px;padding:11px 24px;
+  transition:background .18s,transform .15s;
+}
+.contact-pill:hover{background:var(--line-2);transform:translateY(-1px)}
+.tiers{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(14px,1.8vw,22px);margin-top:clamp(38px,5vw,62px);align-items:start;
+}
+@media (max-width:980px){.tiers{grid-template-columns:1fr;max-width:520px;margin-inline:auto}}
+.tier{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:clamp(22px,2.4vw,30px);box-shadow:var(--shadow-card);
+  display:flex;flex-direction:column;gap:16px;position:relative;
+}
+.tier.featured{border-color:var(--violet-line);box-shadow:0 1px 2px rgba(25,22,34,.05),0 16px 40px -20px rgba(124,58,237,.45)}
+.tier-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.tier-name{font-size:15px;font-weight:500;color:var(--muted)}
+.tier-tag{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+  position:absolute;top:-10px;right:20px;
+  background:var(--violet);color:#fff;border:0;
+  border-radius:5px;padding:3px 9px;
+  box-shadow:0 4px 12px -4px rgba(124,58,237,.6);
+}
+.seg-bill{display:flex;gap:2px;margin-left:auto;background:var(--card-2);padding:3px;border-radius:999px}
+.seg-bill button{
+  border:0;background:none;border-radius:999px;padding:5px 11px;
+  font-size:12px;font-weight:500;color:var(--muted);transition:background .16s,color .16s;
+}
+.seg-bill button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.tier-price{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.tier-price .amount{
+  font-family:var(--display);font-weight:500;font-size:clamp(2.1rem,3.4vw,2.85rem);
+  letter-spacing:-.032em;line-height:1;font-variant-numeric:tabular-nums;
+}
+.tier-price .unit{font-size:15px;color:var(--muted)}
+.billed{font-size:13.5px;color:var(--muted);margin-top:-8px}
+.tier .btn{width:100%}
+.tier-includes{font-size:14px;font-weight:600;margin-top:4px}
+.tier ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.tier li{display:flex;gap:10px;font-size:14px;line-height:1.5;color:var(--muted)}
+.tier li::before{content:"✓";color:var(--green);font-size:12px;flex:0 0 auto;margin-top:2px}
+.pricing-note{
+  margin-top:clamp(26px,3vw,40px);text-align:center;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+}
+.stats-sec{background:var(--card);border-block:1px solid var(--line-2)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line-2)}
+@media (max-width:860px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--card);padding:clamp(28px,3.6vw,46px) clamp(18px,2.6vw,32px)}
+.stat .fig{font-family:var(--display);font-weight:700;font-size:clamp(2.1rem,4.4vw,3.2rem);letter-spacing:-.04em;line-height:1}
+
+.stat .lab{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.5;max-width:26ch}
+.stats-note{padding-top:22px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+
+/* ── faq + closing ─────────────────────────────────────── */
+#faq .close-grid{margin-top:clamp(66px,8vw,124px)}
+.close-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(30px,5vw,72px);align-items:start}
+@media (max-width:940px){.close-grid{grid-template-columns:1fr}}
+.faq{display:flex;flex-direction:column}
+.qa{border-top:1px solid var(--line);padding:24px 0}
+.qa:last-child{border-bottom:1px solid var(--line)}
+.qa h4{font-size:1.02rem;letter-spacing:-.014em;display:flex;gap:9px;align-items:baseline}
+.qa h4::before{content:"?";font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:600;flex:0 0 auto}
+.qa p{margin-top:9px;color:var(--muted);font-size:14.5px;line-height:1.6;padding-left:21px}
+.close-card{position:sticky;top:96px}
+.close-card h2{font-size:clamp(1.8rem,3.4vw,2.7rem);letter-spacing:-.026em;max-width:16ch;font-weight:500}
+.close-card p{margin-top:18px;color:var(--ink-2);font-size:16px;line-height:1.62;max-width:42ch}
+.close-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.close-list{margin-top:30px;display:flex;flex-direction:column;gap:9px;border-top:1px solid var(--line-2);padding-top:20px}
+.close-list div{display:flex;gap:10px;font-size:13.5px;color:var(--muted);align-items:baseline}
+.close-list div::before{content:"→";font-family:var(--mono);color:var(--violet);font-size:12px}
+@media (max-width:940px){.close-card{position:static}}
+
+/* ── footer ────────────────────────────────────────────── */
+.foot{border-top:1px solid var(--line-2);padding-block:40px 52px}
+.foot-in{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;justify-content:space-between}
+.foot-l{max-width:44ch}
+.foot-l p{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.6}
+.foot-fine{margin-top:26px;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--muted);line-height:1.7}
+.foot-r{display:flex;gap:44px;flex-wrap:wrap}
+.foot-col{display:flex;flex-direction:column;gap:9px}
+.foot-col .mono{color:var(--muted);margin-bottom:3px}
+.foot-col a{font-size:13.5px;text-decoration:none;color:var(--ink-2)}
+.foot-col a:hover{color:var(--orange)}
+
+/* ── reveal (visible at rest; animates from a visible state) ── */
+.rv{animation:none}
+.rv.in{animation:rise .62s cubic-bezier(.22,.7,.24,1) both}
+@keyframes rise{from{opacity:.28;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .rv.in{animation:none}
+  .ledger i,.ledger::after,.eva-mark .stage-group{animation:none}
+  .btn:hover{transform:none}
+}
+</style>
+
+<nav class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" aria-label="EVA, built on e-conomic">
+      <svg class="eco-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360.9 96" role="img" aria-label="e-conomic"><g><path d="m9.29 46.58c-4.21-.84-8.3 1.9-9.14 6.1-.84 4.21 1.9 8.3 6.1 9.14 4.21.84 8.3-1.9 9.14-6.1.84-4.21-1.9-8.3-6.1-9.14Z" fill="var(--brand-amber)"/><path d="m55.01 55.68c-7.01-1.4-13.83 3.16-15.23 10.17-1.39 7.01 3.16 13.83 10.17 15.23 7.01 1.39 13.83-3.16 15.23-10.17 1.4-7.01-3.16-13.83-10.17-15.23Z" fill="var(--brand-amber)"/><path d="m68.67.3c-8.42-1.68-16.6 3.78-18.29 12.2l-1.5 7.62c-1.11 5.62-6.58 9.27-12.2 8.16l-5.08-1.04c-5.59-1.11-9.25-6.55-8.13-12.17l.26-1.27c.96-4.9-2.23-9.69-7.12-10.65-4.92-.98-9.69 2.2-10.67 7.12-.98 4.9 2.23 9.66 7.12 10.65l1.27.26c5.62 1.11 9.27 6.58 8.13 12.17l-.49 2.54c-1.11 5.62 2.54 11.09 8.13 12.2 5.62 1.11 11.09-2.54 12.2-8.16l.49-2.54c1.11-5.6 6.58-9.25 12.17-8.13l7.64 1.53c8.42 1.66 16.6-3.81 18.26-12.23 1.68-8.42-3.78-16.6-12.2-18.26Z" fill="var(--brand-amber)"/></g><g><path d="m102.44 35.62c-2.07 0-3.75.67-5.02 2.02-1.27 1.35-2.02 3.3-2.24 5.87h14c-.02-1.55-.27-2.92-.76-4.1-.49-1.19-1.22-2.11-2.2-2.78-.98-.67-2.24-1-3.78-1Zm.01-4.54c2.63 0 4.89.55 6.77 1.65 1.88 1.1 3.33 2.66 4.34 4.67 1.01 2.01 1.51 4.41 1.51 7.18v3.27h-20.02c.06 3.01.86 5.32 2.38 6.94 1.52 1.62 3.66 2.43 6.41 2.43 1.9 0 3.6-.18 5.1-.55 1.5-.36 3.05-.9 4.66-1.61v4.91c-1.49.69-3 1.2-4.53 1.52-1.53.32-3.36.48-5.48.48-2.91 0-5.46-.57-7.66-1.72-2.2-1.14-3.91-2.85-5.14-5.11-1.23-2.26-1.85-5.06-1.85-8.4s.56-6.14 1.68-8.47c1.12-2.33 2.69-4.11 4.72-5.34 2.03-1.23 4.4-1.84 7.12-1.84Z" fill="currentColor"/><path d="m153.1 61.96c-2.79 0-5.21-.55-7.27-1.64-2.06-1.1-3.65-2.78-4.77-5.04-1.12-2.26-1.68-5.13-1.68-8.6s.61-6.57 1.82-8.87c1.21-2.3 2.9-3.99 5.05-5.09 2.15-1.1 4.62-1.64 7.4-1.64 1.71 0 3.29.17 4.72.51 1.43.34 2.64.76 3.63 1.25l-1.78 4.8c-1.06-.43-2.17-.79-3.32-1.1-1.15-.3-2.26-.46-3.31-.46-1.81 0-3.31.4-4.5 1.2-1.19.8-2.09 1.98-2.68 3.54-.59 1.56-.89 3.5-.89 5.81s.3 4.12.89 5.66c.59 1.54 1.47 2.7 2.64 3.49 1.16.79 2.61 1.18 4.32 1.18 1.62 0 3.07-.19 4.36-.57 1.29-.38 2.49-.87 3.61-1.47v5.21c-1.1.62-2.28 1.08-3.56 1.38-1.28.3-2.84.46-4.68.46Z" fill="currentColor"/><path d="m173.11 46.46c0 2.22.28 4.12.83 5.7.55 1.58 1.4 2.8 2.56 3.64 1.15.84 2.64 1.26 4.47 1.26s3.3-.42 4.45-1.26c1.16-.84 2.01-2.06 2.55-3.64.54-1.59.81-3.49.81-5.7s-.27-4.09-.81-5.65c-.54-1.56-1.39-2.75-2.54-3.57-1.15-.82-2.65-1.24-4.5-1.24-2.71 0-4.69.91-5.94 2.72-1.25 1.81-1.88 4.4-1.88 7.74Zm21.82 0c0 2.47-.32 4.66-.97 6.58-.64 1.92-1.58 3.54-2.81 4.86-1.23 1.32-2.71 2.33-4.44 3.02-1.73.69-3.68 1.04-5.86 1.04-2.03 0-3.9-.35-5.6-1.04-1.7-.69-3.16-1.7-4.4-3.02-1.24-1.32-2.2-2.94-2.87-4.86-.68-1.92-1.01-4.11-1.01-6.58 0-3.27.56-6.06 1.7-8.35 1.13-2.29 2.75-4.04 4.85-5.24 2.1-1.2 4.61-1.8 7.52-1.8 2.74 0 5.16.6 7.25 1.81 2.09 1.2 3.72 2.95 4.89 5.25 1.17 2.29 1.76 5.07 1.76 8.33Z" fill="currentColor"/><path d="m217.9 31.07c3.39 0 6.02.87 7.88 2.6 1.86 1.73 2.8 4.51 2.8 8.33v19.42h-5.95v-18.42c0-2.34-.49-4.1-1.48-5.27-.99-1.17-2.51-1.76-4.57-1.76-2.97 0-5.03.9-6.2 2.69-1.17 1.79-1.75 4.39-1.75 7.8v14.96h-5.97v-29.79h4.67l.85 4.1h.33c.64-1.04 1.44-1.91 2.41-2.59.97-.69 2.05-1.2 3.24-1.54 1.2-.35 2.44-.52 3.74-.52Z" fill="currentColor"/><path d="m242.27 46.46c0 2.22.28 4.12.83 5.7.55 1.58 1.4 2.8 2.56 3.64 1.15.84 2.64 1.26 4.47 1.26s3.3-.42 4.45-1.26c1.16-.84 2.01-2.06 2.55-3.64.54-1.59.81-3.49.81-5.7s-.27-4.09-.81-5.65c-.54-1.56-1.39-2.75-2.54-3.57-1.15-.82-2.65-1.24-4.5-1.24-2.71 0-4.69.91-5.94 2.72-1.25 1.81-1.88 4.4-1.88 7.74Zm21.82 0c0 2.47-.32 4.66-.97 6.58-.64 1.92-1.58 3.54-2.81 4.86-1.23 1.32-2.71 2.33-4.44 3.02-1.73.69-3.68 1.04-5.86 1.04-2.03 0-3.9-.35-5.6-1.04-1.7-.69-3.16-1.7-4.4-3.02-1.24-1.32-2.2-2.94-2.87-4.86-.68-1.92-1.01-4.11-1.01-6.58 0-3.27.56-6.06 1.7-8.35 1.13-2.29 2.75-4.04 4.85-5.24 2.1-1.2 4.61-1.8 7.52-1.8 2.74 0 5.16.6 7.25 1.81 2.09 1.2 3.72 2.95 4.89 5.25 1.17 2.29 1.76 5.07 1.76 8.33Z" fill="currentColor"/><path d="m305.22 31.07c3.32 0 5.83.86 7.52 2.58 1.69 1.72 2.54 4.48 2.54 8.28v19.48h-5.95v-18.53c0-2.29-.46-4.02-1.37-5.18-.91-1.16-2.29-1.74-4.13-1.74-2.59 0-4.45.81-5.59 2.42-1.14 1.62-1.71 3.97-1.71 7.06v15.96h-5.96v-18.53c0-1.53-.2-2.81-.61-3.83-.4-1.02-1.01-1.79-1.83-2.31-.81-.51-1.84-.77-3.08-.77-1.79 0-3.21.4-4.27 1.19-1.06.79-1.83 1.97-2.29 3.51-.47 1.55-.7 3.44-.7 5.68v15.06h-5.97v-29.79h4.67l.85 4.05h.33c.6-1.03 1.36-1.89 2.27-2.57.91-.68 1.92-1.19 3.03-1.53 1.11-.34 2.28-.51 3.5-.51 2.23 0 4.11.4 5.63 1.19 1.53.79 2.66 2 3.4 3.62h.43c.94-1.64 2.25-2.85 3.92-3.63 1.68-.78 3.46-1.18 5.36-1.18Z" fill="currentColor"/><path d="m330.51 31.63v29.79h-5.97v-29.79h5.97Z" fill="currentColor"/><path d="m352 61.96c-2.79 0-5.21-.55-7.27-1.64-2.06-1.1-3.65-2.78-4.77-5.04-1.12-2.26-1.68-5.13-1.68-8.6s.61-6.57 1.82-8.87c1.21-2.3 2.9-3.99 5.05-5.09 2.15-1.1 4.62-1.64 7.4-1.64 1.71 0 3.29.17 4.72.51 1.43.34 2.64.76 3.63 1.25l-1.78 4.8c-1.06-.43-2.17-.79-3.32-1.1-1.15-.3-2.26-.46-3.31-.46-1.81 0-3.31.4-4.5 1.2-1.19.8-2.09 1.98-2.68 3.54-.59 1.56-.89 3.5-.89 5.81s.3 4.12.89 5.66c.59 1.54 1.47 2.7 2.64 3.49 1.16.79 2.61 1.18 4.32 1.18 1.62 0 3.07-.19 4.36-.57 1.29-.38 2.49-.87 3.61-1.47v5.21c-1.1.62-2.28 1.08-3.56 1.38-1.28.3-2.84.46-4.68.46Z" fill="currentColor"/><circle cx="327.53" cy="23.65" r="3.56" fill="currentColor"/><circle cx="127.15" cy="46.52" r="3.89" fill="currentColor"/></g><path id="byVISMA" d="m262.16 76.75c-1.7 0-2.99.64-3.86 1.93h-.12c.02-.17.04-.57.07-1.2.03-.63.05-1.11.05-1.43v-4.33h-2.75v18.2h2.06l.5-1.53h.19c.91 1.18 2.18 1.77 3.81 1.77s2.89-.59 3.8-1.77c.91-1.18 1.37-2.83 1.37-4.95s-.45-3.75-1.35-4.92c-.9-1.17-2.16-1.75-3.77-1.75Zm1.55 10c-.5.77-1.24 1.16-2.22 1.16-1.13 0-1.94-.35-2.44-1.06-.5-.71-.75-1.85-.75-3.42v-.19c.02-1.53.27-2.62.75-3.27s1.28-.98 2.39-.98c2.01 0 3.02 1.47 3.02 4.41 0 1.46-.25 2.57-.75 3.35Zm14.67-9.77h2.97l-5.53 14.66c-1.01 2.69-2.68 4.04-5.03 4.04-.61 0-1.2-.07-1.78-.2v-2.18c.41.09.88.14 1.41.14 1.33 0 2.26-.77 2.8-2.3l.48-1.22-5.19-12.94h2.99l2.63 7.33c.4 1.05.66 2.03.8 2.95h.09c.07-.43.2-.95.39-1.56.19-.61 1.18-3.52 2.97-8.72Zm21.19-4.16h2.9l-5.99 17.1h-2.95l-5.97-17.1h2.88l3.57 10.63c.19.51.39 1.16.6 1.96.21.8.35 1.39.41 1.78.1-.59.26-1.28.47-2.06s.38-1.36.51-1.73l3.57-10.59Zm5.16 0h2.8v17.1h-2.8v-17.1Zm16.76 10.45c.27.57.41 1.24.41 2.01 0 1.52-.55 2.71-1.65 3.58-1.1.87-2.62 1.3-4.55 1.3s-3.52-.3-4.75-.9v-2.64c.78.37 1.61.66 2.49.87.88.21 1.69.32 2.45.32 1.11 0 1.92-.21 2.45-.63.53-.42.79-.99.79-1.7 0-.64-.24-1.18-.73-1.63s-1.48-.97-2.99-1.58c-1.56-.63-2.66-1.35-3.3-2.16-.64-.81-.96-1.79-.96-2.92 0-1.43.51-2.55 1.52-3.37 1.01-.82 2.37-1.23 4.08-1.23s3.27.36 4.89 1.08l-.89 2.28c-1.52-.64-2.88-.96-4.07-.96-.9 0-1.59.2-2.06.59-.47.39-.7.91-.7 1.56 0 .44.09.82.28 1.14.19.32.49.61.92.89.43.28 1.2.65 2.32 1.11 1.26.52 2.18 1.01 2.76 1.46.58.45 1.01.96 1.29 1.53Zm17.37-10.45h3.95v17.1h-2.69v-8.46c0-.85.02-1.96.06-3.32.04-1.36.08-2.19.11-2.48h-.09l-5.14 14.26h-2.47l-4.96-14.28h-.09c.13 2.12.2 4.11.2 5.97v8.32h-2.54v-17.1h3.94l4.75 13.6h.07l4.89-13.6Zm15.64-.07h-3.04l-6.4 17.17h2.95l1.67-4.75h6.54l1.71 4.75h2.97l-6.4-17.17Zm-4 10.01l1.54-4.46c.41-1.14.71-2.19.92-3.15.08.31.22.8.43 1.47.21.67.37 1.16.48 1.47l1.6 4.66h-4.98Z" fill="currentColor"/></svg>
+    </a>
+    <div class="nav-links">
+      <a href="#model" data-i18n="nav.l6">How it works</a>
+      <a href="#pricing" data-i18n="nav.l7">Pricing</a>
+      <a href="#faq" data-i18n="nav.l5">Questions</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <span class="sep">·</span>
+        <button type="button" data-lang="da" aria-pressed="false">DA</button>
+      </div>
+      <a class="nav-cta" href="#close" data-i18n="cta.demo">Book a demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── hero ─────────────────────────────────────────────── -->
+<svg class="eva-defs" aria-hidden="true" focusable="false"><defs>
+  <filter id="eva-goo-filter" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"></feGaussianBlur>
+    <feColorMatrix in="blur" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 29 -11" result="goo"></feColorMatrix>
+    <feBlend in="SourceGraphic" in2="goo"></feBlend>
+  </filter>
+</defs></svg>
+
+<header class="hero wrap" id="top">
+  <div class="ledger" aria-hidden="true">
+    <i style="left:2%;top:72px;width:190px;height:36px;--t:13s;--d:-2s"></i>
+    <i class="d" style="left:9%;top:180px;width:96px;height:36px;--t:15s;--d:-6s"></i>
+    <i style="left:4%;top:288px;width:288px;height:36px;--t:11s;--d:-1s"></i>
+    <i style="left:11%;top:432px;width:190px;height:36px;--t:9s;--d:-8s"></i>
+    <i style="left:79%;top:36px;width:190px;height:36px;--t:12s;--d:-3s"></i>
+    <i class="d" style="left:87%;top:144px;width:96px;height:36px;--t:14s;--d:-9s"></i>
+    <i style="left:74%;top:252px;width:288px;height:36px;--t:10s;--d:-5s"></i>
+    <i style="left:84%;top:396px;width:190px;height:72px;--t:16s;--d:-7s"></i>
+  </div>
+  <a class="ann" href="#cockpit">
+    <svg class="eva-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g class="stage-group"><circle class="c" cx="50" cy="14" r="11"></circle><circle class="c" cx="84" cy="39" r="11"></circle><circle class="c" cx="71" cy="79" r="11"></circle><circle class="c" cx="29" cy="79" r="11"></circle><circle class="c" cx="16" cy="39" r="11"></circle></g></svg>
+    <b data-i18n="ann.b">Agent Space is live</b>
+    <span class="ann-sep">·</span>
+    <span class="ann-link" data-i18n="ann.l">See EVA at work</span>
+    <span class="ann-arrow" aria-hidden="true">↗</span>
+  </a>
+  <h1 data-i18n-html="hero.h1">Get more work done<br>with Agent Space</h1>
+  <p class="hero-sub" data-i18n-html="hero.sub">Agent Space is where your recurring accounting work gets done. EVA runs it across every agreement; you set the limits and approve what matters.</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="#close" data-i18n="cta.demo">Book a demo</a>
+  </div>
+</header>
+
+<!-- ── cockpit mock ─────────────────────────────────────── -->
+<section class="wrap frame-band" id="cockpit">
+  <div class="frame rv">
+    <div class="frame-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="frame-title" data-i18n="ck.title">Agent Space</span>
+    </div>
+
+    <div class="supervisor">
+      <svg class="eva-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g class="stage-group"><circle class="c" cx="50" cy="14" r="11"></circle><circle class="c" cx="84" cy="39" r="11"></circle><circle class="c" cx="71" cy="79" r="11"></circle><circle class="c" cx="29" cy="79" r="11"></circle><circle class="c" cx="16" cy="39" r="11"></circle></g></svg>
+      <span data-i18n="sup.line">EVA has 14 runs in flight across 61 agreements</span>
+      <span class="sup-need" data-i18n="sup.need">4 need you</span>
+    </div>
+
+    <div class="frame-body">
+      <div class="lanes">
+
+        <!-- lane 1 -->
+        <div class="lane-review">
+          <div class="lane-head">
+            <span class="dotmark"></span>
+            <h3 data-i18n="ck.lane1">Ready for your review</h3>
+            <span class="count">4</span>
+          </div>
+          <div class="lane-col">
+
+            <article class="tcard">
+              <div class="tc-top">
+                <div>
+                  <div class="tc-client">Nordlys Byg ApS</div>
+                  <div class="tc-task" data-i18n="ck.a1.task">VAT return · Q2</div>
+                </div>
+                <span class="pill p-violet" data-i18n="ck.a1.pill">1 judgement call</span>
+              </div>
+              <p class="tc-body" data-i18n="ck.a1.body">214 entries reconciled. One purchase has no VAT-valid receipt.</p>
+              <div class="tc-foot">
+                <span class="avatar">MJ</span>
+                <span class="tc-amount">kr. 48.212,50</span>
+                <button class="tc-act" type="button" data-i18n="ck.approve">Approve</button>
+              </div>
+            </article>
+
+            <article class="tcard">
+              <div class="tc-top">
+                <div>
+                  <div class="tc-client">Kaffebar Sofie ApS</div>
+                  <div class="tc-task" data-i18n="ck.a2.task">Bank reconciliation · August</div>
+                </div>
+                <span class="pill p-green" data-i18n="ck.a2.pill">Draft ready</span>
+              </div>
+              <p class="tc-body" data-i18n="ck.a2.body">146 of 148 lines matched. Two transfers look like owner's draw.</p>
+              <div class="tc-foot">
+                <span class="avatar">SK</span>
+                <span class="tc-amount">kr. 9.640,00</span>
+                <button class="tc-act" type="button" data-i18n="ck.approve">Approve</button>
+              </div>
+            </article>
+
+            <article class="tcard">
+              <div class="tc-top">
+                <div>
+                  <div class="tc-client">Mikkelsen Tandklinik ApS</div>
+                  <div class="tc-task" data-i18n="ck.a3.task">Payroll · September</div>
+                </div>
+                <span class="pill p-warn" data-i18n="ck.a3.pill">Needs sign-off</span>
+              </div>
+              <p class="tc-body" data-i18n="ck.a3.body">Posted to the ledger, ready to file with eIndkomst.</p>
+              <div class="tc-foot">
+                <span class="avatar">TL</span>
+                <span class="tc-amount">kr. 214.880,00</span>
+                <button class="tc-act" type="button" data-i18n="ck.approve">Approve</button>
+              </div>
+            </article>
+
+          </div>
+        </div>
+
+        <!-- lane 2 -->
+        <div class="lane-doing">
+          <div class="lane-head">
+            <span class="dotmark"></span>
+            <h3 data-i18n="ck.lane2">EVA is handling</h3>
+            <span class="count">2</span>
+          </div>
+          <div class="lane-col">
+
+            <article class="tcard">
+              <div class="tc-top">
+                <div>
+                  <div class="tc-client">Bølgen Design ApS</div>
+                  <div class="tc-task" data-i18n="ck.b1.task">Period close · August</div>
+                </div>
+                <span class="pill p-violet" data-i18n="ck.running">Running</span>
+              </div>
+              <div class="tc-step"><b data-i18n="ck.b1.step">Reconciling balance accounts</b><span>7 / 11</span></div>
+              <div class="bar"><i style="width:64%"></i></div>
+              <div class="tc-foot">
+                <span class="avatar eva">E</span>
+                <span class="tc-step" data-i18n="ck.b1.eta">est. 4 min left</span>
+              </div>
+            </article>
+
+            <article class="tcard">
+              <div class="tc-top">
+                <div>
+                  <div class="tc-client">Havnens Cykler ApS</div>
+                  <div class="tc-task" data-i18n="ck.b2.task">Chasing documents</div>
+                </div>
+                <span class="pill p-violet" data-i18n="ck.running">Running</span>
+              </div>
+              <div class="tc-step"><b data-i18n="ck.b2.step">3 reminders sent</b><span data-i18n="ck.b2.sub">waiting on 2 receipts</span></div>
+              <div class="bar"><i style="width:42%"></i></div>
+              <div class="tc-foot">
+                <span class="avatar eva">E</span>
+                <span class="tc-step" data-i18n="ck.b2.eta">follows up tomorrow 09.00</span>
+              </div>
+            </article>
+
+          </div>
+        </div>
+
+        <!-- lane 3 -->
+        <div class="lane-sched">
+          <div class="lane-head">
+            <span class="dotmark"></span>
+            <h3 data-i18n="ck.lane3">Queued by EVA</h3>
+            <span class="count">9</span>
+          </div>
+          <div class="lane-col">
+
+            <div class="srow">
+              <span class="when" data-i18n="ck.c1.when">Tonight 02.00</span>
+              <div>
+                <div class="what" data-i18n="ck.c1.what">Bank reconciliation</div>
+                <div class="scope" data-i18n="ck.c1.scope">34 agreements · run alone</div>
+              </div>
+            </div>
+
+            <div class="srow">
+              <span class="when" data-i18n="ck.c2.when">Tomorrow 07.30</span>
+              <div>
+                <div class="what" data-i18n="ck.c2.what">Deviation briefing</div>
+                <div class="scope" data-i18n="ck.c2.scope">whole portfolio · to your inbox</div>
+              </div>
+            </div>
+
+            <div class="srow">
+              <span class="when" data-i18n="ck.c3.when">1 Oct, 08.00</span>
+              <div>
+                <div class="what" data-i18n="ck.c3.what">VAT return · Q3</div>
+                <div class="scope" data-i18n="ck.c3.scope">9 agreements · ask before filing</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="frame-foot">
+      <span class="ff" data-i18n="ck.f1">Every action traceable</span>
+      <span class="ff" data-i18n="ck.f2">Autonomy capped per routine</span>
+      <span class="ff" data-i18n="ck.f3">Nothing irreversible</span>
+    </div>
+  </div>
+  <p class="frame-cap" data-i18n="ck.cap">Illustrative — client names, amounts and figures on this page are fictional.</p>
+</section>
+
+<!-- ── pillars ──────────────────────────────────────────── -->
+<section class="sec" id="pillars">
+  <div class="wrap sec-grid">
+    <div class="pillars rv">
+      <div class="pillar">
+        <div class="step"><span class="n">01</span><span class="verb" data-i18n="p.1.verb">EVA</span><span class="line"></span></div>
+        <h3 data-i18n="p.1.h">EVA does the work</h3>
+        <p data-i18n-html="p.1.p">Reconciliations, VAT, payroll, document chasing, period close — <em>completed</em> across every agreement, not just flagged.</p>
+      </div>
+      <div class="pillar">
+        <div class="step"><span class="n">02</span><span class="verb" data-i18n="p.2.verb">Agent Space</span><span class="line"></span></div>
+        <h3 data-i18n="p.2.h">Agent Space keeps it in view</h3>
+        <p data-i18n-html="p.2.p">Every run, every agreement, every colleague — what EVA is doing now, what starts tonight, and what's <em>waiting for you</em>.</p>
+      </div>
+      <div class="pillar">
+        <div class="step"><span class="n">03</span><span class="verb" data-i18n="p.3.verb">You</span><span class="line"></span></div>
+        <h3 data-i18n="p.3.h">You set the policy</h3>
+        <p data-i18n-html="p.3.p">Autonomy caps per routine, gates where you want them, a full trace on every action. <em>Nothing is irreversible.</em></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ── A · EVA does the work ── -->
+<section class="sec" id="work">
+  <div class="wrap sec-grid">
+    <div class="split rev rv">
+      <div class="s-text">
+        <h2 data-i18n="b.h">A colleague who doesn't sleep.</h2>
+        <p data-i18n="b.p">Bank, VAT, payroll, documents, period close — EVA runs them across every agreement. You see what's running now, what starts tonight, and what's ready for you.</p>
+      </div>
+      <div class="mock">
+        <div class="mock-bar"><span data-i18n="b.m.bar">EVA's runs · last 30 days</span></div>
+        <div class="mock-body">
+          <div class="types">
+            <span class="type"><span class="g"></span><span data-i18n="b.t1">Bank reconciliation</span><span class="n">412</span></span>
+            <span class="type"><span class="g"></span><span data-i18n="b.t2">VAT returns</span><span class="n">48</span></span>
+            <span class="type"><span class="g"></span><span data-i18n="b.t3">Payroll runs</span><span class="n">37</span></span>
+            <span class="type"><span class="g"></span><span data-i18n="b.t4">Document chasing</span><span class="n">296</span></span>
+            <span class="type"><span class="g"></span><span data-i18n="b.t5">Period close</span><span class="n">54</span></span>
+            <span class="type"><span class="g"></span><span data-i18n="b.t6">Debtor follow-up</span><span class="n">183</span></span>
+          </div>
+          <p class="types-note" data-i18n="b.m.note">Illustrative · 61 agreements, 3 accountants</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ── B · Review, don't redo ── -->
+<section class="sec" id="review">
+  <div class="wrap sec-grid">
+    <div class="split rv">
+      <div class="s-text">
+        <h2 data-i18n="c.h">One click from done.</h2>
+        <p data-i18n="c.p">EVA shows what it did and the one thing that needs your judgement. Approve, or take it back.</p>
+      </div>
+      <div class="mock">
+        <div class="mock-bar"><span data-i18n="c.m.bar">Nordlys Byg ApS · VAT return · Q2</span></div>
+        <div class="mock-body">
+          <div class="trace">
+            <div class="tr-row">
+              <span class="tr-ico">✓</span>
+              <div><div class="tr-txt" data-i18n-html="c.t1">Pulled <b>214 entries</b> for the period and reconciled them against the bank</div><div class="tr-sub" data-i18n="c.t1s">2 min · no discrepancies</div></div>
+            </div>
+            <div class="tr-row">
+              <span class="tr-ico">✓</span>
+              <div><div class="tr-txt" data-i18n-html="c.t2">Checked VAT codes on every purchase — corrected <b>6 miscoded lines</b></div><div class="tr-sub" data-i18n="c.t2s">journal 4412 · reversible</div></div>
+            </div>
+            <div class="tr-row">
+              <span class="tr-ico">✓</span>
+              <div><div class="tr-txt" data-i18n-html="c.t3">Drafted the return: <b>kr. 48.212,50</b> payable to SKAT</div><div class="tr-sub" data-i18n="c.t3s">not filed — waiting for you</div></div>
+            </div>
+            <div class="tr-row">
+              <span class="tr-ico ask">!</span>
+              <div><div class="tr-txt" data-i18n-html="c.t4">One purchase needs <b>your judgement</b></div><div class="tr-sub" data-i18n="c.t4s">EVA escalated it instead of guessing</div></div>
+            </div>
+          </div>
+          <div class="ask-box">
+            <span class="lbl" data-i18n="c.ask.lbl">Your call</span>
+            <p data-i18n="c.ask.p">Invoice 8841 (kr. 3.120) has no VAT-valid receipt. Non-deductible cost, or chase the supplier?</p>
+            <p class="conf" data-i18n="c.ask.conf">EVA suggests chasing the supplier · 94% match against 14 months of history</p>
+            <div class="ask-btns">
+              <button type="button" class="pri" data-i18n="c.ask.b1">Approve suggestion</button>
+              <button type="button" data-i18n="c.ask.b2">I'll take it over</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ── C · Set it once ── -->
+<section class="sec" id="routines">
+  <div class="wrap sec-grid">
+    <div class="split rev rv">
+      <div class="s-text">
+        <h2 data-i18n="d.h">Routines that scale with your client book.</h2>
+        <p data-i18n="d.p">Turn any task into a routine and EVA runs it for every client it fits — within the autonomy limits you set.</p>
+      </div>
+      <div class="mock">
+        <div class="mock-bar"><span data-i18n="d.m.bar">Routine · Reconcile the bank for a period</span></div>
+        <div class="mock-body">
+          <div class="rt">
+            <div class="rt-line"><span class="k" data-i18n="d.k1">Runs</span><span class="rt-val" data-i18n="d.v1">Daily at 02.00</span></div>
+            <div class="rt-line"><span class="k" data-i18n="d.k2">Applies to</span><span class="rt-val" data-i18n="d.v2">34 of 61 agreements</span></div>
+            <div>
+              <span class="k mono" style="letter-spacing:.08em" data-i18n="d.k3">Autonomy</span>
+              <div class="seg" style="margin-top:8px">
+                <span data-i18n="d.s1">Ask always</span>
+                <span class="on" data-i18n="d.s2">Ask on deviations</span>
+                <span data-i18n="d.s3">Run alone</span>
+              </div>
+            </div>
+            <div>
+              <span class="k mono" style="letter-spacing:.08em" data-i18n="d.k4">Connectors</span>
+              <div class="conns" style="margin-top:8px">
+                <span class="conn">e-conomic</span>
+                <span class="conn">e-conomic Løn</span>
+                <span class="conn">Likvido</span>
+                <span class="conn">Rackbeat</span>
+                <span class="conn">Pleo</span>
+                <span class="conn">SKAT</span>
+                <span class="conn off">NemHandel</span>
+                <span class="conn off">Budget123</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ── how the work is built ────────────────────────────── -->
+<section class="sec" id="model">
+  <div class="wrap sec-grid">
+    <div>
+      <h2 class="sec-h" data-i18n="m.h">How the work is built.</h2>
+      <p class="sec-lead" data-i18n="m.lead">Four layers — and you only ever deal with the last one.</p>
+      <ol class="model rv">
+        <li>
+          <span class="mono m-step">01</span>
+          <h4 data-i18n="m.1.n">Action</h4>
+          <p data-i18n="m.1.p">One read or write against the ledger. Read a bank line, post an entry.</p>
+        </li>
+        <li>
+          <span class="mono m-step">02</span>
+          <h4 data-i18n="m.2.n">Skill</h4>
+          <p data-i18n="m.2.p">An ordered set of actions EVA can perform — reconcile a period, prepare a VAT return, run payroll.</p>
+        </li>
+        <li>
+          <span class="mono m-step">03</span>
+          <h4 data-i18n="m.3.n">Routine</h4>
+          <p data-i18n="m.3.p">Skills chained together with a trigger, the checks that apply, and how much autonomy they get.</p>
+        </li>
+        <li>
+          <span class="mono m-step">04</span>
+          <h4 data-i18n="m.4.n">Run</h4>
+          <p data-i18n="m.4.p">One execution of a routine against one agreement and one period. That is what lands in your review.</p>
+        </li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ── D · Everything in view ── -->
+<section class="sec" id="overview">
+  <div class="wrap sec-grid">
+    <div class="split rv">
+      <div class="s-text">
+        <h2 data-i18n="a.h">Every run, on one screen.</h2>
+        <p data-i18n="a.p">What EVA is running right now, what's queued for tonight, and how the load sits across your team — live.</p>
+      </div>
+      <div class="mock">
+        <div class="mock-bar"><span data-i18n="a.m.bar">Work in flight · office</span><span class="live" data-i18n="a.m.live">live</span></div>
+        <div class="mock-body">
+          <div class="wl">
+            <div class="wl-row">
+              <span class="avatar">MJ</span>
+              <div><div class="wl-name">Maja Jensen</div><div class="wl-meta" data-i18n="a.m.r1">18 open · 3 overdue · 11 agreements</div></div>
+              <div class="wl-load"><div class="wl-bar"><i style="width:46%"></i></div><span class="wl-num">46%</span></div>
+            </div>
+            <div class="wl-row over">
+              <span class="avatar">SK</span>
+              <div><div class="wl-name">Søren Kirk</div><div class="wl-meta" data-i18n="a.m.r2">31 open · 7 overdue · 24 agreements</div></div>
+              <div class="wl-load"><div class="wl-bar"><i style="width:92%"></i></div><span class="wl-num">92%</span></div>
+            </div>
+            <div class="wl-row">
+              <span class="avatar">TL</span>
+              <div><div class="wl-name">Trine Lund</div><div class="wl-meta" data-i18n="a.m.r3">12 open · nothing overdue · 9 agreements</div></div>
+              <div class="wl-load"><div class="wl-bar"><i style="width:34%"></i></div><span class="wl-num">34%</span></div>
+            </div>
+            <div class="wl-row eva-row">
+              <span class="avatar eva">E</span>
+              <div><div class="wl-name" data-i18n="a.m.agents">EVA</div><div class="wl-meta" data-i18n="a.m.r4">46 runs this week · 4 awaiting review</div></div>
+              <div class="wl-load"><div class="wl-bar"><i style="width:71%"></i></div><span class="wl-num">71%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ── E · Be the advisor ── -->
+<section class="sec" id="advisory">
+  <div class="wrap sec-grid">
+    <div class="rv">
+      <h2 class="sec-h" data-i18n="e.h">Move up the value chain.</h2>
+      <p class="sec-lead" data-i18n="e.p">When compliance runs itself, your team's hours go where clients actually value them.</p>
+      <div class="shift" style="margin-top:38px">
+        <div class="shift-row">
+          <div class="st-lab"><span class="mono" data-i18n="e.before">Today, without EVA</span></div>
+          <div class="shift-bar">
+            <span class="comp" style="width:78%" data-i18n="e.comp78">78% compliance</span>
+            <span class="adv" style="width:22%" data-i18n="e.adv22">22%</span>
+          </div>
+        </div>
+        <div class="shift-row">
+          <div class="st-lab"><span class="mono" data-i18n="e.after">The practice EVA is built for</span></div>
+          <div class="shift-bar">
+            <span class="comp" style="width:34%" data-i18n="e.comp34">34%</span>
+            <span class="adv" style="width:66%" data-i18n="e.adv66">66% advisory</span>
+          </div>
+        </div>
+        <div class="shift-key">
+          <span><i style="background:var(--card-2);border:1px solid var(--line)"></i><span data-i18n="e.key1">Compliance hours</span></span>
+          <span><i style="background:var(--violet)"></i><span data-i18n="e.key2">Advisory hours</span></span>
+          <span data-i18n="e.key3">Illustrative split — the target, not a measured result</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ── F · Trust layer ── -->
+<section class="sec" id="trust">
+  <div class="wrap sec-grid">
+    <div class="split rv">
+      <div class="s-text">
+        <h2 data-i18n="f.h">Automation you can defend.</h2>
+        <p data-i18n="f.p">Every action carries its provenance. Autonomy caps keep EVA inside the lines. Nothing is irreversible.</p>
+      </div>
+      <div class="mock">
+        <div class="mock-bar"><span data-i18n="f.m.bar">Audit trail · Nordlys Byg ApS</span><span class="live" data-i18n="f.m.live">exportable</span></div>
+        <div class="mock-body">
+          <div class="audit">
+            <div class="au">
+              <span class="ts">08.02.14</span>
+              <div><div class="who is-eva">EVA</div><div class="act" data-i18n="f.a1">Corrected VAT code on 6 purchase lines · journal 4412</div></div>
+              <span class="rev" data-i18n="f.reverse">Reverse</span>
+            </div>
+            <div class="au">
+              <span class="ts">08.04.51</span>
+              <div><div class="who is-eva">EVA</div><div class="act" data-i18n="f.a2">Drafted VAT return Q2 · kr. 48.212,50 · not filed</div></div>
+              <span class="rev" data-i18n="f.reverse">Reverse</span>
+            </div>
+            <div class="au">
+              <span class="ts">08.05.02</span>
+              <div><div class="who is-eva">EVA</div><div class="act" data-i18n="f.a3">Stopped at gate: missing VAT documentation, invoice 8841</div></div>
+              <span class="rev p-plain" data-i18n="f.gate">Gate</span>
+            </div>
+            <div class="au">
+              <span class="ts">09.11.37</span>
+              <div><div class="who">Maja Jensen</div><div class="act" data-i18n="f.a4">Approved EVA's suggestion · supplier chased for documentation</div></div>
+              <span class="rev" data-i18n="f.reverse">Reverse</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── stat band ────────────────────────────────────────── -->
+<section class="sec stats-sec" id="proof">
+  <div class="wrap">
+    <div class="stats rv">
+      <div class="stat">
+        <div class="fig">~45%</div>
+        <div class="lab" data-i18n="s.1">of the recurring workload handled by EVA</div>
+      </div>
+      <div class="stat">
+        <div class="fig" data-i18n="s.2f">Hours</div>
+        <div class="lab" data-i18n="s.2">back per accountant, every month</div>
+      </div>
+      <div class="stat">
+        <div class="fig" data-i18n="s.3f">1 screen</div>
+        <div class="lab" data-i18n="s.3">every client, across the whole office</div>
+      </div>
+      <div class="stat">
+        <div class="fig">100%</div>
+        <div class="lab" data-i18n="s.4">traceable — every action, always explainable</div>
+      </div>
+    </div>
+    <p class="stats-note" data-i18n="s.note">Illustrative placeholders — we're validating the real numbers with pilot offices</p>
+  </div>
+</section>
+
+<!-- ── pricing ──────────────────────────────────────────── -->
+<section class="sec" id="pricing">
+  <div class="wrap">
+    <div class="pricing-head">
+      <h2 data-i18n="pr.h">Pricing</h2>
+      <a class="contact-pill" href="#close" data-i18n="pr.contact">Contact sales</a>
+    </div>
+    <div class="tiers rv">
+      <div class="tier" id="p1">
+        <div class="tier-top">
+          <span class="tier-name">Pilot</span>
+          <span class="seg-bill" role="group">
+            <button type="button" data-bill="m" aria-pressed="true" data-i18n="pr.monthly">Monthly</button>
+            <button type="button" data-bill="y" aria-pressed="false" data-i18n="pr.yearly">Yearly</button>
+          </span>
+        </div>
+        <div class="tier-price"><span class="amount">kr. 990</span><span class="unit">/ month</span></div>
+        <p class="billed">Billed monthly</p>
+        <a class="btn btn-ghost" href="#close" data-i18n="pr.1.cta">Start a pilot</a>
+        <p class="tier-includes" data-i18n="pr.1.inc">Includes:</p>
+        <ul>
+          <li data-i18n="pr.1.i1">EVA on your own ledger</li>
+          <li data-i18n="pr.1.i2">Up to 10 agreements</li>
+          <li data-i18n="pr.1.i3">Three routines of your choice</li>
+          <li data-i18n="pr.1.i4">Ask always — EVA drafts, you approve everything</li>
+          <li data-i18n="pr.1.i5">Full audit trail on every action</li>
+        </ul>
+      </div>
+      <div class="tier featured" id="p2">
+        <div class="tier-top">
+          <span class="tier-name">Practice</span>
+        <span class="tier-tag" data-i18n="pr.tag">Most chosen</span>
+          <span class="seg-bill" role="group">
+            <button type="button" data-bill="m" aria-pressed="true" data-i18n="pr.monthly">Monthly</button>
+            <button type="button" data-bill="y" aria-pressed="false" data-i18n="pr.yearly">Yearly</button>
+          </span>
+        </div>
+        <div class="tier-price"><span class="amount">kr. 149</span><span class="unit">/ agreement / month</span></div>
+        <p class="billed">Billed monthly</p>
+        <a class="btn btn-primary" href="#close" data-i18n="pr.2.cta">Get Practice</a>
+        <p class="tier-includes" data-i18n="pr.2.inc">Everything in Pilot, plus:</p>
+        <ul>
+          <li data-i18n="pr.2.i1">Every routine in the skill library</li>
+          <li data-i18n="pr.2.i2">Unlimited agreements</li>
+          <li data-i18n="pr.2.i3">Autonomy caps and gates per routine</li>
+          <li data-i18n="pr.2.i4">Connectors: e-conomic Løn, Likvido, Rackbeat, Pleo</li>
+          <li data-i18n="pr.2.i5">Priority support</li>
+        </ul>
+      </div>
+      <div class="tier" id="p3">
+        <div class="tier-top">
+          <span class="tier-name">Office</span>
+          <span class="seg-bill" role="group">
+            <button type="button" data-bill="m" aria-pressed="true" data-i18n="pr.monthly">Monthly</button>
+            <button type="button" data-bill="y" aria-pressed="false" data-i18n="pr.yearly">Yearly</button>
+          </span>
+        </div>
+        <div class="tier-price"><span class="amount">kr. 399</span><span class="unit">/ seat / month</span></div>
+        <p class="billed">Billed monthly</p>
+        <a class="btn btn-ghost" href="#close" data-i18n="pr.3.cta">Get Office</a>
+        <p class="tier-includes" data-i18n="pr.3.inc">Everything in Practice, plus:</p>
+        <ul>
+          <li data-i18n="pr.3.i1">Whole-office cockpit and workload view</li>
+          <li data-i18n="pr.3.i2">Shared routine templates</li>
+          <li data-i18n="pr.3.i3">SSO and admin controls</li>
+          <li data-i18n="pr.3.i4">Usage analytics across the client book</li>
+        </ul>
+      </div>
+    </div>
+    <p class="pricing-note" data-i18n="pr.note">Illustrative pricing — a placeholder for validation, not a commercial offer</p>
+  </div>
+</section>
+
+<!-- ── faq + closing ────────────────────────────────────── -->
+<section class="sec" id="faq">
+  <div class="wrap sec-grid">
+    <div>
+      <h2 class="sec-h" data-i18n="u.h">Six reasons Agent Space isn't another automation tool.</h2>
+      <p class="sec-lead" data-i18n="u.lead">Rules flag work. Dashboards describe it. EVA finishes it.</p>
+      <div class="usps rv">
+        <div class="usp is-eva">
+          <h4><span class="g"></span><span data-i18n="u.1.h">Agentic, not just automated</span></h4>
+          <p class="claim" data-i18n="u.1.c">EVA completes the task end to end and hands back a draft — not an alert.</p>
+        </div>
+        <div class="usp">
+          <h4><span class="g"></span><span data-i18n="u.2.h">One cockpit over every run</span></h4>
+          <p class="claim" data-i18n="u.2.c">Every agreement, every run and every accountant in one place.</p>
+        </div>
+        <div class="usp">
+          <h4><span class="g"></span><span data-i18n="u.3.h">Policy, not prompts</span></h4>
+          <p class="claim" data-i18n="u.3.c">Set autonomy per routine. EVA enforces it, and every action can be reversed.</p>
+        </div>
+        <div class="usp">
+          <h4><span class="g"></span><span data-i18n="u.4.h">One model for tasks and routines</span></h4>
+          <p class="claim" data-i18n="u.4.c">A routine is just work EVA repeats. One model whether a person or EVA does it.</p>
+        </div>
+        <div class="usp">
+          <h4><span class="g"></span><span data-i18n="u.5.h">A growing skill library</span></h4>
+          <p class="claim" data-i18n="u.5.c">New skills arrive as EVA learns new work — bank, VAT, payroll, close, annual report.</p>
+        </div>
+        <div class="usp is-eva">
+          <h4><span class="g"></span><span data-i18n="u.6.h">Built on e-conomic</span></h4>
+          <p class="claim" data-i18n="u.6.c">A layer built on top of the platform where the books already live. Nothing to migrate.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap close-grid">
+    <div class="faq rv">
+      <div class="mono rail-label" style="margin-bottom:18px" data-i18n="q.rail">The fair questions</div>
+      <div class="qa">
+        <h4 data-i18n="q.1.q">Will I lose control?</h4>
+        <p data-i18n="q.1.a">You approve everything that matters. Autonomy is capped per routine, EVA enforces the caps, and every action can be reversed.</p>
+      </div>
+      <div class="qa">
+        <h4 data-i18n="q.2.q">Is it compliant and auditable?</h4>
+        <p data-i18n="q.2.a">Every action carries a full trace — inputs, reasoning, what changed. Export it whenever you need it.</p>
+      </div>
+      <div class="qa">
+        <h4 data-i18n="q.3.q">Do we have to switch systems?</h4>
+        <p data-i18n="q.3.a">No. Agent Space is a layer built on top of e-conomic, working on the ledger you already keep.</p>
+      </div>
+      <div class="qa">
+        <h4 data-i18n="q.4.q">Will it replace my staff?</h4>
+        <p data-i18n="q.4.a">It replaces the busywork, not the accountant. EVA takes the repetitive runs; your people become the advisors clients pay for.</p>
+      </div>
+    </div>
+
+    <div class="close-card rv" id="close">
+      <h2 data-i18n="cl.h">Take the controls.</h2>
+      <p data-i18n="cl.p">30 minutes on your own client book. Agent Space, one routine running live, and the full trace behind it.</p>
+      <div class="close-cta">
+        <a class="btn btn-primary" href="#close" data-i18n="cta.demo">Book a demo</a>
+        <a class="btn btn-ghost" href="#cockpit" data-i18n="cta.see">See EVA in action</a>
+      </div>
+      <div class="close-list">
+        <div data-i18n="cl.l1">No migration — Agent Space is built on top of e-conomic</div>
+        <div data-i18n="cl.l2">Start with one routine, widen it when you're ready</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── footer ───────────────────────────────────────────── -->
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div class="foot-l">
+      <a class="brand" href="#top">
+        <span class="brand-word">EVA<span class="brand-dot"></span></span>
+      </a>
+      <p data-i18n="ft.p">Agent Space — where EVA works. An agentic accounting assistant built on top of e-conomic: EVA does the recurring work and hands you what needs judgement.</p>
+      <p class="foot-fine" data-i18n="ft.fine">Concept page. Client names, amounts and statistics are fictional and illustrative.</p>
+    </div>
+    <div class="foot-r">
+      <div class="foot-col">
+        <span class="mono" data-i18n="ft.c1">Product</span>
+        <a href="#cockpit" data-i18n="nav.l1">Cockpit</a>
+        <a href="#work" data-i18n="nav.l3">What EVA does</a>
+        <a href="#trust" data-i18n="nav.l4">Control</a>
+        <a href="#close" data-i18n="cta.demo">Book a demo</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── bilingual dictionary: [English, Danish] ───────────── */
+var T = {
+  "nav.l1":["Cockpit","Cockpit"],
+  "nav.l4":["Control","Kontrol"],
+  "nav.l5":["Questions","Spørgsmål"],
+  "cta.demo":["Book a demo","Book en demo"],
+  "cta.see":["See EVA in action","Se EVA i aktion"],
+
+  "ann.b":["Agent Space is live","Agent Space er live"],
+  "ann.l":["See EVA at work","Se EVA i arbejde"],
+  "hero.h1":["Get more work done<br>with Agent Space","Få mere fra hånden<br>med Agent Space"],
+  "hero.sub":["Agent Space is where your recurring accounting work gets done. EVA runs it across every agreement; you set the limits and approve what matters.","Agent Space er der, hvor det tilbagevendende regnskabsarbejde bliver lavet. EVA kører det på tværs af alle aftaler; du sætter grænserne og godkender det, der betyder noget."],
+
+  "ck.title":["Agent Space","Agent Space"],
+  "ck.lane1":["Ready for your review","Klar til dit review"],
+  "ck.lane2":["EVA is handling","EVA er i gang"],
+  "ck.lane3":["Queued by EVA","Sat i kø af EVA"],
+  "ck.approve":["Approve","Godkend"],
+  "ck.running":["Running","Kører"],
+  "ck.a1.task":["VAT return · Q2","Momsangivelse · 2. kvartal"],
+  "ck.a1.pill":["1 judgement call","1 vurdering"],
+  "ck.a1.body":["214 entries reconciled. One purchase has no VAT-valid receipt.","214 posteringer afstemt. Ét køb mangler et momsgyldigt bilag."],
+  "ck.a2.task":["Bank reconciliation · August","Bankafstemning · august"],
+  "ck.a2.pill":["Draft ready","Udkast klar"],
+  "ck.a2.body":["146 of 148 lines matched. Two transfers look like owner's draw.","146 af 148 linjer matchet. To overførsler ser ud som privathævninger."],
+  "ck.a3.task":["Payroll · September","Løn · september"],
+  "ck.a3.pill":["Needs sign-off","Afventer godkendelse"],
+  "ck.a3.body":["Posted to the ledger, ready to file with eIndkomst.","Bogført i finans, klar til eIndkomst."],
+  "ck.b1.task":["Period close · August","Periodelukning · august"],
+  "ck.b1.step":["Reconciling balance accounts","Afstemmer balancekonti"],
+  "ck.b1.eta":["est. 4 min left","ca. 4 min. tilbage"],
+  "ck.b2.task":["Chasing documents","Følger op på bilag"],
+  "ck.b2.step":["3 reminders sent","3 rykkere sendt"],
+  "ck.b2.sub":["waiting on 2 receipts","afventer 2 bilag"],
+  "ck.b2.eta":["follows up tomorrow 09.00","følger op i morgen 09.00"],
+  "ck.b3.task":["Debtor follow-up","Debitoropfølgning"],
+  "ck.b3.step":["Ranking 38 overdue invoices","Rangerer 38 forfaldne fakturaer"],
+  "ck.b3.eta":["drafts dunning letters next","laver rykkerbreve som det næste"],
+  "ck.c1.when":["Tonight 02.00","I nat 02.00"],
+  "ck.c1.what":["Bank reconciliation","Bankafstemning"],
+  "ck.c1.scope":["34 agreements · run alone","34 aftaler · kør selv"],
+  "ck.c2.when":["Tomorrow 07.30","I morgen 07.30"],
+  "ck.c2.what":["Deviation briefing","Afvigelsesbriefing"],
+  "ck.c2.scope":["whole portfolio · to your inbox","hele porteføljen · til din indbakke"],
+  "ck.c3.when":["1 Oct, 08.00","1. okt. 08.00"],
+  "ck.c3.what":["VAT return · Q3","Momsangivelse · 3. kvartal"],
+  "ck.c3.scope":["9 agreements · ask before filing","9 aftaler · spørg før indberetning"],
+  "ck.c4.when":["Every Friday","Hver fredag"],
+  "ck.c4.what":["Missing-document sweep","Gennemgang for manglende bilag"],
+  "ck.c4.scope":["61 agreements · run alone","61 aftaler · kør selv"],
+  "ck.f1":["Every action traceable","Alle handlinger kan spores"],
+  "ck.f2":["Autonomy capped per routine","Autonomiloft per rutine"],
+  "ck.f3":["Nothing irreversible","Intet er uigenkaldeligt"],
+  "sup.line":["EVA has 14 runs in flight across 61 agreements","EVA har 14 kørsler i gang på tværs af 61 aftaler"],
+  "sup.need":["4 need you","4 venter på dig"],
+  "a.m.agents":["EVA","EVA"],
+  "nav.l6":["How it works","Sådan virker det"],
+  "m.h":["How the work is built.","Sådan er arbejdet bygget op."],
+  "m.lead":["Four layers — and you only ever deal with the last one.","Fire lag — og du forholder dig kun til det sidste."],
+  "m.1.n":["Action","Handling"],
+  "m.1.p":["One read or write against the ledger. Read a bank line, post an entry.","Én læsning eller skrivning i regnskabet. Læs en bankpostering, bogfør et bilag."],
+  "m.2.n":["Skill","Færdighed"],
+  "m.2.p":["An ordered set of actions EVA can perform — reconcile a period, prepare a VAT return, run payroll.","Et ordnet sæt handlinger, EVA kan udføre — afstem en periode, lav en momsangivelse, kør lønnen."],
+  "m.3.n":["Routine","Rutine"],
+  "m.3.p":["Skills chained together with a trigger, the checks that apply, and how much autonomy they get.","Færdigheder kædet sammen med en udløser, de kontroller der gælder, og hvor meget autonomi de får."],
+  "m.4.n":["Run","Kørsel"],
+  "m.4.p":["One execution of a routine against one agreement and one period. That is what lands in your review.","Én udførelse af en rutine på én aftale og én periode. Det er den, der lander i dit review."],
+  "nav.l3":["What EVA does","Hvad EVA gør"],
+  "nav.l7":["Pricing","Priser"],
+  "pr.h":["Pricing","Priser"],
+  "pr.contact":["Contact sales","Kontakt salg"],
+  "pr.monthly":["Monthly","Månedligt"],
+  "pr.yearly":["Yearly","Årligt"],
+  "pr.tag":["Most chosen","Vælges oftest"],
+  "pr.note":["Illustrative pricing — a placeholder for validation, not a commercial offer","Illustrative priser — en pladsholder til validering, ikke et kommercielt tilbud"],
+  "pr.1.cta":["Start a pilot","Start en pilot"],
+  "pr.1.inc":["Includes:","Indeholder:"],
+  "pr.1.i1":["EVA on your own ledger","EVA på jeres eget regnskab"],
+  "pr.1.i2":["Up to 10 agreements","Op til 10 aftaler"],
+  "pr.1.i3":["Three routines of your choice","Tre rutiner efter eget valg"],
+  "pr.1.i4":["Ask always — EVA drafts, you approve everything","Spørg altid — EVA laver udkast, du godkender alt"],
+  "pr.1.i5":["Full audit trail on every action","Fuldt revisionsspor på hver handling"],
+  "pr.2.cta":["Get Practice","Vælg Praksis"],
+  "pr.2.inc":["Everything in Pilot, plus:","Alt i Pilot, plus:"],
+  "pr.2.i1":["Every routine in the skill library","Alle rutiner i færdighedsbiblioteket"],
+  "pr.2.i2":["Unlimited agreements","Ubegrænset antal aftaler"],
+  "pr.2.i3":["Autonomy caps and gates per routine","Autonomiloft og gates per rutine"],
+  "pr.2.i4":["Connectors: e-conomic Løn, Likvido, Rackbeat, Pleo","Forbindelser: e-conomic Løn, Likvido, Rackbeat, Pleo"],
+  "pr.2.i5":["Priority support","Prioriteret support"],
+  "pr.3.cta":["Get Office","Vælg Kontor"],
+  "pr.3.inc":["Everything in Practice, plus:","Alt i Praksis, plus:"],
+  "pr.3.i1":["Whole-office cockpit and workload view","Cockpit og arbejdsbelastning for hele kontoret"],
+  "pr.3.i2":["Shared routine templates","Delte rutineskabeloner"],
+  "pr.3.i3":["SSO and admin controls","SSO og administratorkontrol"],
+  "pr.3.i4":["Usage analytics across the client book","Forbrugsanalyse på tværs af kundeporteføljen"],
+  "ck.cap":["Illustrative — client names, amounts and figures on this page are fictional.","Illustrativt — kundenavne, beløb og tal på denne side er fiktive."],
+
+  "p.rail":["The whole idea","Hele ideen"],
+  "p.1.verb":["EVA","EVA"],
+  "p.1.h":["EVA does the work","EVA laver arbejdet"],
+  "p.1.p":["Reconciliations, VAT, payroll, document chasing, period close — <em>completed</em> across every agreement, not just flagged.","Afstemninger, moms, løn, bilagsopfølgning og periodelukning — <em>gennemført</em> på tværs af alle aftaler, ikke bare markeret."],
+  "p.2.verb":["Agent Space","Agent Space"],
+  "p.2.h":["Agent Space keeps it in view","Agent Space holder styr på det"],
+  "p.2.p":["Every run, every agreement, every colleague — what EVA is doing now, what starts tonight, and what's <em>waiting for you</em>.","Hver kørsel, hver aftale, hver kollega — hvad EVA laver nu, hvad der starter i nat, og hvad der <em>venter på dig</em>."],
+  "p.3.verb":["You","Dig"],
+  "p.3.h":["You set the policy","Du sætter reglerne"],
+  "p.3.p":["Autonomy caps per routine, gates where you want them, a full trace on every action. <em>Nothing is irreversible.</em>","Autonomiloft per rutine, gates hvor du vil have dem, og fuldt spor på hver handling. <em>Intet er uigenkaldeligt.</em>"],
+
+  "u.rail":["The difference","Forskellen"],
+  "u.h":["Six reasons Agent Space isn't another automation tool.","Seks grunde til, at Agent Space ikke er endnu et automatiseringsværktøj."],
+  "u.lead":["Rules flag work. Dashboards describe it. EVA finishes it.","Regler markerer arbejdet. Dashboards beskriver det. EVA gør det færdigt."],
+  "u.why":["Why it's different","Derfor er det anderledes"],
+  "u.1.h":["Agentic, not just automated","Agentisk — ikke bare automatiseret"],
+  "u.1.c":["EVA completes the task end to end and hands back a draft — not an alert.","EVA løser opgaven fra ende til anden og afleverer et udkast — ikke en advarsel."],
+  "u.1.w":["Other tools surface work or run rigid rules. EVA reads the case, reasons through it, and gets it finished.","Andre værktøjer viser arbejdet eller kører stive regler. EVA læser sagen, tænker den igennem og gør den færdig."],
+  "u.2.h":["One cockpit over every run","Ét cockpit over alle kørsler"],
+  "u.2.c":["Every agreement, every run and every accountant in one place.","Alle aftaler, alle kørsler og alle medarbejdere på ét sted."],
+  "u.2.w":["Most tools are per-client silos. This is the office's command centre.","De fleste værktøjer er siloer per kunde. Det her er kontorets kommandocentral."],
+  "u.3.h":["Policy, not prompts","Regler, ikke prompts"],
+  "u.3.c":["Set autonomy per routine. EVA enforces it, and every action can be reversed.","Sæt autonomi per rutine. EVA håndhæver den, og hver handling kan rulles tilbage."],
+  "u.3.w":["Trust isn't a promise here — it's built into the product. No black box.","Tillid er ikke et løfte her — det er bygget ind i produktet. Ingen sort boks."],
+  "u.4.h":["One model for tasks and routines","Én model for opgaver og rutiner"],
+  "u.4.c":["A routine is just work EVA repeats. One model whether a person or EVA does it.","En rutine er bare arbejde, EVA gentager. Én model, uanset om et menneske eller EVA laver det."],
+  "u.4.w":["A routine is just a task EVA repeats. One experience, not two.","En rutine er bare en opgave, EVA gentager. Én oplevelse, ikke to."],
+  "u.5.h":["A growing skill library","Et voksende bibliotek af færdigheder"],
+  "u.5.c":["New skills arrive as EVA learns new work — bank, VAT, payroll, close, annual report.","Nye færdigheder kommer til, efterhånden som EVA lærer nyt arbejde — bank, moms, løn, lukning, årsrapport."],
+  "u.5.w":["It delivers the outcome accounting offices are chasing, not just efficiency.","Det leverer det, revisions- og bogholderikontorer jagter — ikke bare effektivitet."],
+  "u.6.h":["Built on e-conomic","Bygget på e-conomic"],
+  "u.6.c":["A layer built on top of the platform where the books already live. Nothing to migrate.","Et lag bygget oven på den platform, hvor bogholderiet allerede ligger. Intet at migrere."],
+  "u.6.w":["Zero switching cost, and instant context on real ledger data from day one.","Ingen skifteomkostning og øjeblikkelig kontekst på rigtige regnskabsdata fra dag ét."],
+
+  "a.rail":["Everything in view","Alt i overblik"],
+  "a.h":["Every run, on one screen.","Alle kørsler på én skærm."],
+  "a.p":["What EVA is running right now, what's queued for tonight, and how the load sits across your team — live.","Hvad EVA kører lige nu, hvad der ligger i kø til i nat, og hvordan belastningen ser ud i teamet — live."],
+  "a.m.bar":["Work in flight · office","Arbejde i gang · kontoret"],
+  "a.m.live":["live","live"],
+  "a.m.r1":["18 open · 3 overdue · 11 agreements","18 åbne · 3 forfaldne · 11 aftaler"],
+  "a.m.r2":["31 open · 7 overdue · 24 agreements","31 åbne · 7 forfaldne · 24 aftaler"],
+  "a.m.r3":["12 open · nothing overdue · 9 agreements","12 åbne · intet forfaldent · 9 aftaler"],
+  "a.m.r4":["46 runs this week · 4 awaiting review","46 kørsler i denne uge · 4 afventer review"],
+
+  "b.rail":["EVA does the work","EVA gør arbejdet"],
+  "b.h":["A colleague who doesn't sleep.","En kollega, der ikke sover."],
+  "b.p":["Bank, VAT, payroll, documents, period close — EVA runs them across every agreement. You see what's running now, what starts tonight, and what's ready for you.","Bank, moms, løn, bilag og periodelukning — EVA kører det på tværs af alle aftaler. Du ser, hvad der kører nu, hvad der starter i nat, og hvad der er klar til dig."],
+  "b.m.bar":["EVA's runs · last 30 days","EVAs kørsler · seneste 30 dage"],
+  "b.t1":["Bank reconciliation","Bankafstemning"],
+  "b.t2":["VAT returns","Momsangivelser"],
+  "b.t3":["Payroll runs","Lønkørsler"],
+  "b.t4":["Document chasing","Bilagsopfølgning"],
+  "b.t5":["Period close","Periodelukning"],
+  "b.t6":["Debtor follow-up","Debitoropfølgning"],
+  "b.t7":["Annual report prep","Klargøring af årsrapport"],
+  "b.m.note":["Illustrative · 61 agreements, 3 accountants","Illustrativt · 61 aftaler, 3 medarbejdere"],
+
+  "c.rail":["Review, don't redo","Gennemgå — lav det ikke om"],
+  "c.h":["One click from done.","Ét klik fra færdig."],
+  "c.p":["EVA shows what it did and the one thing that needs your judgement. Approve, or take it back.","EVA viser, hvad den har gjort, og det ene punkt, der kræver din vurdering. Godkend, eller tag den tilbage."],
+  "c.m.bar":["Nordlys Byg ApS · VAT return · Q2","Nordlys Byg ApS · momsangivelse · 2. kvartal"],
+  "c.t1":["Pulled <b>214 entries</b> for the period and reconciled them against the bank","Hentede <b>214 posteringer</b> for perioden og afstemte dem mod banken"],
+  "c.t1s":["2 min · no discrepancies","2 min. · ingen afvigelser"],
+  "c.t2":["Checked VAT codes on every purchase — corrected <b>6 miscoded lines</b>","Kontrollerede momskoder på alle køb — rettede <b>6 fejlkonterede linjer</b>"],
+  "c.t2s":["journal 4412 · reversible","kassekladde 4412 · kan rulles tilbage"],
+  "c.t3":["Drafted the return: <b>kr. 48.212,50</b> payable to SKAT","Lavede udkast til angivelsen: <b>kr. 48.212,50</b> til betaling hos SKAT"],
+  "c.t3s":["not filed — waiting for you","ikke indberettet — afventer dig"],
+  "c.t4":["One purchase needs <b>your judgement</b>","Ét køb kræver <b>din vurdering</b>"],
+  "c.t4s":["EVA escalated it instead of guessing","EVA eskalerede i stedet for at gætte"],
+  "c.ask.lbl":["Your call","Din beslutning"],
+  "c.ask.p":["Invoice 8841 (kr. 3.120) has no VAT-valid receipt. Non-deductible cost, or chase the supplier?","Faktura 8841 (kr. 3.120) mangler momsgyldigt bilag. Uden momsfradrag, eller ryk leverandøren?"],
+  "c.ask.conf":["EVA suggests chasing the supplier · 94% match against 14 months of history","EVA foreslår at rykke leverandøren · 94 % match mod 14 måneders historik"],
+  "c.ask.b1":["Approve suggestion","Godkend forslag"],
+  "c.ask.b2":["I'll take it over","Jeg overtager"],
+
+  "d.rail":["Set it once","Sæt op én gang"],
+  "d.h":["Routines that scale with your client book.","Rutiner, der skalerer med din kundeportefølje."],
+  "d.p":["Turn any task into a routine and EVA runs it for every client it fits — within the autonomy limits you set.","Gør enhver opgave til en rutine, og EVA kører den for alle de kunder, den passer til — inden for de autonomigrænser, du sætter."],
+  "d.m.bar":["Routine · Reconcile the bank for a period","Rutine · Afstem banken for en periode"],
+  "d.k1":["Runs","Kører"],
+  "d.v1":["Daily at 02.00","Dagligt kl. 02.00"],
+  "d.k2":["Applies to","Gælder for"],
+  "d.v2":["34 of 61 agreements","34 af 61 aftaler"],
+  "d.k3":["Autonomy","Autonomi"],
+  "d.s1":["Ask always","Spørg altid"],
+  "d.s2":["Ask on deviations","Spørg ved afvigelser"],
+  "d.s3":["Run alone","Kør selv"],
+  "d.k4":["Connectors","Forbindelser"],
+
+  "e.rail":["Be the advisor","Vær rådgiveren"],
+  "e.h":["Move up the value chain.","Op i værdikæden."],
+  "e.p":["When compliance runs itself, your team's hours go where clients actually value them.","Når compliance kører af sig selv, går teamets timer derhen, hvor kunderne faktisk værdsætter dem."],
+  "e.before":["Today, without EVA","I dag, uden EVA"],
+  "e.after":["The practice EVA is built for","Den praksis, EVA er bygget til"],
+  "e.comp78":["78% compliance","78 % compliance"],
+  "e.adv22":["22%","22 %"],
+  "e.comp34":["34%","34 %"],
+  "e.adv66":["66% advisory","66 % rådgivning"],
+  "e.key1":["Compliance hours","Compliance-timer"],
+  "e.key2":["Advisory hours","Rådgivningstimer"],
+  "e.key3":["Illustrative split — the target, not a measured result","Illustrativ fordeling — målet, ikke et målt resultat"],
+
+  "f.rail":["Trust layer","Kontrollag"],
+  "f.h":["Automation you can defend.","Automatisering, du kan stå på mål for."],
+  "f.p":["Every action carries its provenance. Autonomy caps keep EVA inside the lines. Nothing is irreversible.","Hver handling bærer sin egen dokumentation. Autonomiloft holder EVA inden for rammerne. Intet er uigenkaldeligt."],
+  "f.m.bar":["Audit trail · Nordlys Byg ApS","Revisionsspor · Nordlys Byg ApS"],
+  "f.m.live":["exportable","kan eksporteres"],
+  "f.reverse":["Reverse","Rul tilbage"],
+  "f.gate":["Gate","Gate"],
+  "f.a1":["Corrected VAT code on 6 purchase lines · journal 4412","Rettede momskode på 6 købslinjer · kassekladde 4412"],
+  "f.a2":["Drafted VAT return Q2 · kr. 48.212,50 · not filed","Udkast til momsangivelse 2. kvartal · kr. 48.212,50 · ikke indberettet"],
+  "f.a3":["Stopped at gate: missing VAT documentation, invoice 8841","Standsede ved gate: manglende momsdokumentation, faktura 8841"],
+  "f.a4":["Approved EVA's suggestion · supplier chased for documentation","Godkendte EVAs forslag · leverandør rykket for dokumentation"],
+  "f.a5":["Sent documentation request to Jysk Materiel ApS","Sendte anmodning om dokumentation til Jysk Materiel ApS"],
+
+  "s.1":["of the recurring workload handled by EVA","af det tilbagevendende arbejde klaret af EVA"],
+  "s.2f":["Hours","Timer"],
+  "s.2":["back per accountant, every month","tilbage pr. medarbejder, hver måned"],
+  "s.3f":["1 screen","1 skærm"],
+  "s.3":["every client, across the whole office","alle kunder, på tværs af hele kontoret"],
+  "s.4":["traceable — every action, always explainable","sporbart — hver handling, altid forklarlig"],
+  "s.note":["Illustrative placeholders — we're validating the real numbers with pilot offices","Illustrative pladsholdere — vi validerer de rigtige tal med pilotkontorer"],
+
+  "q.rail":["The fair questions","De rimelige spørgsmål"],
+  "q.1.q":["Will I lose control?","Mister jeg kontrollen?"],
+  "q.1.a":["You approve everything that matters. Autonomy is capped per routine, EVA enforces the caps, and every action can be reversed.","Du godkender alt, der betyder noget. Autonomien har et loft per rutine, EVA håndhæver loftet, og hver handling kan rulles tilbage."],
+  "q.2.q":["Is it compliant and auditable?","Er det compliant og revisionsklart?"],
+  "q.2.a":["Every action carries a full trace — inputs, reasoning, what changed. Export it whenever you need it.","Hver handling har et fuldt spor — input, vurdering, hvad der blev ændret. Eksportér det, når du har brug for det."],
+  "q.3.q":["Do we have to switch systems?","Skal vi skifte system?"],
+  "q.3.a":["No. Agent Space is a layer built on top of e-conomic, working on the ledger you already keep.","Nej. Agent Space er et lag bygget på e-conomic og arbejder på det regnskab, I allerede fører."],
+  "q.4.q":["Will it replace my staff?","Erstatter det mine medarbejdere?"],
+  "q.4.a":["It replaces the busywork, not the accountant. EVA takes the repetitive runs; your people become the advisors clients pay for.","Det erstatter rutinearbejdet, ikke bogholderen. EVA tager de gentagne kørsler; dine folk bliver de rådgivere, kunderne betaler for."],
+  "q.5.q":["What does it take to get started?","Hvad kræver det at komme i gang?"],
+  "q.5.a":["EVA reads the data already in e-conomic, so there's no implementation project. Start with one routine on a handful of agreements, keep autonomy on \"ask always\", and widen it as trust builds.","EVA læser de data, der allerede ligger i e-conomic, så der er ikke noget implementeringsprojekt. Start med én rutine på en håndfuld aftaler, hold autonomien på «spørg altid», og udvid i takt med tilliden."],
+
+  "cl.h":["Take the controls.","Tag styringen."],
+  "cl.p":["30 minutes on your own client book. Agent Space, one routine running live, and the full trace behind it.","30 minutter med jeres egen kundeportefølje. Agent Space, én rutine der kører live, og det fulde spor bag den."],
+  "cl.l1":["No migration — Agent Space is built on top of e-conomic","Ingen migrering — Agent Space er bygget på e-conomic"],
+  "cl.l2":["Start with one routine, widen it when you're ready","Start med én rutine, og udvid når I er klar"],
+  "cl.l3":["You approve everything that matters, always","Du godkender alt, der betyder noget — altid"],
+
+  "ft.p":["Agent Space — where EVA works. An agentic accounting assistant built on top of e-conomic: EVA does the recurring work and hands you what needs judgement.","Agent Space — der, hvor EVA arbejder. En agentisk regnskabsassistent bygget på e-conomic: EVA laver det tilbagevendende arbejde og giver dig det, der kræver en vurdering."],
+  "ft.fine":["Concept page. Client names, amounts and statistics are fictional and illustrative.","Konceptside. Kundenavne, beløb og statistik er fiktive og illustrative."],
+  "ft.c1":["Product","Produkt"],
+  "ft.c2":["For offices","For kontorer"],
+  "ft.routines":["Routines","Rutiner"],
+  "ft.overview":["Practice overview","Overblik over praksis"],
+  "ft.advisory":["The advisory shift","Skiftet til rådgivning"]
+};
+
+(function(){
+  var LS = "eva-lang";
+  var idx = {en:0, da:1};
+  var curLang = "en";
+  var billing = "m";
+
+  /* Prices sit here rather than in the dictionary: the billing period and the
+     language change independently, so the two are combined at render time. */
+  var PRICING = {
+    p1:{m:{amt:"kr. 990",  u:["/ month","/ måned"],
+           b:["Billed monthly","Faktureres månedligt"]},
+        y:{amt:"kr. 9.900", u:["/ year","/ år"],
+           b:["Billed yearly · two months free","Faktureres årligt · to måneder gratis"]}},
+    p2:{m:{amt:"kr. 149",  u:["/ agreement / month","/ aftale / måned"],
+           b:["Billed monthly","Faktureres månedligt"]},
+        y:{amt:"kr. 1.490", u:["/ agreement / year","/ aftale / år"],
+           b:["Billed yearly · two months free","Faktureres årligt · to måneder gratis"]}},
+    p3:{m:{amt:"kr. 399",  u:["/ seat / month","/ bruger / måned"],
+           b:["Billed monthly","Faktureres månedligt"]},
+        y:{amt:"kr. 3.990", u:["/ seat / year","/ bruger / år"],
+           b:["Billed yearly · two months free","Faktureres årligt · to måneder gratis"]}}
+  };
+
+  function renderPricing(){
+    var i = idx[curLang] === undefined ? 0 : idx[curLang];
+    Object.keys(PRICING).forEach(function(key){
+      var card = document.getElementById(key);
+      if (!card) return;
+      var d = PRICING[key][billing];
+      card.querySelector(".amount").textContent = d.amt;
+      card.querySelector(".unit").textContent = d.u[i];
+      card.querySelector(".billed").textContent = d.b[i];
+      card.querySelectorAll(".seg-bill button").forEach(function(b){
+        b.setAttribute("aria-pressed", b.dataset.bill === billing ? "true" : "false");
+      });
+    });
+  }
+
+  document.querySelectorAll(".seg-bill button").forEach(function(b){
+    b.addEventListener("click", function(){ billing = b.dataset.bill; renderPricing(); });
+  });
+  var buttons = document.querySelectorAll(".lang button");
+
+  /* ?lang=da / ?lang=en makes the page shareable in a chosen language.
+     Accepts da, dk, da-DK, en-GB … so a pasted locale still works. */
+  function langFromUrl(){
+    try{
+      var v = (new URLSearchParams(location.search).get("lang") || "").toLowerCase();
+      if (v.indexOf("da") === 0 || v === "dk") return "da";
+      if (v.indexOf("en") === 0) return "en";
+    }catch(e){}
+    return null;
+  }
+
+  function syncUrl(lang){
+    try{
+      var u = new URL(location.href);
+      u.searchParams.set("lang", lang);
+      history.replaceState(null, "", u.toString());
+    }catch(e){}   /* sandboxed frames and file:// can refuse this */
+  }
+
+  function apply(lang, fromUser){
+    var i = idx[lang] === undefined ? 0 : idx[lang];
+    document.querySelectorAll("[data-i18n]").forEach(function(el){
+      var v = T[el.getAttribute("data-i18n")];
+      if (v) el.textContent = v[i];
+    });
+    document.querySelectorAll("[data-i18n-html]").forEach(function(el){
+      var v = T[el.getAttribute("data-i18n-html")];
+      if (v) el.innerHTML = v[i];
+    });
+    curLang = lang;
+    renderPricing();
+    document.documentElement.setAttribute("lang", lang);
+    document.documentElement.setAttribute("data-lang", lang);
+    buttons.forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false");
+    });
+    if (fromUser) syncUrl(lang);
+    try { localStorage.setItem(LS, lang); } catch(e){}
+  }
+
+  buttons.forEach(function(b){
+    b.addEventListener("click", function(){ apply(b.dataset.lang, true); });
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem(LS); } catch(e){}
+  var fromUrl = langFromUrl();
+  apply(fromUrl || (saved === "da" ? "da" : "en"));
+
+  /* reveal on scroll — elements are visible at rest, the class only animates them in */
+  var targets = document.querySelectorAll(".rv");
+  if (!("IntersectionObserver" in window)) return;
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if (en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); }
+    });
+  }, {rootMargin:"0px 0px -12% 0px", threshold:0.08});
+  targets.forEach(function(t){ io.observe(t); });
+})();
+</script>

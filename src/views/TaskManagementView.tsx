@@ -171,6 +171,7 @@ const PURPLE = '#7c3aed';
 export default function TaskManagementView() {
     const { t } = useLang();
     const [tasks, setTasks] = useState<Task[]>(TASKS);
+    const [mode, setMode] = useState<'focus' | 'board'>('focus');
     const [perspective, setPerspective] = useState<'mine' | 'practice'>('mine');
     const [groupBy, setGroupBy] = useState<GroupBy>('deadline');
     const [q, setQ] = useState('');
@@ -235,10 +236,19 @@ export default function TaskManagementView() {
             <PageHeader
                 title={t('Cockpit')}
                 showScope={false}
-                badge={<SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />}
-                right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>}
+                badge={<SegmentedTabs value={mode} onChange={(v) => setMode(v as 'focus' | 'board')} options={[{ value: 'focus', label: t('Focus') }, { value: 'board', label: t('Board') }]} />}
+                right={mode === 'board' ? <Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button> : undefined}
             />
             <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
+                {mode === 'focus' ? (
+                    <CalmCockpit tasks={tasks} approve={approve} sendBack={sendBack} onTrace={setTrace} onOpenBoard={() => setMode('board')} />
+                ) : (
+                <>
+                {/* perspective — my work vs. the whole practice */}
+                <div className="mb-5 flex">
+                    <SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />
+                </div>
+
                 {/* overview KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
                     {kpis.map((k) => {
@@ -361,6 +371,8 @@ export default function TaskManagementView() {
                         </SectionCard>
                     )}
                 </div>
+                </>
+                )}
             </div>
 
             {trace && <EvaTraceModal task={trace} onClose={() => setTrace(null)} onApprove={trace.status === 'eva-review' ? () => { approve(trace.id); setTrace(null); } : undefined} onSendBack={trace.status === 'eva-review' ? () => { sendBack(trace.id); setTrace(null); } : undefined} />}
@@ -490,4 +502,141 @@ export function tasksAnswer(q: string, lang: 'en' | 'da' = 'en'): string {
     return da
         ? 'Jeg kan give overblik over kontoret — hvad jeg selv håndterer, hvad der venter på din godkendelse, og hvad der stadig ligger hos teamet. Prøv “Hvad har EVA overtaget?”'
         : 'I can give you an overview of the office — what I’m handling, what’s waiting on your approval, and what’s still with the team. Try “What has EVA taken over?”';
+}
+
+// ---- Focus mode: the calm, exception-first Cockpit ----------------------------
+// The books run themselves; only the last few judgement calls reach the AO,
+// pre-analysed with a recommendation. Success is measured by how little reaches you.
+const TOUCH = { pct: 3, prev: 22 };
+const HANDLED_WEEK = 1240;
+const CLIENTS_CURRENT = 40;
+
+const ADVISORY_MOMENTS: { id: string; company: string; text: string; action: string }[] = [
+    { id: 'adv1', company: 'Café Solsikke', text: 'is on track to run out of cash in ~6 weeks at the current burn.', action: 'Draft the conversation' },
+    { id: 'adv2', company: 'Digital Marketing Pro', text: 'now has one client at 41% of revenue — a concentration risk worth raising.', action: 'Add to next review' },
+];
+
+const AUTONOMY: { name: string; at: number; of: number; soon?: boolean }[] = [
+    { name: 'Bank reconciliation', at: 40, of: 40 },
+    { name: 'Document collection', at: 40, of: 40 },
+    { name: 'Payment reminders', at: 39, of: 40 },
+    { name: 'VAT returns', at: 38, of: 40 },
+    { name: 'Payroll', at: 35, of: 40 },
+    { name: 'Month-end close', at: 31, of: 40 },
+    { name: 'Year-end close', at: 12, of: 40, soon: true },
+];
+
+// A judgement call framed as a question with EVA's recommendation.
+function evaDecisionFor(title: string): { question: string; recommend: string; confirm: string; alt: string } {
+    const s = title.toLowerCase();
+    if (s.includes('vat return')) return { question: 'A reverse-charge VAT line on an EU purchase looks unusual.', recommend: 'Book it as an EU acquisition and file to SKAT.', confirm: 'Confirm & file', alt: 'It’s domestic' };
+    if (s.includes('vat')) return { question: 'Two VAT codes don’t reconcile by 340 kr.', recommend: 'Adjust to the calculation and file.', confirm: 'Confirm & file', alt: 'Let me check' };
+    if (s.includes('bank')) return { question: '8 of 150 bank lines couldn’t be matched automatically.', recommend: 'Post them to a suspense account and ask the client.', confirm: 'Approve', alt: 'Let me look' };
+    if (s.includes('supplier') || s.includes('invoice')) return { question: 'This supplier charge is 12% above their usual.', recommend: 'It matches the new contract — approve and book.', confirm: 'Approve', alt: 'Query supplier' };
+    if (s.includes('receipt')) return { question: 'The client still hasn’t sent 2 receipts.', recommend: 'Book without them and keep chasing.', confirm: 'Approve', alt: 'Wait' };
+    return { question: 'EVA finished a draft that needs your judgement.', recommend: 'Approve EVA’s draft.', confirm: 'Approve', alt: 'Take over' };
+}
+
+function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks: Task[]; approve: (id: string) => void; sendBack: (id: string) => void; onTrace: (t: Task) => void; onOpenBoard: () => void }) {
+    const { t, lang } = useLang();
+    const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
+    const [advActed, setAdvActed] = useState<Set<string>>(new Set());
+    const decisions = tasks.filter((x) => x.status === 'eva-review' && x.accountant === ME);
+
+    return (
+        <div className="flex flex-col gap-5">
+            {/* calm status + touch rate */}
+            <Card className="p-6">
+                <div className="flex items-center gap-4">
+                    <span className="flex items-center justify-center shrink-0 rounded-full" style={{ width: 48, height: 48, background: decisions.length ? '#f3f0fb' : '#eef7ef', color: decisions.length ? PURPLE : '#16a34a' }}>
+                        <Icon name={decisions.length ? 'ai-stars' : 'circle-tick'} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xl font-semibold" style={{ color: COLORS.text }}>{decisions.length ? (decisions.length === 1 ? t('1 decision needs you') : t('{n} decisions need you').replace('{n}', String(decisions.length))) : t('You’re all clear')}</p>
+                        <p className="text-sm mt-0.5" style={{ color: COLORS.textMuted }}>{t('All {n} clients current · EVA handled {h} items this week').replace('{n}', String(CLIENTS_CURRENT)).replace('{h}', nf(HANDLED_WEEK))}</p>
+                    </div>
+                    <div className="text-right shrink-0 pl-4" style={{ borderLeft: `1px solid ${COLORS.cardBorder}` }}>
+                        <p className="text-3xl font-semibold leading-none" style={{ color: '#16a34a' }}>{TOUCH.pct}%</p>
+                        <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{t('you touched')} · ↓ {t('from')} {TOUCH.prev}%</p>
+                    </div>
+                </div>
+            </Card>
+
+            {/* only you can decide — the 5% */}
+            {decisions.length > 0 && (
+                <SectionCard accent={PURPLE} title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Only you can decide')}</span></span>} count={decisions.length}>
+                    {decisions.map((d, i) => {
+                        const dec = evaDecisionFor(d.title);
+                        return (
+                            <div key={d.id} className="p-4" style={i === decisions.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                <div className="flex items-start gap-3">
+                                    <ClientAvatar name={d.company} size={30} />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(d.title)} · {d.company}</p>
+                                        <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(dec.question)}</p>
+                                        <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: PURPLE }}><span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t('EVA recommends')}: {t(dec.recommend)}</span></p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-3 pl-11">
+                                    <button onClick={() => onTrace(d)} className="text-xs font-medium mr-auto flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See what EVA did')}</button>
+                                    <Button onClick={() => sendBack(d.id)}>{t(dec.alt)}</Button>
+                                    <Button appearance="primary" onClick={() => approve(d.id)}><Icon name="circle-tick" /> {t(dec.confirm)}</Button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </SectionCard>
+            )}
+
+            {/* worth your time — advisory EVA surfaced */}
+            <SectionCard title={<span className="flex items-center gap-2"><Icon name="lightbulb" style={{ color: '#b9842b' }} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Worth your time')}</span></span>} count={ADVISORY_MOMENTS.length}>
+                {ADVISORY_MOMENTS.map((a, i) => {
+                    const done = advActed.has(a.id);
+                    return (
+                        <div key={a.id} className="flex items-center gap-3 p-4" style={i === ADVISORY_MOMENTS.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <ClientAvatar name={a.company} size={30} />
+                            <p className="flex-1 min-w-0 text-sm" style={{ color: COLORS.text }}><span className="font-medium">{a.company}</span> {t(a.text)}</p>
+                            {done ? (
+                                <span className="text-sm shrink-0 flex items-center gap-1.5" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Done')}</span>
+                            ) : (
+                                <Button onClick={() => setAdvActed((p) => new Set(p).add(a.id))}>{t(a.action)}</Button>
+                            )}
+                        </div>
+                    );
+                })}
+            </SectionCard>
+
+            {/* running itself */}
+            <Card className="flex items-center gap-3 p-4">
+                <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: '#eef7ef', color: '#16a34a' }}><Icon name="circle-tick" /></span>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: COLORS.text }}>{t('EVA is running the rest on its own')}</p>
+                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('{h} items across {n} clients this week — all clear').replace('{h}', nf(HANDLED_WEEK)).replace('{n}', String(CLIENTS_CURRENT))}</p>
+                </div>
+                <button onClick={onOpenBoard} className="text-sm font-medium shrink-0" style={{ color: '#4456c7' }}>{t('Open full board')} →</button>
+            </Card>
+
+            {/* autonomy graduation — the review load shrinking over time */}
+            <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('EVA now runs these on its own')}</span></span>}>
+                {AUTONOMY.map((a, i) => {
+                    const pct = Math.round((a.at / a.of) * 100);
+                    return (
+                        <div key={a.name} className="flex items-center gap-3 px-4 py-3" style={i === AUTONOMY.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(a.name)}</p>
+                                <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('runs unattended for {at} of {of} clients').replace('{at}', String(a.at)).replace('{of}', String(a.of))}</p>
+                            </div>
+                            {a.soon && <span className="rounded-full px-2 py-0.5 text-xs font-medium shrink-0" style={{ background: '#f3f0fb', color: PURPLE }}>{t('graduating')}</span>}
+                            <div className="shrink-0 flex items-center gap-2.5" style={{ width: 140 }}>
+                                <span className="rounded-full" style={{ flex: 1, height: 6, background: '#f1f1f3', position: 'relative' }}>
+                                    <span className="rounded-full" style={{ position: 'absolute', left: 0, top: 0, height: 6, width: `${pct}%`, background: pct >= 90 ? '#16a34a' : pct >= 60 ? '#7c3aed' : '#b9842b' }} />
+                                </span>
+                                <span className="text-xs font-medium" style={{ color: COLORS.textMuted, width: 32, textAlign: 'right' }}>{pct}%</span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </SectionCard>
+        </div>
+    );
 }
