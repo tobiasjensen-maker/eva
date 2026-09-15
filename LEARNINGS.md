@@ -13,21 +13,20 @@ A single-page app (hash routing) that mocks a full agentic product surface. All 
 
 Primary navigation (the mental model):
 
-- **Home ("My day")** — the landing surface. EVA talks you through the day as a personal
-  assistant: a step-gated briefing kept to a few messages (one opening greeting+summary,
-  the decisions as ONE message, the advisory items as ONE message, a close), revealed a
-  beat at a time with continue-chips, plus a composer to talk back. EVA is the entity being
-  conversed with. `src/views/HomeView.tsx`; routes `#/home`, `#/my-day`, `#/today`. No
-  floating EVA side-panel here — Home *is* the conversation.
+- **Home ("My day")** — the landing surface and daily briefing. EVA walks you through the
+  day a beat at a time: greeting+summary → **"your day at a glance"** (today's calendar, with
+  a "View the week" toggle, from the Outlook connector) → the decisions as ONE message → the
+  advisory items as ONE message → a close. Continue-chips gate the reveal; a composer lets
+  you talk back; on return, already-handled items are skipped and EVA says you're caught up.
+  `src/views/HomeView.tsx`; routes `#/home`, `#/my-day`, `#/today`. No floating EVA
+  side-panel here — Home *is* the conversation.
 - **Shared "your day" state** (`src/day.ts`, lifted into `App`): the decisions + advisory
-  moments are one source of truth passed to BOTH Home and the Cockpit's Focus view, so
-  acting in one is reflected in the other (and in the Cockpit nav badge). Board mode keeps
-  its own richer task list.
-- **Cockpit** — the structured control centre (`src/views/TaskManagementView.tsx`). Has a
-  **Focus / Board** toggle: Focus is the calm, exception-first view ("Bookkeeping is
-  handled" → the 5% quick calls → "Where your time is worth most" advisory hero → "One
-  front door for the whole business" integrations → autonomy graduation); Board is the
-  detailed practice board. A feed of what EVA did, what needs you, and what it's waiting on.
+  moments are one source of truth used by Home; acting there also drives the Cockpit nav
+  badge (`openDecisions`).
+- **Cockpit** — the structured practice board (`src/views/TaskManagementView.tsx`): a
+  **My work / Whole practice** perspective toggle, KPIs, and the task sections (Ready for
+  your review, EVA is handling, Scheduled by EVA, On my plate, Completed by EVA). The old
+  Focus/exception-first cockpit view was removed — the daily briefing (Home) covers it now.
 - **Advisory** — the advisory layer (proactive review + financial insights), kept
   separate from the core bookkeeping tasks.
 - **Routines** — the agentic taxonomy in action: a Routine (job) is a Trigger →

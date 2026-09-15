@@ -615,7 +615,7 @@ export default function App() {
                 )}
                 {view === 'home' && <HomeView onOpenCockpit={() => goView('activity')} decisions={dayDecisions} values={dayValues} onResolveDecision={resolveDecision} onResolveValue={resolveValue} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                {view === 'activity' && <TaskManagementView decisions={dayDecisions} values={dayValues} onResolveDecision={resolveDecision} onResolveValue={resolveValue} />}
+                {view === 'activity' && <TaskManagementView />}
                 {view === 'activitylog' && (
                     <ActivityFeedView
                         entries={activity}

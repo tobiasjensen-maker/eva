@@ -20,8 +20,13 @@ const SKED: Record<string, { bg: string; fg: string }> = {
     'Period close': { bg: '#eef4fb', fg: '#2f6fb0' },
     'Meeting': { bg: '#e9f7ef', fg: '#15803d' },
 };
-type Event = { when: string; title: string; kind: keyof typeof SKED; client?: string; note?: string };
+type Event = { when: string; title: string; kind: keyof typeof SKED; client?: string; note?: string; today?: boolean };
 const SCHEDULE: Event[] = [
+    // Today — the "day at a glance"
+    { when: '09:30', title: 'Team stand-up', kind: 'Meeting', today: true },
+    { when: '11:00', title: 'Client call — Bryg & Co', kind: 'Meeting', client: 'Bryg & Co ApS', today: true },
+    { when: '15:30', title: 'Review — Q1 VAT, Nordic Build', kind: 'Deadline', client: 'Nordic Build ApS', today: true },
+    // Later this week
     { when: 'Thu 14:00', title: 'Runway call — Café Solsikke', kind: 'Advisory', client: 'Café Solsikke' },
     { when: 'Fri 09:00', title: 'VAT filing deadline', kind: 'Deadline', note: '3 clients' },
     { when: 'Fri 06:00', title: 'Payroll run — Aarhus Tandklinik', kind: 'Payroll', client: 'Aarhus Tandklinik' },
@@ -33,16 +38,16 @@ const SCHEDULE: Event[] = [
 // the advisory items as ONE message, and a close. A `next` chip gates the reveal;
 // the card groups advance on their own once you've dealt with them.
 type Beat =
-    | { intro: true; next: string }
+    | { intro: true }
+    | { glance: true; next: string }
     | { decisions: true }
     | { values: true; next: string }
-    | { schedule: true }
     | { close: true };
 const BEATS: Beat[] = [
-    { intro: true, next: 'What needs me?' },
+    { intro: true },
+    { glance: true, next: 'What needs me?' },
     { decisions: true },
     { values: true, next: 'That’s enough for now' },
-    { schedule: true },
     { close: true },
 ];
 
@@ -115,7 +120,8 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
         setTyping(true);
         await sleep(700);
         setTyping(false);
-        if ('intro' in beat) { push({ key: key(), who: 'eva', type: 'intro' }); setPendingChip(beat.next); return; }
+        if ('intro' in beat) { push({ key: key(), who: 'eva', type: 'intro' }); await advance(); return; }
+        if ('glance' in beat) { push({ key: key(), who: 'eva', type: 'schedule' }); setPendingChip(beat.next); return; }
         if ('close' in beat) {
             // If nothing needed the user this visit, EVA just reassures rather than recap.
             push({ key: key(), who: 'eva', type: 'text', node: shownAny.current ? t('That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.') : t('You’re all caught up — everything’s handled and every ledger’s current. I’ll flag anything that comes up. Ask me anything.') });
@@ -137,8 +143,6 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
             shownAny.current = true;
             if ('next' in beat && beat.next) setPendingChip(beat.next);
         }
-        // A forward look at the week — always shown, informational, then on to the close.
-        if ('schedule' in beat) { push({ key: key(), who: 'eva', type: 'schedule' }); await advance(); return; }
     }
     async function advance() {
         setPendingChip(null);
@@ -228,7 +232,7 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
                                     )}
                                     {it.type === 'schedule' && (
                                         <div className="flex flex-col gap-2.5">
-                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('And here’s what’s coming up on your calendar:')}</p>
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Here’s your day at a glance:')}</p>
                                             <ScheduleCard t={t} />
                                         </div>
                                     )}
@@ -332,22 +336,38 @@ function SummaryCard({ t }: { t: (s: string) => string }) {
     );
 }
 
+function EventRow({ e, t }: { e: Event; t: (s: string) => string }) {
+    const k = SKED[e.kind];
+    return (
+        <div className="flex items-center gap-3 px-3.5 py-2.5" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+            <span className="shrink-0 text-xs font-semibold text-right" style={{ color: COLORS.text, width: 58 }}>{t(e.when)}</span>
+            <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: k.fg }} />
+            <div className="min-w-0 flex-1">
+                <p className="text-sm truncate" style={{ color: COLORS.text }}>{t(e.title)}</p>
+            </div>
+            <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: k.bg, color: k.fg }}>{e.note ? `${t(e.kind)} · ${t(e.note)}` : t(e.kind)}</span>
+        </div>
+    );
+}
+
 function ScheduleCard({ t }: { t: (s: string) => string }) {
+    const [week, setWeek] = useState(false);
+    const today = SCHEDULE.filter((e) => e.today);
+    const later = SCHEDULE.filter((e) => !e.today);
     return (
         <Card className="overflow-hidden mt-1" style={{ maxWidth: 520 }}>
-            {SCHEDULE.map((e, i) => {
-                const k = SKED[e.kind];
-                return (
-                    <div key={e.title} className="flex items-center gap-3 px-3.5 py-2.5" style={i === SCHEDULE.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                        <span className="shrink-0 text-xs font-semibold text-right" style={{ color: COLORS.text, width: 58 }}>{t(e.when)}</span>
-                        <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: k.fg }} />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm truncate" style={{ color: COLORS.text }}>{t(e.title)}</p>
-                        </div>
-                        <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: k.bg, color: k.fg }}>{e.note ? `${t(e.kind)} · ${t(e.note)}` : t(e.kind)}</span>
+            {today.map((e) => <EventRow key={e.title} e={e} t={t} />)}
+            {week && (
+                <>
+                    <div className="px-3.5 py-1.5" style={{ background: '#fafafa', borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Later this week')}</span>
                     </div>
-                );
-            })}
+                    {later.map((e) => <EventRow key={e.title} e={e} t={t} />)}
+                </>
+            )}
+            <button onClick={() => setWeek((w) => !w)} className="w-full text-center py-2.5 text-sm font-medium" style={{ color: '#4456c7' }}>
+                {week ? t('Show today only') : `${t('View the week')} →`}
+            </button>
         </Card>
     );
 }
