@@ -9,6 +9,7 @@ import {
     InsightsIcon,
     RoutinesIcon,
     TasksIcon,
+    HomeIcon,
     SpacesIcon,
     CustomersIcon,
     SidebarTooltip,
@@ -24,6 +25,7 @@ import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsCh
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import TaskManagementView, { tasksAnswer } from './views/TaskManagementView';
+import HomeView from './views/HomeView';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
@@ -48,7 +50,9 @@ const WELCOME_MSG =
 
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
-    // Cockpit is now the merged task-management home ("My work" / "Whole practice").
+    // Home is "My day" — EVA's conversational morning briefing (the landing surface).
+    { id: 'home', label: 'Home', Icon: HomeIcon },
+    // Cockpit is the structured control centre ("My work" / "Whole practice").
     { id: 'activity', label: 'Cockpit', Icon: TasksIcon },
     { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
@@ -57,12 +61,12 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'spaces', label: 'Views', Icon: SpacesIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
+const VIEW_IDS: ViewId[] = ['home', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { home: 'home', chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -80,8 +84,8 @@ export default function App() {
         const h = window.location.hash.replace(/^#\/?/, '');
         if (SLUG_VIEW[h]) return SLUG_VIEW[h];
         const saved = localStorage.getItem('va-view') as ViewId | null;
-        // The control centre ('activity') is the landing surface — the vision's "one surface".
-        return saved && VIEW_IDS.includes(saved) ? saved : 'activity';
+        // "My day" (Home) is the landing surface — EVA's conversational briefing.
+        return saved && VIEW_IDS.includes(saved) ? saved : 'home';
     });
     useEffect(() => {
         localStorage.setItem('va-view', view);
@@ -601,6 +605,7 @@ export default function App() {
                         onClose={() => goView(chatReturn)}
                     />
                 )}
+                {view === 'home' && <HomeView onOpenCockpit={() => goView('activity')} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                 {view === 'activity' && <TaskManagementView />}
                 {view === 'activitylog' && (
@@ -662,7 +667,7 @@ export default function App() {
             {route === 'onboarding' && (
                 <Onboarding
                     onClose={() => navigate(VIEW_SLUG[view])}
-                    onComplete={() => { setWelcome(true); setPanelSeed((k) => k + 1); setChatCollapsed(false); goView('activity'); }}
+                    onComplete={() => { setWelcome(true); setPanelSeed((k) => k + 1); setChatCollapsed(false); goView('home'); }}
                 />
             )}
         </div>

@@ -13,8 +13,17 @@ A single-page app (hash routing) that mocks a full agentic product surface. All 
 
 Primary navigation (the mental model):
 
-- **Cockpit** — the control centre for core bookkeeping. A feed of what EVA did, what
-  needs you (review), and what it's waiting on someone else for. Trace on demand.
+- **Home ("My day")** — the landing surface. EVA talks you through the day as a personal
+  assistant: a conversational briefing that reveals beat by beat (greeting → overnight
+  summary → the items that need you, surfaced inline as one-tap decision/advisory cards →
+  advisory → close), plus quick-reply chips and a composer to talk back. EVA is the entity
+  being conversed with. `src/views/HomeView.tsx`; routes `#/home`, `#/my-day`, `#/today`.
+  No floating EVA side-panel here — Home *is* the conversation.
+- **Cockpit** — the structured control centre (`src/views/TaskManagementView.tsx`). Has a
+  **Focus / Board** toggle: Focus is the calm, exception-first view ("Bookkeeping is
+  handled" → the 5% quick calls → "Where your time is worth most" advisory hero → "One
+  front door for the whole business" integrations → autonomy graduation); Board is the
+  detailed practice board. A feed of what EVA did, what needs you, and what it's waiting on.
 - **Advisory** — the advisory layer (proactive review + financial insights), kept
   separate from the core bookkeeping tasks.
 - **Routines** — the agentic taxonomy in action: a Routine (job) is a Trigger →

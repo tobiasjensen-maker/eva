@@ -699,6 +699,17 @@ export function TasksIcon({ active }: { active: boolean }) {
     );
 }
 
+// "My day" — a sunrise: EVA greeting you at the start of the day.
+export function HomeIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <path d="M3.5 17.5h17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M6.6 14.4a5.4 5.4 0 0 1 10.8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 4.2v2.3M4.7 7.2l1.6 1.6M19.3 7.2l-1.6 1.6M2.6 14.4h1.4M20 14.4h1.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 export function SpacesIcon({ active }: { active: boolean }) {
     return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
