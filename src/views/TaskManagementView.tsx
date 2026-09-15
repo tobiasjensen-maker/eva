@@ -2,6 +2,14 @@ import { useState, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
+import { KIND, type DecisionItem, type ValueItem } from '../day';
+
+type DayProps = {
+    decisions: DecisionItem[];
+    values: ValueItem[];
+    onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
+    onResolveValue: (id: string) => void;
+};
 
 // ---- Praksis / AO-house task management ------------------------------------
 // The firm's overview across every client company: what needs doing, when, and
@@ -168,7 +176,7 @@ function PopMenu({ trigger, items }: { trigger: ReactNode; items: { label: strin
 
 const PURPLE = '#7c3aed';
 
-export default function TaskManagementView() {
+export default function TaskManagementView({ decisions, values, onResolveDecision, onResolveValue }: DayProps) {
     const { t } = useLang();
     const [tasks, setTasks] = useState<Task[]>(TASKS);
     const [mode, setMode] = useState<'focus' | 'board'>('focus');
@@ -241,7 +249,7 @@ export default function TaskManagementView() {
             />
             <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
                 {mode === 'focus' ? (
-                    <CalmCockpit tasks={tasks} approve={approve} sendBack={sendBack} onTrace={setTrace} onOpenBoard={() => setMode('board')} />
+                    <CalmCockpit decisions={decisions} values={values} onResolveDecision={onResolveDecision} onResolveValue={onResolveValue} onTrace={setTrace} onOpenBoard={() => setMode('board')} />
                 ) : (
                 <>
                 {/* perspective — my work vs. the whole practice */}
@@ -375,7 +383,7 @@ export default function TaskManagementView() {
                 )}
             </div>
 
-            {trace && <EvaTraceModal task={trace} onClose={() => setTrace(null)} onApprove={trace.status === 'eva-review' ? () => { approve(trace.id); setTrace(null); } : undefined} onSendBack={trace.status === 'eva-review' ? () => { sendBack(trace.id); setTrace(null); } : undefined} />}
+            {trace && <EvaTraceModal task={trace} onClose={() => setTrace(null)} onApprove={trace.status === 'eva-review' ? () => { approve(trace.id); onResolveDecision(trace.id, 'confirm'); setTrace(null); } : undefined} onSendBack={trace.status === 'eva-review' ? () => { sendBack(trace.id); onResolveDecision(trace.id, 'alt'); setTrace(null); } : undefined} />}
         </div>
     );
 }
@@ -513,20 +521,6 @@ const TOUCH = { pct: 3, prev: 22 };
 const HANDLED_WEEK = 1240;
 const CLIENTS_CURRENT = 40;
 
-// The advisory / business work — the reason the books running themselves matters.
-const KIND: Record<string, { bg: string; fg: string }> = {
-    'Cash flow': { bg: '#fbf3e0', fg: '#92710f' },
-    'Compliance': { bg: '#eef4fb', fg: '#2f6fb0' },
-    'Risk': { bg: '#fdecec', fg: '#c0392b' },
-    'Growth': { bg: '#e9f7ef', fg: '#15803d' },
-};
-const VALUE_MOMENTS: { id: string; company: string; extra?: string; kind: keyof typeof KIND; text: string; sub: string; action: string }[] = [
-    { id: 'v1', company: 'Café Solsikke', kind: 'Cash flow', text: 'will run low on cash in ~6 weeks at the current burn.', sub: 'EVA drafted a runway conversation with three options to walk through.', action: 'Book a call' },
-    { id: 'v2', company: 'Nordic Build ApS', extra: '+5 others', kind: 'Compliance', text: 'and 5 others are affected by the new SKAT reporting rule.', sub: 'EVA worked out exactly who it hits and drafted what each client needs to hear.', action: 'Review 6 drafts' },
-    { id: 'v3', company: 'Digital Marketing Pro', kind: 'Risk', text: 'now earns 41% of its revenue from a single client.', sub: 'A concentration risk worth raising before the contract renews next quarter.', action: 'Add to review' },
-    { id: 'v4', company: 'Fjord Fitness', kind: 'Growth', text: 'has grown into a flat-rate VAT scheme that would save ~14,000 kr/yr.', sub: 'EVA prepared the switch and a short note to send the client.', action: 'Draft proposal' },
-];
-
 // The front door: every system the client's business runs on, pulled in behind EVA.
 const SYSTEMS: { name: string; role: string; color: string; mark: string }[] = [
     { name: 'e-conomic', role: 'Ledger & books · core', color: '#1c1b3a', mark: 'e' },
@@ -548,23 +542,13 @@ const AUTONOMY: { name: string; at: number; of: number; soon?: boolean }[] = [
     { name: 'Year-end close', at: 12, of: 40, soon: true },
 ];
 
-// A judgement call framed as a question with EVA's recommendation.
-function evaDecisionFor(title: string): { question: string; recommend: string; confirm: string; alt: string } {
-    const s = title.toLowerCase();
-    if (s.includes('vat return')) return { question: 'A reverse-charge VAT line on an EU purchase looks unusual.', recommend: 'Book it as an EU acquisition and file to SKAT.', confirm: 'Confirm & file', alt: 'It’s domestic' };
-    if (s.includes('vat')) return { question: 'Two VAT codes don’t reconcile by 340 kr.', recommend: 'Adjust to the calculation and file.', confirm: 'Confirm & file', alt: 'Let me check' };
-    if (s.includes('bank')) return { question: '8 of 150 bank lines couldn’t be matched automatically.', recommend: 'Post them to a suspense account and ask the client.', confirm: 'Approve', alt: 'Let me look' };
-    if (s.includes('supplier') || s.includes('invoice')) return { question: 'This supplier charge is 12% above their usual.', recommend: 'It matches the new contract — approve and book.', confirm: 'Approve', alt: 'Query supplier' };
-    if (s.includes('receipt')) return { question: 'The client still hasn’t sent 2 receipts.', recommend: 'Book without them and keep chasing.', confirm: 'Approve', alt: 'Wait' };
-    return { question: 'EVA finished a draft that needs your judgement.', recommend: 'Approve EVA’s draft.', confirm: 'Approve', alt: 'Take over' };
-}
-
-function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks: Task[]; approve: (id: string) => void; sendBack: (id: string) => void; onTrace: (t: Task) => void; onOpenBoard: () => void }) {
+function CalmCockpit({ decisions, values, onResolveDecision, onResolveValue, onTrace, onOpenBoard }: { decisions: DecisionItem[]; values: ValueItem[]; onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void; onResolveValue: (id: string) => void; onTrace: (t: Task) => void; onOpenBoard: () => void }) {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
-    const [advActed, setAdvActed] = useState<Set<string>>(new Set());
-    const decisions = tasks.filter((x) => x.status === 'eva-review' && x.accountant === ME);
-    const n = decisions.length;
+    const open = decisions.filter((d) => !d.done);
+    const n = open.length;
+    // A decision has no Task; synthesise one so the shared trace modal can show "what EVA did".
+    const traceDecision = (d: DecisionItem) => onTrace({ id: d.id, title: d.label, company: d.company, accountant: ME, dueLabel: 'Today', bucket: 'today', status: 'eva-review', priority: 'medium' });
 
     return (
         <div className="flex flex-col gap-5">
@@ -596,26 +580,23 @@ function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks
             {/* the 5% — quick judgement calls, framed as small */}
             {n > 0 && (
                 <SectionCard accent={PURPLE} title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('A couple of quick calls')}</span></span>} count={n}>
-                    {decisions.map((d, i) => {
-                        const dec = evaDecisionFor(d.title);
-                        return (
-                            <div key={d.id} className="p-4" style={i === n - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                <div className="flex items-start gap-3">
-                                    <ClientAvatar name={d.company} size={30} />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(d.title)} · {d.company}</p>
-                                        <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(dec.question)}</p>
-                                        <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: PURPLE }}><span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t('EVA recommends')}: {t(dec.recommend)}</span></p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 mt-3 pl-11">
-                                    <button onClick={() => onTrace(d)} className="text-xs font-medium mr-auto flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See what EVA did')}</button>
-                                    <Button onClick={() => sendBack(d.id)}>{t(dec.alt)}</Button>
-                                    <Button appearance="primary" onClick={() => approve(d.id)}><Icon name="circle-tick" /> {t(dec.confirm)}</Button>
+                    {open.map((d, i) => (
+                        <div key={d.id} className="p-4" style={i === n - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <div className="flex items-start gap-3">
+                                <ClientAvatar name={d.company} size={30} />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(d.label)} · {d.company}</p>
+                                    <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                                    <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: PURPLE }}><span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t('EVA recommends')}: {t(d.recommend)}</span></p>
                                 </div>
                             </div>
-                        );
-                    })}
+                            <div className="flex items-center gap-2 mt-3 pl-11">
+                                <button onClick={() => traceDecision(d)} className="text-xs font-medium mr-auto flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See what EVA did')}</button>
+                                <Button onClick={() => onResolveDecision(d.id, 'alt')}>{t(d.alt)}</Button>
+                                <Button appearance="primary" onClick={() => onResolveDecision(d.id, 'confirm')}><Icon name="circle-tick" /> {t(d.confirm)}</Button>
+                            </div>
+                        </div>
+                    ))}
                 </SectionCard>
             )}
 
@@ -626,11 +607,10 @@ function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks
                 </div>
                 <p className="text-sm mb-3 px-0.5" style={{ color: COLORS.textMuted }}>{t('The books are done. This is the advisory work that grows the firm — EVA has already done the analysis and drafted the first move.')}</p>
                 <Card className="overflow-hidden">
-                    {VALUE_MOMENTS.map((a, i) => {
-                        const done = advActed.has(a.id);
+                    {values.map((a, i) => {
                         const k = KIND[a.kind];
                         return (
-                            <div key={a.id} className="flex items-start gap-3 p-4" style={i === VALUE_MOMENTS.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <div key={a.id} className="flex items-start gap-3 p-4" style={i === values.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                 <ClientAvatar name={a.company} size={30} />
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -639,10 +619,10 @@ function CalmCockpit({ tasks, approve, sendBack, onTrace, onOpenBoard }: { tasks
                                     </div>
                                     <p className="text-sm mt-1.5 flex items-start gap-1.5" style={{ color: COLORS.textMuted }}><span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t(a.sub)}</span></p>
                                 </div>
-                                {done ? (
+                                {a.done ? (
                                     <span className="text-sm shrink-0 flex items-center gap-1.5 mt-0.5" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Done')}</span>
                                 ) : (
-                                    <Button appearance="primary" onClick={() => setAdvActed((p) => new Set(p).add(a.id))}>{t(a.action)}</Button>
+                                    <Button appearance="primary" onClick={() => onResolveValue(a.id)}>{t(a.action)}</Button>
                                 )}
                             </div>
                         );

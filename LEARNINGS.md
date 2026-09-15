@@ -14,11 +14,15 @@ A single-page app (hash routing) that mocks a full agentic product surface. All 
 Primary navigation (the mental model):
 
 - **Home ("My day")** — the landing surface. EVA talks you through the day as a personal
-  assistant: a conversational briefing that reveals beat by beat (greeting → overnight
-  summary → the items that need you, surfaced inline as one-tap decision/advisory cards →
-  advisory → close), plus quick-reply chips and a composer to talk back. EVA is the entity
-  being conversed with. `src/views/HomeView.tsx`; routes `#/home`, `#/my-day`, `#/today`.
-  No floating EVA side-panel here — Home *is* the conversation.
+  assistant: a step-gated briefing kept to a few messages (one opening greeting+summary,
+  the decisions as ONE message, the advisory items as ONE message, a close), revealed a
+  beat at a time with continue-chips, plus a composer to talk back. EVA is the entity being
+  conversed with. `src/views/HomeView.tsx`; routes `#/home`, `#/my-day`, `#/today`. No
+  floating EVA side-panel here — Home *is* the conversation.
+- **Shared "your day" state** (`src/day.ts`, lifted into `App`): the decisions + advisory
+  moments are one source of truth passed to BOTH Home and the Cockpit's Focus view, so
+  acting in one is reflected in the other (and in the Cockpit nav badge). Board mode keeps
+  its own richer task list.
 - **Cockpit** — the structured control centre (`src/views/TaskManagementView.tsx`). Has a
   **Focus / Board** toggle: Focus is the calm, exception-first view ("Bookkeeping is
   handled" → the 5% quick calls → "Where your time is worth most" advisory hero → "One

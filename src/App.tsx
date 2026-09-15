@@ -31,6 +31,7 @@ import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
+import { SEED_DECISIONS, SEED_VALUES } from './day';
 import { useEcoConnection } from './eco';
 import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from './eva';
 
@@ -90,6 +91,14 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem('va-view', view);
     }, [view]);
+
+    // Shared "your day" — decisions + advisory moments, so acting in Home ("My day")
+    // is reflected in the Cockpit's Focus view and vice-versa.
+    const [dayDecisions, setDayDecisions] = useState(SEED_DECISIONS);
+    const [dayValues, setDayValues] = useState(SEED_VALUES);
+    const resolveDecision = (id: string, taken: 'confirm' | 'alt') => setDayDecisions((d) => d.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
+    const resolveValue = (id: string) => setDayValues((v) => v.map((x) => (x.id === id ? { ...x, done: true } : x)));
+    const openDecisions = dayDecisions.filter((d) => !d.done).length;
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -179,8 +188,7 @@ export default function App() {
     }, []);
     const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : liveAgreement && s === liveAgreement.id ? liveAgreement.name : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
-    // Home badge counts only core bookkeeping items (advisory lives under Insights).
-    const needsReview = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && !isAdvisory(e)).length;
+    // Advisory badge counts advisory items in the activity feed (Insights lives there).
     const advisoryCount = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && isAdvisory(e)).length;
     // Review items (bookkeeping "Needs you") per client, for the scope picker.
     const reviewCounts = useMemo(() => {
@@ -404,13 +412,13 @@ export default function App() {
                             >
                                 <span className="relative flex items-center shrink-0">
                                     <RIcon active={active} />
-                                    {collapsed && id === 'activity' && needsReview > 0 && (
+                                    {collapsed && id === 'activity' && openDecisions > 0 && (
                                         <span className="absolute rounded-full" style={{ top: -4, right: -5, width: 8, height: 8, background: '#ed9b2c', border: `2px solid ${SIDEBAR_BG}` }} />
                                     )}
                                 </span>
                                 {!collapsed && <span className="flex-1">{label}</span>}
-                                {!collapsed && id === 'activity' && needsReview > 0 && (
-                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{needsReview}</span>
+                                {!collapsed && id === 'activity' && openDecisions > 0 && (
+                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{openDecisions}</span>
                                 )}
                                 {!collapsed && id === 'insights' && advisoryCount > 0 && (
                                     <span className="rounded-full text-xs font-semibold" style={{ background: '#7c3aed', color: '#fff', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{advisoryCount}</span>
@@ -605,9 +613,9 @@ export default function App() {
                         onClose={() => goView(chatReturn)}
                     />
                 )}
-                {view === 'home' && <HomeView onOpenCockpit={() => goView('activity')} />}
+                {view === 'home' && <HomeView onOpenCockpit={() => goView('activity')} decisions={dayDecisions} values={dayValues} onResolveDecision={resolveDecision} onResolveValue={resolveValue} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                {view === 'activity' && <TaskManagementView />}
+                {view === 'activity' && <TaskManagementView decisions={dayDecisions} values={dayValues} onResolveDecision={resolveDecision} onResolveValue={resolveValue} />}
                 {view === 'activitylog' && (
                     <ActivityFeedView
                         entries={activity}

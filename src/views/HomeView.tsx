@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@economic/taco';
 import { Card, ClientAvatar, Orb, ProfileAvatar, COLORS } from '../ui';
 import { useLang } from '../i18n';
+import { KIND, type DecisionItem, type ValueItem } from '../day';
 
 // ---- Home · "My day" ----------------------------------------------------------
 // Not the Cockpit. This is EVA talking you through your day like a personal
@@ -9,51 +10,28 @@ import { useLang } from '../i18n';
 // thing, waits for you to act or say "go", and only then reveals the next.
 
 const ME_FIRST = 'Tobias';
-const PURPLE = '#7c3aed';
-const KIND: Record<string, { bg: string; fg: string }> = {
-    'Cash flow': { bg: '#fbf3e0', fg: '#92710f' },
-    'Compliance': { bg: '#eef4fb', fg: '#2f6fb0' },
-    'Growth': { bg: '#e9f7ef', fg: '#15803d' },
-};
+const ACCENT = '#1c1b3a'; // dark navy — the user's own voice (proceed chip + send button)
 
-type Decision = { id: string; company: string; label: string; question: string; recommend: string; confirm: string; alt: string; ack: string; ackAlt: string; done?: boolean };
-type Value = { id: string; company: string; extra?: string; kind: keyof typeof KIND; text: string; sub: string; action: string; ack: string; done?: boolean };
-
-const DECISIONS: Decision[] = [
-    { id: 'd1', company: 'Nordic Build ApS', label: 'VAT return — Q1', question: 'A reverse-charge VAT line on an EU purchase looks unusual.', recommend: 'Book it as an EU acquisition and file to SKAT.', confirm: 'Confirm & file', alt: 'It’s domestic', ack: 'Done — Nordic Build’s Q1 VAT return is filed to SKAT. ✅', ackAlt: 'Got it — I’ll rebook it as domestic and hold the return for you.' },
-    { id: 'd2', company: 'Café Solsikke', label: 'Bank reconciliation', question: '8 of 150 bank lines couldn’t be matched automatically.', recommend: 'Post them to a suspense account and ask the client.', confirm: 'Approve', alt: 'Let me look', ack: 'Approved — parked in suspense and I’ve messaged the client. ✅', ackAlt: 'Opening the eight lines for you — I’ll wait on your call.' },
-];
-
-const VALUES: Value[] = [
-    { id: 'v1', company: 'Café Solsikke', kind: 'Cash flow', text: 'will run low on cash in about six weeks at the current burn.', sub: 'I drafted a runway conversation with three options to walk through.', action: 'Book a call', ack: 'I’ve put 30 minutes on Thursday and attached the runway note.' },
-    { id: 'v2', company: 'Nordic Build ApS', extra: '+5 others', kind: 'Compliance', text: 'and five others are affected by the new SKAT reporting rule.', sub: 'I worked out exactly who it hits and drafted what each client needs to hear.', action: 'Review 6 drafts', ack: 'Opening the six drafts — approve each and I’ll send it in your tone.' },
-    { id: 'v3', company: 'Fjord Fitness', kind: 'Growth', text: 'has grown into a flat-rate VAT scheme that would save it ~14,000 kr/yr.', sub: 'I prepared the switch and a short note to send the client.', action: 'Draft proposal', ack: 'Proposal drafted — it’s in your outbox ready to review.' },
-];
-
-// The briefing, as an ordered list of beats. `next` (when present) is the label
-// of a continue-chip that reveals the following beat; card beats advance when you act.
+// The briefing, kept to a few messages: an opening, the decisions as ONE message,
+// the advisory items as ONE message, and a close. A `next` chip gates the reveal;
+// the card groups advance on their own once you've dealt with them.
 type Beat =
     | { intro: true; next: string }
-    | { say: string; next?: string; done?: true }
-    | { decision: number }
-    | { value: number };
+    | { decisions: true }
+    | { values: true; next: string }
+    | { close: true };
 const BEATS: Beat[] = [
-    // Greeting + overnight summary arrive together as EVA's opening message.
     { intro: true, next: 'What needs me?' },
-    { decision: 0 },
-    { decision: 1 },
-    { say: 'That’s the books clear for today. 🎯 Now the part that actually grows the firm — want to see it?', next: 'Show me' },
-    { value: 0 },
-    { value: 1 },
-    { value: 2 },
-    { say: 'That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.', done: true },
+    { decisions: true },
+    { values: true, next: 'That’s enough for now' },
+    { close: true },
 ];
 
 type Item =
     | { key: string; who: 'eva'; type: 'text'; node: ReactNode }
     | { key: string; who: 'eva'; type: 'intro' }
-    | { key: string; who: 'eva'; type: 'decision'; dId: string }
-    | { key: string; who: 'eva'; type: 'value'; vId: string }
+    | { key: string; who: 'eva'; type: 'decisions' }
+    | { key: string; who: 'eva'; type: 'values' }
     | { key: string; who: 'user'; type: 'text'; node: ReactNode };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -76,19 +54,21 @@ function homeAnswer(q: string, lang: 'en' | 'da'): { text: string; openCockpit?:
     return { text: da ? 'Jeg kan tage dig gennem hvad der kørte i nat, hvad der venter på kunder, ugen der kommer, eller en enkelt kundes bøger. Hvad vil hjælpe?' : 'I can walk you through what ran overnight, what’s waiting on clients, the week ahead, or any single client’s books. What would help?' };
 }
 
-export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void }) {
+export default function HomeView({ onOpenCockpit, decisions, values, onResolveDecision, onResolveValue }: { onOpenCockpit: () => void; decisions: DecisionItem[]; values: ValueItem[]; onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void; onResolveValue: (id: string) => void }) {
     const { t, lang } = useLang();
     const [feed, setFeed] = useState<Item[]>([]);
     const [typing, setTyping] = useState(false);
     const [ready, setReady] = useState(false);
     const [pendingChip, setPendingChip] = useState<string | null>(null);
-    const [decisions, setDecisions] = useState<Decision[]>(DECISIONS);
-    const [values, setValues] = useState<Value[]>(VALUES);
     const [input, setInput] = useState('');
+    // Latest items in a ref so async beat-playing sees resolutions made mid-flow.
+    const itemsRef = useRef({ decisions, values });
+    itemsRef.current = { decisions, values };
     const scrollRef = useRef<HTMLDivElement>(null);
     const seq = useRef(0);
     const idxRef = useRef(-1);
     const started = useRef(false);
+    const dealt = useRef<Set<string>>(new Set()); // advisory items acted on or deferred
     const key = () => `m${seq.current++}`;
     const push = (it: Item) => setFeed((f) => [...f, it]);
     const pushUser = (text: string) => push({ key: key(), who: 'user', type: 'text', node: text });
@@ -107,7 +87,7 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
         if (opts?.openCockpit) setTimeout(onOpenCockpit, 800);
     }
 
-    // Reveal one beat, then wait for the user (a continue-chip, or acting on a card).
+    // Reveal one beat, then wait for the user (a continue-chip, or dealing with the cards).
     async function present(i: number) {
         idxRef.current = i;
         const beat = BEATS[i];
@@ -115,11 +95,19 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
         await sleep(700);
         setTyping(false);
         if ('intro' in beat) push({ key: key(), who: 'eva', type: 'intro' });
-        if ('say' in beat) push({ key: key(), who: 'eva', type: 'text', node: t(beat.say).replace('{name}', ME_FIRST) });
-        if ('decision' in beat) push({ key: key(), who: 'eva', type: 'decision', dId: DECISIONS[beat.decision].id });
-        if ('value' in beat) push({ key: key(), who: 'eva', type: 'value', vId: VALUES[beat.value].id });
+        if ('close' in beat) { push({ key: key(), who: 'eva', type: 'text', node: t('That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.') }); setReady(true); }
+        let allDone = false;
+        if ('decisions' in beat) {
+            push({ key: key(), who: 'eva', type: 'decisions' });
+            allDone = itemsRef.current.decisions.every((d) => d.done);
+        }
+        if ('values' in beat) {
+            push({ key: key(), who: 'eva', type: 'values' });
+            allDone = itemsRef.current.values.every((v) => v.done || dealt.current.has(v.id));
+        }
         if ('next' in beat && beat.next) setPendingChip(beat.next);
-        if ('done' in beat && beat.done) setReady(true);
+        // If everything in this group is already handled (e.g. in the Cockpit), move on.
+        if (allDone && !('intro' in beat)) { await sleep(450); await advance(); }
     }
     async function advance() {
         setPendingChip(null);
@@ -139,17 +127,18 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
         pushUser(label);
         await advance();
     }
-    async function actDecision(d: Decision, took: boolean) {
-        setDecisions((ds) => ds.map((x) => (x.id === d.id ? { ...x, done: true } : x)));
-        pushUser(t(took ? d.alt : d.confirm));
-        await evaSay(t(took ? d.ackAlt : d.ack));
-        await advance();
+    // Acting on a card just flips it in place (no extra chatter); when the whole
+    // group is dealt with, EVA moves on to the next message on its own.
+    async function actDecision(d: DecisionItem, took: boolean) {
+        onResolveDecision(d.id, took ? 'alt' : 'confirm');
+        const remaining = itemsRef.current.decisions.filter((x) => !x.done && x.id !== d.id).length;
+        if (remaining === 0) await advance();
     }
-    async function actValue(v: Value, take: boolean) {
-        setValues((vs) => vs.map((x) => (x.id === v.id ? { ...x, done: true } : x)));
-        if (take) { pushUser(t(v.action)); await evaSay(t(v.ack)); }
-        else { pushUser(t('Later')); }
-        await advance();
+    async function actValue(v: ValueItem, take: boolean) {
+        if (take) onResolveValue(v.id);
+        dealt.current.add(v.id);
+        const remaining = itemsRef.current.values.filter((x) => !x.done && !dealt.current.has(x.id)).length;
+        if (remaining === 0) await advance();
     }
     function submit(text: string) {
         const q = text.trim();
@@ -194,8 +183,18 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
                                             <SummaryCard t={t} />
                                         </div>
                                     )}
-                                    {it.type === 'decision' && <DecisionCard d={decisions.find((x) => x.id === it.dId)!} t={t} onAct={actDecision} />}
-                                    {it.type === 'value' && <ValueCard v={values.find((x) => x.id === it.vId)!} t={t} onAct={actValue} />}
+                                    {it.type === 'decisions' && (
+                                        <div className="flex flex-col gap-2.5">
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Two quick calls before I can close the books:')}</p>
+                                            {decisions.map((d) => <DecisionCard key={d.id} d={d} t={t} onAct={actDecision} />)}
+                                        </div>
+                                    )}
+                                    {it.type === 'values' && (
+                                        <div className="flex flex-col gap-2.5">
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('That’s the books clear. 🎯 Here’s where your time is worth most:')}</p>
+                                            {values.map((v) => <ValueCard key={v.id} v={v} t={t} onAct={actValue} />)}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )
@@ -215,12 +214,14 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
             <div className="shrink-0 px-5 pb-5 pt-2">
                 <div className="mx-auto" style={{ maxWidth: 680 }}>
                     {(pendingChip || ready) && (
-                        <div className="flex flex-wrap gap-2 mb-2.5">
+                        <div className="flex flex-wrap gap-2 mb-2.5 justify-end">
                             {pendingChip ? (
                                 <button
                                     onClick={() => onContinue(pendingChip)}
-                                    className="rounded-full px-3.5 py-1.5 text-sm font-medium anim-in flex items-center gap-1.5"
-                                    style={{ background: PURPLE, color: '#fff' }}
+                                    className="rounded-full px-4 py-2 text-sm font-medium anim-in flex items-center gap-1.5"
+                                    style={{ background: ACCENT, color: '#fff' }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                                 >
                                     {pendingChip} <span aria-hidden>→</span>
                                 </button>
@@ -256,7 +257,7 @@ export default function HomeView({ onOpenCockpit }: { onOpenCockpit: () => void 
                             type="submit"
                             disabled={!input.trim()}
                             className="shrink-0 flex items-center justify-center rounded-full"
-                            style={{ width: 30, height: 30, background: input.trim() ? PURPLE : '#ececf0', color: input.trim() ? '#fff' : '#b0b0b8', cursor: input.trim() ? 'pointer' : 'default' }}
+                            style={{ width: 30, height: 30, background: input.trim() ? ACCENT : '#ececf0', color: input.trim() ? '#fff' : '#b0b0b8', cursor: input.trim() ? 'pointer' : 'default' }}
                             aria-label={t('Send')}
                         >
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -277,7 +278,7 @@ function SummaryCard({ t }: { t: (s: string) => string }) {
         { n: '31', label: t('clients ran overnight'), c: COLORS.text },
         { n: '6', label: t('closed clean'), c: '#16a34a' },
         { n: '3', label: t('raised something'), c: '#b9842b' },
-        { n: '1,240', label: t('items handled'), c: PURPLE },
+        { n: '1,240', label: t('items handled'), c: '#4456c7' },
     ];
     return (
         <Card className="p-4 mt-1" style={{ maxWidth: 460 }}>
@@ -294,15 +295,15 @@ function SummaryCard({ t }: { t: (s: string) => string }) {
     );
 }
 
-function DecisionCard({ d, t, onAct }: { d: Decision; t: (s: string) => string; onAct: (d: Decision, took: boolean) => void }) {
+function DecisionCard({ d, t, onAct }: { d: DecisionItem; t: (s: string) => string; onAct: (d: DecisionItem, took: boolean) => void }) {
     return (
-        <Card className="p-3.5 mt-1" style={{ maxWidth: 520, borderColor: d.done ? undefined : PURPLE }}>
+        <Card className="p-3.5 mt-1" style={{ maxWidth: 520 }}>
             <div className="flex items-start gap-2.5">
                 <ClientAvatar name={d.company} size={26} />
                 <div className="min-w-0 flex-1">
                     <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(d.label)} · {d.company}</p>
                     <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
-                    {!d.done && <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: PURPLE }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t('My call')}: {t(d.recommend)}</span></p>}
+                    {!d.done && <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: '#6d28d9' }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t('My call')}: {t(d.recommend)}</span></p>}
                 </div>
             </div>
             {d.done ? (
@@ -317,7 +318,7 @@ function DecisionCard({ d, t, onAct }: { d: Decision; t: (s: string) => string; 
     );
 }
 
-function ValueCard({ v, t, onAct }: { v: Value; t: (s: string) => string; onAct: (v: Value, take: boolean) => void }) {
+function ValueCard({ v, t, onAct }: { v: ValueItem; t: (s: string) => string; onAct: (v: ValueItem, take: boolean) => void }) {
     const k = KIND[v.kind];
     return (
         <Card className="p-3.5 mt-1" style={{ maxWidth: 520 }}>
