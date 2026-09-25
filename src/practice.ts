@@ -7,7 +7,7 @@ export const COST_PER_HOUR = 550; // the firm's internal cost of an accountant h
 export const TARGET_RATE = 900;   // effective kr / hour the firm aims for per client
 export const FIRM_CLIENTS = 212;  // total clients in the office (the tables show a slice)
 
-export type Books = 'current' | 'closing' | 'behind';
+export type Books = 'closed' | 'todo' | 'blocked'; // same vocabulary as the books-status diagram
 
 export interface Client {
     id: string;
@@ -27,26 +27,26 @@ export interface Client {
 }
 
 export const CLIENTS: Client[] = [
-    { id: 'nordic', no: 'C-1001', name: 'Nordic Build ApS', industry: 'Construction', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 14500, hours: 9, eva: 88, books: 'current', open: 2, trend: 12, playbook: 'construction', signal: { kind: 'Compliance', text: 'Affected by the new SKAT reporting rule' } },
-    { id: 'cafe', no: 'C-1002', name: 'Café Solsikke', industry: 'Hospitality', accountant: 'Sofie Lund', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 4200, hours: 11, eva: 71, books: 'behind', open: 4, trend: -8, playbook: 'hospitality', signal: { kind: 'Cash flow', text: 'About six weeks of cash runway left' } },
-    { id: 'tech', no: 'C-1003', name: 'Tech Equipment AS', industry: 'Wholesale', accountant: 'Jonas Vestergaard', services: ['Bookkeeping', 'VAT', 'Annual report'], fee: 9800, hours: 6, eva: 91, books: 'current', open: 1, trend: 5 },
-    { id: 'office', no: 'C-1004', name: 'Office Supplies Co', industry: 'Retail', accountant: 'Camilla Berg', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 7600, hours: 7, eva: 84, books: 'closing', open: 2, trend: 2, playbook: 'retail' },
-    { id: 'dmp', no: 'C-1005', name: 'Digital Marketing Pro', industry: 'Agency', accountant: ME, services: ['Bookkeeping', 'VAT', 'Advisory'], fee: 11200, hours: 5, eva: 93, books: 'current', open: 1, trend: 18, playbook: 'tech', signal: { kind: 'Risk', text: '41% of revenue comes from one customer' } },
-    { id: 'cloud', no: 'C-1006', name: 'Cloud Hosting Ltd', industry: 'Tech & SaaS', accountant: 'Anders Holm', services: ['Bookkeeping', 'VAT', 'Annual report'], fee: 8900, hours: 4, eva: 95, books: 'current', open: 0, trend: 22, playbook: 'tech' },
-    { id: 'bryg', no: 'C-1007', name: 'Bryg & Co ApS', industry: 'Hospitality', accountant: 'Jonas Vestergaard', services: ['Bookkeeping', 'VAT'], fee: 5400, hours: 8, eva: 76, books: 'current', open: 2, trend: 3, playbook: 'hospitality' },
-    { id: 'lys', no: 'C-1008', name: 'Lys Design', industry: 'Retail', accountant: 'Sofie Lund', services: ['Bookkeeping', 'VAT'], fee: 3900, hours: 9, eva: 68, books: 'behind', open: 3, trend: -2, playbook: 'retail', signal: { kind: 'Cash flow', text: 'Customers are paying 18 days slower than last quarter' } },
-    { id: 'fjord', no: 'C-1009', name: 'Fjord Fitness', industry: 'Fitness', accountant: 'Anders Holm', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 6800, hours: 6, eva: 86, books: 'closing', open: 1, trend: 14, signal: { kind: 'Growth', text: 'Grown into a VAT scheme that saves ~14,000 kr/yr' } },
-    { id: 'tand', no: 'C-1010', name: 'Aarhus Tandklinik', industry: 'Dental', accountant: 'Camilla Berg', services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 12400, hours: 10, eva: 82, books: 'current', open: 1, trend: 6, playbook: 'dental' },
-    { id: 'solvang', no: 'C-1011', name: 'Solvang Tømrer ApS', industry: 'Construction', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 7200, hours: 12, eva: 74, books: 'behind', open: 3, trend: 9, playbook: 'construction' },
-    { id: 'havn', no: 'C-1012', name: 'Havn Rederi', industry: 'Transport', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 16800, hours: 14, eva: 79, books: 'current', open: 2, trend: 4 },
-    { id: 'kilde', no: 'C-1013', name: 'Kilde Klinik', industry: 'Health', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT'], fee: 5100, hours: 9, eva: 72, books: 'closing', open: 2, trend: 1, playbook: 'dental' },
-    { id: 'bageri', no: 'C-1014', name: 'Nørre Bageri', industry: 'Hospitality', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 4600, hours: 10, eva: 70, books: 'behind', open: 4, trend: -4, playbook: 'hospitality', signal: { kind: 'Cash flow', text: 'Flour and energy costs up 31% — margin squeezed' } },
-    { id: 'pixel', no: 'C-1015', name: 'Pixel Studio', industry: 'Agency', accountant: 'Jonas Vestergaard', services: ['Bookkeeping', 'VAT'], fee: 4800, hours: 3, eva: 94, books: 'current', open: 0, trend: 11, playbook: 'tech' },
-    { id: 'gron', no: 'C-1016', name: 'Grøn Energi A/S', industry: 'Energy', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report', 'Advisory'], fee: 19500, hours: 11, eva: 87, books: 'current', open: 1, trend: 25, signal: { kind: 'Growth', text: 'Revenue up 25% — ready for a CFO-level conversation' } },
+    { id: 'nordic', no: 'C-1001', name: 'Nordic Build ApS', industry: 'Construction', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 14500, hours: 9, eva: 88, books: 'closed', open: 2, trend: 12, playbook: 'construction', signal: { kind: 'Compliance', text: 'Affected by the new SKAT reporting rule' } },
+    { id: 'cafe', no: 'C-1002', name: 'Café Solsikke', industry: 'Hospitality', accountant: 'Sofie Lund', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 4200, hours: 11, eva: 71, books: 'blocked', open: 4, trend: -8, playbook: 'hospitality', signal: { kind: 'Cash flow', text: 'About six weeks of cash runway left' } },
+    { id: 'tech', no: 'C-1003', name: 'Tech Equipment AS', industry: 'Wholesale', accountant: 'Jonas Vestergaard', services: ['Bookkeeping', 'VAT', 'Annual report'], fee: 9800, hours: 6, eva: 91, books: 'closed', open: 1, trend: 5 },
+    { id: 'office', no: 'C-1004', name: 'Office Supplies Co', industry: 'Retail', accountant: 'Camilla Berg', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 7600, hours: 7, eva: 84, books: 'todo', open: 2, trend: 2, playbook: 'retail' },
+    { id: 'dmp', no: 'C-1005', name: 'Digital Marketing Pro', industry: 'Agency', accountant: ME, services: ['Bookkeeping', 'VAT', 'Advisory'], fee: 11200, hours: 5, eva: 93, books: 'closed', open: 1, trend: 18, playbook: 'tech', signal: { kind: 'Risk', text: '41% of revenue comes from one customer' } },
+    { id: 'cloud', no: 'C-1006', name: 'Cloud Hosting Ltd', industry: 'Tech & SaaS', accountant: 'Anders Holm', services: ['Bookkeeping', 'VAT', 'Annual report'], fee: 8900, hours: 4, eva: 95, books: 'closed', open: 0, trend: 22, playbook: 'tech' },
+    { id: 'bryg', no: 'C-1007', name: 'Bryg & Co ApS', industry: 'Hospitality', accountant: 'Jonas Vestergaard', services: ['Bookkeeping', 'VAT'], fee: 5400, hours: 8, eva: 76, books: 'closed', open: 2, trend: 3, playbook: 'hospitality' },
+    { id: 'lys', no: 'C-1008', name: 'Lys Design', industry: 'Retail', accountant: 'Sofie Lund', services: ['Bookkeeping', 'VAT'], fee: 3900, hours: 9, eva: 68, books: 'blocked', open: 3, trend: -2, playbook: 'retail', signal: { kind: 'Cash flow', text: 'Customers are paying 18 days slower than last quarter' } },
+    { id: 'fjord', no: 'C-1009', name: 'Fjord Fitness', industry: 'Fitness', accountant: 'Anders Holm', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 6800, hours: 6, eva: 86, books: 'todo', open: 1, trend: 14, signal: { kind: 'Growth', text: 'Grown into a VAT scheme that saves ~14,000 kr/yr' } },
+    { id: 'tand', no: 'C-1010', name: 'Aarhus Tandklinik', industry: 'Dental', accountant: 'Camilla Berg', services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 12400, hours: 10, eva: 82, books: 'closed', open: 1, trend: 6, playbook: 'dental' },
+    { id: 'solvang', no: 'C-1011', name: 'Solvang Tømrer ApS', industry: 'Construction', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 7200, hours: 12, eva: 74, books: 'blocked', open: 3, trend: 9, playbook: 'construction' },
+    { id: 'havn', no: 'C-1012', name: 'Havn Rederi', industry: 'Transport', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 16800, hours: 14, eva: 79, books: 'closed', open: 2, trend: 4 },
+    { id: 'kilde', no: 'C-1013', name: 'Kilde Klinik', industry: 'Health', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT'], fee: 5100, hours: 9, eva: 72, books: 'todo', open: 2, trend: 1, playbook: 'dental' },
+    { id: 'bageri', no: 'C-1014', name: 'Nørre Bageri', industry: 'Hospitality', accountant: 'Mette Sørensen', services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 4600, hours: 10, eva: 70, books: 'blocked', open: 4, trend: -4, playbook: 'hospitality', signal: { kind: 'Cash flow', text: 'Flour and energy costs up 31% — margin squeezed' } },
+    { id: 'pixel', no: 'C-1015', name: 'Pixel Studio', industry: 'Agency', accountant: 'Jonas Vestergaard', services: ['Bookkeeping', 'VAT'], fee: 4800, hours: 3, eva: 94, books: 'closed', open: 0, trend: 11, playbook: 'tech' },
+    { id: 'gron', no: 'C-1016', name: 'Grøn Energi A/S', industry: 'Energy', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report', 'Advisory'], fee: 19500, hours: 11, eva: 87, books: 'closed', open: 1, trend: 25, signal: { kind: 'Growth', text: 'Revenue up 25% — ready for a CFO-level conversation' } },
 ];
 
 // Where every client's books stand this month, across the whole office.
-export const BOOKS_STATUS: { key: string; label: string; count: number; color: string }[] = [
+export const BOOKS_STATUS: { key: Books; label: string; count: number; color: string }[] = [
     { key: 'closed', label: 'Closed', count: 176, color: '#16a34a' },
     { key: 'todo', label: 'To do', count: 24, color: '#2f6fb0' },
     { key: 'blocked', label: 'Blocked', count: 12, color: '#dc2626' },

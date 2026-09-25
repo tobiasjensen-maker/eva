@@ -16,10 +16,11 @@ const SIGNAL: Record<string, { bg: string; fg: string }> = {
     'Growth': { bg: '#e9f7ef', fg: '#15803d' },
     'Compliance': { bg: '#eef4fb', fg: '#2f6fb0' },
 };
+// Same labels and colours as the books-status diagram on the Portfolio overview.
 const BOOKS: Record<Books, { label: string; bg: string; fg: string }> = {
-    current: { label: 'Books current', bg: '#e9f7ef', fg: '#15803d' },
-    closing: { label: 'Closing', bg: '#eef4fb', fg: '#2f6fb0' },
-    behind: { label: 'Behind', bg: '#fbf3e0', fg: '#92710f' },
+    closed: { label: 'Closed', bg: '#e9f7ef', fg: '#15803d' },
+    todo: { label: 'To do', bg: '#eef4fb', fg: '#2f6fb0' },
+    blocked: { label: 'Blocked', bg: '#fdecec', fg: '#c0392b' },
 };
 const kr = (n: number) => `${n.toLocaleString('da-DK')} kr`;
 const first = (n: string) => (n === ME ? 'You' : n.split(' ')[0]);
@@ -107,7 +108,7 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search by name, client number or industry…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
                     </div>
-                    <SegmentedTabs value={books} onChange={(v) => setBooks(v as Books | 'any')} options={[{ value: 'any', label: t('Any status') }, { value: 'behind', label: t('Behind') }, { value: 'closing', label: t('Closing') }, { value: 'current', label: t('Current') }]} />
+                    <SegmentedTabs value={books} onChange={(v) => setBooks(v as Books | 'any')} options={[{ value: 'any', label: t('Any status') }, { value: 'closed', label: t('Closed') }, { value: 'todo', label: t('To do') }, { value: 'blocked', label: t('Blocked') }]} />
                 </div>
 
                 <Card className="overflow-hidden">
