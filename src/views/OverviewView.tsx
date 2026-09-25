@@ -188,7 +188,7 @@ function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: str
                             <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{d.company} · {t(d.label)}</p>
                             <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
                         </div>
-                        <Button appearance="primary" onClick={() => setReview(d)}>{t('Review')}</Button>
+                        <Button onClick={() => setReview(d)}>{t('Review')}</Button>
                     </div>
                 ))}
             </Widget>
