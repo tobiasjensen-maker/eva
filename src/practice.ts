@@ -46,10 +46,10 @@ export const CLIENTS: Client[] = [
 ];
 
 // Where every client's books stand this month, across the whole office.
-export const BOOKS_STATUS: { key: Books; label: string; count: number; color: string }[] = [
-    { key: 'current', label: 'Current', count: 176, color: '#16a34a' },
-    { key: 'closing', label: 'Closing', count: 24, color: '#2f6fb0' },
-    { key: 'behind', label: 'Behind', count: 12, color: '#b9842b' },
+export const BOOKS_STATUS: { key: string; label: string; count: number; color: string }[] = [
+    { key: 'closed', label: 'Closed', count: 176, color: '#16a34a' },
+    { key: 'todo', label: 'To do', count: 24, color: '#2f6fb0' },
+    { key: 'blocked', label: 'Blocked', count: 12, color: '#dc2626' },
 ];
 
 export const rateOf = (c: Client) => Math.round(c.fee / Math.max(c.hours, 1));

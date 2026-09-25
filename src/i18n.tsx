@@ -1578,4 +1578,6 @@ const DA: Record<string, string> = {
     'The facts': 'Fakta',
     'EVA’s call': 'EVAs bud',
     'You stand behind this — EVA logs your decision.': 'Du står inde for det — EVA logger din beslutning.',
+    'To do': 'At gøre',
+    'Blocked': 'Blokeret',
 };
