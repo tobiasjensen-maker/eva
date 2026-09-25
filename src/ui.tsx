@@ -297,7 +297,7 @@ export function PeriodPicker({ value, onChange, options }: { value: string; onCh
 export function StickyFooter({ children }: { children: ReactNode }) {
     return (
         <div className="shrink-0" style={{ background: CANVAS, borderTop: `1px solid ${COLORS.cardBorder}` }}>
-            <div className="mx-auto px-8 flex items-center justify-between gap-3" style={{ maxWidth: 1040, paddingTop: 12, paddingBottom: 12 }}>
+            <div className="mx-auto px-8 flex items-center justify-between gap-3" style={{ maxWidth: 1240, paddingTop: 12, paddingBottom: 12 }}>
                 {children}
             </div>
         </div>
@@ -328,7 +328,7 @@ export function PageHeader({
     right,
     onBack,
     backLabel,
-    maxWidth = 1040,
+    maxWidth = 1240,
     showScope = true,
 }: {
     title: string;

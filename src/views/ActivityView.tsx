@@ -410,7 +410,7 @@ export default function ActivityView({
     return (
         <div className={embedded ? '' : 'h-full overflow-y-auto'}>
             {!embedded && <PageHeader title={kind === 'advisory' ? t('Advisory') : t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
-            <div className={embedded ? 'pb-2' : 'px-8 pt-5 pb-7 mx-auto'} style={embedded ? undefined : { maxWidth: 1040 }}>
+            <div className={embedded ? 'pb-2' : 'px-8 pt-5 pb-7 mx-auto'} style={embedded ? undefined : { maxWidth: 1240 }}>
                 {!embedded && range === 'custom' && (
                     <div className="flex items-center gap-2 mb-4 text-sm" style={{ color: COLORS.textMuted }}>
                         <input type="date" className="rounded-lg px-2.5 py-1.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
@@ -840,7 +840,7 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
     return (
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Cockpit')} right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
-            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
+            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1240 }}>
                 {/* automation KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
                     {kpis.map((k) => (
@@ -968,7 +968,7 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Activity')} onBack={onBack} backLabel={t('Cockpit')} showScope={false}
                 right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
-            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1040 }}>
+            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1240 }}>
                 {/* filter bar */}
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="relative flex-1" style={{ minWidth: 220 }}>

@@ -531,7 +531,7 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     : undefined
                 }
             />
-            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
                 {/* top-level tabs */}
                 <div className="flex items-center gap-7 mb-6" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     {AUTO_TABS.map((tb) => {
@@ -1626,7 +1626,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                     </div>
                 ) : undefined}
             />
-            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
                 {/* intro */}
                 <div className="flex items-start gap-3 mb-6">
                     <EmojiTile emoji={skill.emoji} size={44} />

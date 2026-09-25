@@ -115,7 +115,7 @@ export default function CustomersView() {
                 }
             />
 
-            <div className="flex-1 overflow-y-auto px-8 py-5" style={{ maxWidth: 1040, width: '100%', margin: '0 auto' }}>
+            <div className="flex-1 overflow-y-auto px-8 py-5" style={{ maxWidth: 1240, width: '100%', margin: '0 auto' }}>
                 {!isLiveScope ? (
                     <div className="flex flex-col items-center gap-2 py-20 text-center">
                         <span className="flex items-center justify-center rounded-full" style={{ width: 44, height: 44, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="connection-revoke" /></span>

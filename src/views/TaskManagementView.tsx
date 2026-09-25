@@ -237,7 +237,7 @@ export default function TaskManagementView() {
                 showScope={false}
                 right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>}
             />
-            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
+            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1240 }}>
                 {/* perspective — my work vs. the whole practice */}
                 <div className="mb-5 flex">
                     <SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />

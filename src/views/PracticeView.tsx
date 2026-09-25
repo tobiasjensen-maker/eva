@@ -27,7 +27,7 @@ export default function PracticeView({ initialTab = 'capacity' }: { initialTab?:
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Practice')} showScope={false}
                 badge={<SegmentedTabs value={tab} onChange={(v) => setTab(v as Tab)} options={[{ value: 'capacity', label: t('Capacity') }, { value: 'profit', label: t('Profitability') }, { value: 'growth', label: t('Growth') }, { value: 'playbooks', label: t('Playbooks') }]} />} />
-            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
+            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1240 }}>
                 <div className="grid grid-cols-4 gap-3 mb-6">
                     {[
                         { l: 'Clients per accountant', v: String(perAccountant), s: t('{x}× the pre-agent average').replace('{x}', (perAccountant / INDUSTRY_AVG_CLIENTS).toFixed(1)), c: COLORS.text },

@@ -112,7 +112,7 @@ export default function OverviewView({ decisions, replies, onResolveDecision, on
                 </div>
             </div>
 
-            <div className="mx-auto px-8 pb-10 flex flex-col gap-5" style={{ maxWidth: 1120 }}>
+            <div className="mx-auto px-8 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
                 {/* the day at a glance */}
                 <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
                     <TodayWidget t={t} />
@@ -167,67 +167,136 @@ function TodayWidget({ t }: { t: (s: string) => string }) {
     );
 }
 
-// The decisions only the accountant can make, answerable right here.
+// The decisions only the accountant can make. Each opens a review — what EVA did,
+// the facts behind the question, EVA's call — where you decide.
 function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; replies: number; onResolve: (id: string, taken: 'confirm' | 'alt') => void; onGo: (v: ViewId) => void }) {
     const open = decisions.filter((d) => !d.done);
+    const [review, setReview] = useState<DecisionItem | null>(null);
     return (
-        <Widget title={t('Needs your decision')} right={open.length > 0 ? <span className="rounded-full text-xs font-semibold" style={{ background: '#1c1b3a', color: '#fff', padding: '1px 8px' }}>{open.length}</span> : undefined}
-            footer={<button onClick={() => onGo('inbox')} className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#4456c7' }}><Icon name="chat" /> {replies > 0 ? t('{n} client replies drafted in your Inbox').replace('{n}', String(replies)) : t('No client replies waiting')} →</button>}>
-            {open.length === 0 ? (
-                <div className="px-4 py-6 flex items-center gap-2.5">
-                    <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
-                    <p className="text-sm" style={{ color: COLORS.text }}>{t('Nothing in the books needs you.')}</p>
-                </div>
-            ) : open.map((d, i) => (
-                <div key={d.id} className="px-4 py-2.5" style={i === 0 ? undefined : { borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                    <div className="flex items-start gap-2.5">
-                        <ClientAvatar name={d.company} size={22} />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{d.company} · {t(d.label)}</p>
-                            <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
-                            <p className="text-xs mt-1 flex items-start gap-1.5" style={{ color: '#6d28d9' }}><span className="shrink-0 mt-px"><Orb size={11} /></span><span>{t('My call')}: {t(d.recommend)}</span></p>
-                            <div className="flex items-center gap-2 mt-2">
-                                <Button onClick={() => onResolve(d.id, 'alt')}>{t(d.alt)}</Button>
-                                <Button appearance="primary" onClick={() => onResolve(d.id, 'confirm')}>{t(d.confirm)}</Button>
-                            </div>
-                        </div>
+        <>
+            <Widget title={t('Needs your decision')} right={open.length > 0 ? <span className="rounded-full text-xs font-semibold" style={{ background: '#1c1b3a', color: '#fff', padding: '1px 8px' }}>{open.length}</span> : undefined}
+                footer={<button onClick={() => onGo('inbox')} className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#4456c7' }}><Icon name="chat" /> {replies > 0 ? t('{n} client replies drafted in your Inbox').replace('{n}', String(replies)) : t('No client replies waiting')} →</button>}>
+                {open.length === 0 ? (
+                    <div className="px-4 py-6 flex items-center gap-2.5">
+                        <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{t('Nothing in the books needs you.')}</p>
                     </div>
-                </div>
-            ))}
-        </Widget>
+                ) : open.map((d, i) => (
+                    <div key={d.id} className="flex items-center gap-3 px-4 py-3" style={i === 0 ? undefined : { borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                        <ClientAvatar name={d.company} size={26} />
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{d.company} · {t(d.label)}</p>
+                            <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                        </div>
+                        <Button appearance="primary" onClick={() => setReview(d)}>{t('Review')}</Button>
+                    </div>
+                ))}
+            </Widget>
+            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolve(review.id, taken); setReview(null); }} />}
+        </>
     );
 }
 
-// Where every client's books stand this month.
+// Review a decision: what EVA did, the facts, EVA's call — then decide.
+function DecisionReview({ d, t, onClose, onResolve }: { d: DecisionItem; t: (s: string) => string; onClose: () => void; onResolve: (taken: 'confirm' | 'alt') => void }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full anim-in overflow-hidden" style={{ maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <ClientAvatar name={d.company} size={32} />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t(d.label)}</p>
+                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{d.company}</p>
+                    </div>
+                    <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
+                </div>
+
+                <div className="px-5 py-4 flex flex-col gap-4">
+                    <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: '#fbf3e0', border: '1px solid #efdcb0' }}>
+                        <span className="shrink-0" style={{ color: '#b9842b' }}><Icon name="circle-warning" /></span>
+                        <div className="min-w-0">
+                            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#92710f' }}>{t('Needs your review')}</p>
+                            <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('The facts')}</p>
+                        <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                            {d.evidence.map((e, i) => (
+                                <div key={e.label} className="flex gap-3 px-3 py-2 text-sm" style={i === 0 ? undefined : { borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                                    <span className="shrink-0" style={{ color: COLORS.textMuted, width: 128 }}>{t(e.label)}</span>
+                                    <span style={{ color: COLORS.text }}>{t(e.value)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('What EVA did')}</p>
+                        <ol className="flex flex-col gap-1.5">
+                            {d.steps.map((st, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm" style={{ color: COLORS.text }}>
+                                    <span className="flex items-center justify-center shrink-0 rounded-full mt-0.5" style={{ width: 16, height: 16, background: '#eef7ef', color: '#15803d', fontSize: 10 }}><Icon name="tick" /></span>
+                                    {t(st)}
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
+
+                    <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
+                        <span className="shrink-0 mt-0.5"><Orb size={16} /></span>
+                        <div className="min-w-0">
+                            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}>{t('EVA’s call')}</p>
+                            <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.recommend)}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('You stand behind this — EVA logs your decision.')}</span>
+                    <div className="flex gap-2 shrink-0">
+                        <Button onClick={() => onResolve('alt')}>{t(d.alt)}</Button>
+                        <Button appearance="primary" onClick={() => onResolve('confirm')}><Icon name="circle-tick" /> {t(d.confirm)}</Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Where every client's books stand this month — a large donut, legend underneath.
 function BooksWidget({ t, onGo }: { t: (s: string) => string; onGo: (v: ViewId) => void }) {
     const total = BOOKS_STATUS.reduce((s, b) => s + b.count, 0);
-    const R = 42, C = 2 * Math.PI * R;
+    const SIZE = 184, R = 70, W = 24, C = 2 * Math.PI * R;
     let acc = 0;
     return (
         <Widget title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
             footer={<button onClick={() => onGo('activity')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>}>
-            <div className="flex items-center gap-5 px-4 pb-4 pt-1">
-                <svg width="112" height="112" viewBox="0 0 112 112" className="shrink-0">
-                    <circle cx="56" cy="56" r={R} fill="none" stroke="#f1f1f3" strokeWidth="16" />
+            <div className="flex flex-col items-center px-4 pb-4 pt-2">
+                <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+                    <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#f1f1f3" strokeWidth={W} />
                     {BOOKS_STATUS.map((b) => {
                         const len = (b.count / total) * C;
-                        const el = <circle key={b.key} cx="56" cy="56" r={R} fill="none" stroke={b.color} strokeWidth="16" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-acc} transform="rotate(-90 56 56)" />;
+                        const el = <circle key={b.key} cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke={b.color} strokeWidth={W} strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-acc} transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`} />;
                         acc += len;
                         return el;
                     })}
-                    <text x="56" y="54" textAnchor="middle" fontSize="20" fontWeight="600" fill={COLORS.text}>{total}</text>
-                    <text x="56" y="70" textAnchor="middle" fontSize="10" fill={COLORS.textMuted}>{t('clients')}</text>
+                    <text x={SIZE / 2} y={SIZE / 2 - 2} textAnchor="middle" fontSize="30" fontWeight="600" fill={COLORS.text}>{total}</text>
+                    <text x={SIZE / 2} y={SIZE / 2 + 18} textAnchor="middle" fontSize="12" fill={COLORS.textMuted}>{t('clients')}</text>
                 </svg>
-                <div className="flex flex-col gap-2 min-w-0">
+                <div className="grid grid-cols-3 gap-2 w-full mt-4">
                     {BOOKS_STATUS.map((b) => (
-                        <div key={b.key} className="flex items-center gap-2 text-sm">
-                            <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: b.color }} />
-                            <span style={{ color: COLORS.text }}>{t(b.label)}</span>
-                            <span className="font-semibold" style={{ color: COLORS.text }}>{b.count}</span>
+                        <div key={b.key} className="text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                                <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: b.color }} />
+                                <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(b.label)}</span>
+                            </div>
+                            <p className="text-base font-semibold mt-0.5" style={{ color: COLORS.text }}>{b.count}</p>
                         </div>
                     ))}
-                    <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{t('EVA closes most of these on its own.')}</p>
                 </div>
+                <p className="text-xs mt-3 text-center" style={{ color: COLORS.textMuted }}>{t('EVA closes most of these on its own.')}</p>
             </div>
         </Widget>
     );

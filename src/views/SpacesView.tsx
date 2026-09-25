@@ -73,7 +73,7 @@ export default function SpacesView({ spaces, onCreate, onActiveSpaceChange }: Pr
     return (
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Views')} right={<Button appearance="primary" onClick={() => setGallery(true)}><Icon name="circle-plus" /> {t('New view')}</Button>} />
-            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
                 <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
                     {evaCount < FREE_SPACE_LIMIT
                         ? (lang === 'da' ? `${evaCount} af ${FREE_SPACE_LIMIT} EVA-visninger brugt · integrationsvisninger er inkluderet` : `${evaCount} of ${FREE_SPACE_LIMIT} EVA views used · integration views included`)
@@ -129,7 +129,7 @@ function SpaceDetail({ space, onBack }: { space: Space; onBack: () => void }) {
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
                 <PageHeader title={space.title} onBack={onBack} backLabel={t('Views')} />
-                <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1040 }}>
+                <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
                     <div className="flex items-start gap-3 mb-6">
                         <EmojiTile emoji={space.emoji} size={44} />
                         <div className="flex-1 min-w-0">

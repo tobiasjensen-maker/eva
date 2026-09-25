@@ -1575,4 +1575,7 @@ const DA: Record<string, string> = {
     '{list} need you.': '{list} kræver dig.',
     'and': 'og',
     'Nothing needs you right now.': 'Intet kræver dig lige nu.',
+    'The facts': 'Fakta',
+    'EVA’s call': 'EVAs bud',
+    'You stand behind this — EVA logs your decision.': 'Du står inde for det — EVA logger din beslutning.',
 };

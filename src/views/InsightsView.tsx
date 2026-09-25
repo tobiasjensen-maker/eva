@@ -503,7 +503,7 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
     return (
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Advisory')} right={<PeriodPicker value={period} onChange={setPeriod} options={PERIODS.map((p) => ({ value: p.key, label: t(p.label) }))} />} />
-            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
+            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1240 }}>
                 {/* KPI cards — the numbers at a glance */}
                 {liveLoading ? (
                     <div className="flex items-center gap-2 py-12 justify-center text-sm mb-6" style={{ color: COLORS.textMuted }}>
