@@ -25,8 +25,7 @@ import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsCh
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView } from './views/ActivityView';
 import SkillsView from './views/SkillsView';
 import TaskManagementView, { tasksAnswer } from './views/TaskManagementView';
-import HomeView from './views/HomeView';
-import ClientsView from './views/ClientsView';
+import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
 import PracticeView from './views/PracticeView';
 import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, rateOf, TARGET_RATE } from './practice';
@@ -35,7 +34,7 @@ import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
-import { SEED_DECISIONS, SEED_VALUES } from './day';
+import { SEED_DECISIONS } from './day';
 import { useEcoConnection } from './eco';
 import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from './eva';
 
@@ -56,12 +55,11 @@ const WELCOME_MSG =
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
     // Home is "My day" — EVA's conversational morning briefing (the landing surface).
-    // Where the day starts — the agenda, walked through with EVA.
-    { id: 'home', label: 'Home', Icon: HomeIcon },
+    // Where the day starts: ask EVA, the day at a glance, and the whole client portfolio.
+    // (Home and Clients merged; a client's deep analysis — the old Advisory page — opens from here.)
+    { id: 'home', label: 'Portfolio overview', Icon: HomeIcon },
     // Every client conversation in one place.
     { id: 'inbox', label: 'Inbox', Icon: InboxIcon },
-    // The whole portfolio. A client's deep analysis (the old Advisory page) opens from here.
-    { id: 'clients', label: 'Clients', Icon: CustomersIcon },
     // The board of work across clients — what EVA and the team are doing ("My work" / "Whole practice").
     { id: 'activity', label: 'Work', Icon: TasksIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
@@ -73,12 +71,12 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     // (Advisory → a client's analysis, reached from Clients; Views → #/views, off the rail.)
 ];
 
-const VIEW_IDS: ViewId[] = ['home', 'inbox', 'clients', 'practice', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
+const VIEW_IDS: ViewId[] = ['home', 'inbox', 'practice', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
 const VIEW_SLUG: Record<ViewId, string> = { home: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'home', portfolio: 'home', overview: 'home', practice: 'practice', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -106,21 +104,12 @@ export default function App() {
     // Shared "your day" — decisions + advisory moments, so acting in Home ("My day")
     // is reflected in the Cockpit's Focus view and vice-versa.
     const [dayDecisions, setDayDecisions] = useState(SEED_DECISIONS);
-    const [dayValues, setDayValues] = useState(SEED_VALUES);
     const resolveDecision = (id: string, taken: 'confirm' | 'alt') => setDayDecisions((d) => d.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
-    const resolveValue = (id: string) => setDayValues((v) => v.map((x) => (x.id === id ? { ...x, done: true } : x)));
     const openDecisions = dayDecisions.filter((d) => !d.done).length;
     // Client conversations — shared so the rail badge and client profiles stay in sync.
     const [threads, setThreads] = useState(THREADS);
     const [inboxFocus, setInboxFocus] = useState<string | null>(null);
     const needsReply = threads.filter((x) => x.status === 'needs').length;
-    // Send EVA's suggested next step on a thread (from Home) — same outcome as "Approve & send" in the Inbox.
-    const resolveThread = (id: string) => setThreads((all) => all.map((x) => x.id !== id || !x.suggestion ? x : {
-        ...x,
-        status: 'done' as const,
-        messages: [...x.messages, { from: 'firm' as const, who: 'Tobias Holm Jensen', at: 'Now', text: x.suggestion.reply }, { from: 'eva' as const, who: 'EVA', at: 'Now', text: x.suggestion.result }],
-        suggestion: undefined,
-    }));
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -131,6 +120,11 @@ export default function App() {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
     }, [chatCollapsed]);
     const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null);
+    // On the Portfolio overview the question box is the way in — the EVA panel starts
+    // closed and opens with the answer when you ask (as in Intuit Accountant Suite).
+    useEffect(() => {
+        if (view === 'home') setChatCollapsed(true);
+    }, [view]);
     const [insightsPro, setInsightsPro] = useState(() => localStorage.getItem('va-insights-pro') === '1');
     useEffect(() => {
         localStorage.setItem('va-insights-pro', insightsPro ? '1' : '0');
@@ -281,12 +275,12 @@ export default function App() {
     // The contextual EVA chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
-        view === 'clients'
+        view === 'home'
             ? {
                   subtitle: 'portfolio assistant',
-                  intro: "I'm EVA. Ask me which clients need you, who's ready for an advisory conversation, or how a client compares with its peers.",
-                  chips: ['Which clients are ready for an advisory call?', 'Who are my least profitable clients?', 'Which clients have cash-flow issues?'],
-                  respond: firmAnswer,
+                  intro: "I'm EVA. Ask me about your day, a client, who's ready for an advisory conversation, or how the practice is doing.",
+                  chips: ['Walk me through my day', 'Who are my least profitable clients?', 'Who on my team is over capacity?'],
+                  respond: (q: string) => overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }),
               }
         : view === 'inbox'
             ? {
@@ -456,7 +450,7 @@ export default function App() {
                     {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
                         // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
                         // Sub-pages keep their parent lit: the activity log under Work, a client's analysis under Clients.
-                        const active = view === id || (id === 'activity' && view === 'activitylog') || (id === 'clients' && view === 'insights');
+                        const active = view === id || (id === 'activity' && view === 'activitylog') || (id === 'home' && view === 'insights');
                         const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
@@ -683,19 +677,24 @@ export default function App() {
                     />
                 )}
                 {view === 'inbox' && <InboxView threads={threads} setThreads={setThreads} focusClient={inboxFocus} />}
-                {view === 'clients' && (
-                    <ClientsView
+                {view === 'practice' && <PracticeView />}
+                {view === 'home' && (
+                    <OverviewView
+                        decisions={dayDecisions}
+                        replies={needsReply}
+                        onResolveDecision={resolveDecision}
+                        onGo={goView}
+                        // The question box hands off to the EVA panel, answer included.
+                        onAsk={(q) => { setPendingAsk({ user: q, answer: overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }) }); setChatCollapsed(false); }}
                         onMessage={(client) => { setInboxFocus(client); goView('inbox'); }}
                         onOpenBooks={(name) => {
-                            // Clients that are also agreements open in their own scope; the rest in a new tab.
+                            // Clients that are also agreements open their analysis in scope; the rest in a new tab.
                             const a = AGREEMENTS.find((x) => x.name === name);
                             if (a) { applyScope(a.id); goView('insights'); }
                             else toast.information(lang === 'da' ? `Åbner ${name}s regnskab i en ny fane` : `Opening ${name}’s books in a new tab`);
                         }}
                     />
                 )}
-                {view === 'practice' && <PracticeView />}
-                {view === 'home' && <HomeView onGo={goView} decisions={dayDecisions} values={dayValues} threads={threads} onResolveDecision={resolveDecision} onResolveValue={resolveValue} onResolveThread={resolveThread} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                 {view === 'activity' && <TaskManagementView />}
                 {view === 'activitylog' && (

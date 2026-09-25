@@ -45,6 +45,13 @@ export const CLIENTS: Client[] = [
     { id: 'gron', no: 'C-1016', name: 'Grøn Energi A/S', industry: 'Energy', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report', 'Advisory'], fee: 19500, hours: 11, eva: 87, books: 'current', open: 1, trend: 25, signal: { kind: 'Growth', text: 'Revenue up 25% — ready for a CFO-level conversation' } },
 ];
 
+// Where every client's books stand this month, across the whole office.
+export const BOOKS_STATUS: { key: Books; label: string; count: number; color: string }[] = [
+    { key: 'current', label: 'Current', count: 176, color: '#16a34a' },
+    { key: 'closing', label: 'Closing', count: 24, color: '#2f6fb0' },
+    { key: 'behind', label: 'Behind', count: 12, color: '#b9842b' },
+];
+
 export const rateOf = (c: Client) => Math.round(c.fee / Math.max(c.hours, 1));
 export const marginOf = (c: Client) => c.fee - c.hours * COST_PER_HOUR;
 

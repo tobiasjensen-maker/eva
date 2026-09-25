@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { Card, ClientAvatar, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { CLIENTS, FIRM_CLIENTS, ME, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
 
@@ -82,12 +82,13 @@ export function ExpertiseCard({ onOpen }: { onOpen?: (c: Client) => void }) {
     );
 }
 
-export default function ClientsView({ onOpenBooks, onMessage }: { onOpenBooks: (name: string) => void; onMessage: (client: string) => void }) {
+// The full client list — search, filters and the table. Selecting a client is left
+// to the host page (the Portfolio overview opens the profile drawer).
+export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
     const { t } = useLang();
     const [scope, setScope] = useState<'mine' | 'all'>('all');
     const [q, setQ] = useState('');
     const [books, setBooks] = useState<Books | 'any'>('any');
-    const [sel, setSel] = useState<Client | null>(null);
 
     const rows = useMemo(() => {
         const ql = q.trim().toLowerCase();
@@ -95,11 +96,11 @@ export default function ClientsView({ onOpenBooks, onMessage }: { onOpenBooks: (
     }, [scope, q, books]);
 
     return (
-        <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Clients')} showScope={false} right={<Button appearance="primary"><Icon name="circle-plus" /> {t('Add client')}</Button>} />
-            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1040 }}>
-                <div className="mb-6"><ExpertiseCard onOpen={setSel} /></div>
-
+            <div>
+                <div className="flex items-center gap-2 mb-3">
+                    <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('All clients')}</h2>
+                    <Button><Icon name="circle-plus" /> {t('Add client')}</Button>
+                </div>
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     <SegmentedTabs value={scope} onChange={(v) => setScope(v as 'mine' | 'all')} options={[{ value: 'all', label: t('All clients') }, { value: 'mine', label: t('My clients') }]} />
                     <div className="relative flex-1" style={{ minWidth: 220 }}>
@@ -123,7 +124,7 @@ export default function ClientsView({ onOpenBooks, onMessage }: { onOpenBooks: (
                                 {rows.map((c) => {
                                     const b = BOOKS[c.books];
                                     return (
-                                        <tr key={c.id} onClick={() => setSel(c)} className="cursor-pointer" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}
+                                        <tr key={c.id} onClick={() => onSelect(c)} className="cursor-pointer" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}
                                             onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                                             <td className="px-4 py-3 text-xs font-mono whitespace-nowrap" style={{ color: COLORS.textMuted }}>{c.no}</td>
                                             <td className="px-4 py-3">
@@ -158,13 +159,10 @@ export default function ClientsView({ onOpenBooks, onMessage }: { onOpenBooks: (
                     </div>
                 </Card>
             </div>
-
-            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} />}
-        </div>
     );
 }
 
-function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client; onClose: () => void; onOpenBooks: (name: string) => void; onMessage: (client: string) => void }) {
+export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client; onClose: () => void; onOpenBooks: (name: string) => void; onMessage: (client: string) => void }) {
     const { t } = useLang();
     const [noted, setNoted] = useState(false);
     const pb = PLAYBOOKS.find((p) => p.id === c.playbook);
