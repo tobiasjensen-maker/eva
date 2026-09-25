@@ -33,8 +33,9 @@ the day starts; every other page is "further in".**
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
   follows up and drafts the next step.
 - **Work** (`TaskManagementView.tsx`, `#/work`) — the one place for work, three tabs:
-  - **Tasks** — your plate + what's ready for your review + what EVA is handling right now —
-    always your own work (the office-wide view lives under Practice). "Completed by EVA" is a pointer into Activity.
+  - **Tasks** — one list, **On my plate**: your tasks *and* EVA's drafts waiting for your review
+    (status "Ready for review", with a Review button; they sit under "Due today" and group /
+    filter like any task). Always your own work (the office-wide view lives under Practice). "Completed by EVA" is a pointer into Activity.
   - **Activity** (`#/activity`) — everything EVA has done: `ActivityFeedView` rendered `embedded`.
   - **Routines** (`#/routines`) — what's planned and automated: **Scheduled for EVA** (EVA's
     scheduled tasks + the active routines' next runs, in time order) above the routines

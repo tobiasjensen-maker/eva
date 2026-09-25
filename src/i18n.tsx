@@ -1616,4 +1616,5 @@ const DA: Record<string, string> = {
     'Tomorrow at 07:00': 'I morgen kl. 07:00',
     'Tomorrow at 06:00': 'I morgen kl. 06:00',
     '10 Oct at 06:00': '10. okt. kl. 06:00',
+    'Ready for review': 'Klar til gennemgang',
 };

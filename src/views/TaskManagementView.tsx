@@ -3,7 +3,7 @@ import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem } from '../day';
-import { DecisionRow, DecisionReview } from './Decisions';
+import { DecisionReview } from './Decisions';
 
 // ---- Praksis / AO-house task management ------------------------------------
 // The firm's overview across every client company: what needs doing, when, and
@@ -41,7 +41,7 @@ export const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; d
     'done': { label: 'Done', bg: '#e9f7ef', fg: '#15803d', dot: '#16a34a' },
     'eva-scheduled': { label: 'Scheduled by EVA', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'eva-running': { label: 'EVA working', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
-    'eva-review': { label: 'EVA drafted — review', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
+    'eva-review': { label: 'Ready for review', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'eva-done': { label: 'Auto-completed by EVA', bg: '#eef7ef', fg: '#15803d', dot: '#16a34a' },
 };
 const HUMAN_STATUSES: TStatus[] = ['todo', 'in-progress', 'waiting', 'review', 'done'];
@@ -117,17 +117,6 @@ function evaFlagFor(title: string): string {
     if (s.includes('close')) return '2 accruals need your judgement before the period can be locked.';
     if (s.includes('payroll')) return 'One employee’s hours changed vs. last month — confirm before I run it.';
     return 'Review my work and approve, or take it over.';
-}
-function evaDoingFor(title: string): string {
-    const s = title.toLowerCase();
-    if (s.includes('vat')) return 'preparing the VAT return';
-    if (s.includes('bank')) return 'reconciling the bank feed';
-    if (s.includes('receipt')) return 'chasing the missing receipts';
-    if (s.includes('debtor') || s.includes('reminder')) return 'drafting the reminders';
-    if (s.includes('supplier') || s.includes('invoice')) return 'validating the invoice';
-    if (s.includes('close')) return 'running the month-end close';
-    if (s.includes('payroll')) return 'running payroll';
-    return 'working on it';
 }
 
 type GroupBy = 'accountant' | 'company' | 'deadline' | 'status';
@@ -225,7 +214,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
     // Ready for your review — the shared decisions, scoped like everything else here.
     const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
-    const evaRunning = all.filter((x) => x.status === 'eva-running');
     const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
     const evaDone = all.filter((x) => x.status === 'eva-done');
 
@@ -247,10 +235,17 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         ? [['deadline', 'By deadline'], ['company', 'By client'], ['status', 'By status']]
         : [['accountant', 'By accountant'], ['company', 'By company'], ['deadline', 'By deadline'], ['status', 'By status']];
     const effGroup: GroupBy = groupOptions.some(([k]) => k === groupBy) ? groupBy : 'deadline';
+    // One list: the tasks with you, plus EVA's drafts waiting for your review (due today,
+    // grouped and filtered like any other task).
     const human = all.filter((x) => !isEva(x.status) && (statusF.size === 0 || statusF.has(x.status)));
-    const order = effGroup === 'accountant' ? ACCOUNTANTS : effGroup === 'company' ? COMPANIES : effGroup === 'status' ? HUMAN_STATUSES : BUCKETS.map((b) => b.key);
+    const reviews = evaReview.filter(() => statusF.size === 0 || statusF.has('eva-review'));
+    const order = effGroup === 'accountant' ? ACCOUNTANTS : effGroup === 'company' ? COMPANIES : effGroup === 'status' ? ['eva-review', ...HUMAN_STATUSES] : BUCKETS.map((b) => b.key);
     const keyOf = (x: Task) => (effGroup === 'accountant' ? x.accountant : effGroup === 'company' ? x.company : effGroup === 'status' ? x.status : x.bucket);
-    const groups = (order as string[]).map((k) => ({ key: k, items: human.filter((x) => keyOf(x) === k) })).filter((g) => g.items.length > 0);
+    const reviewKeyOf = (d: DecisionItem) => (effGroup === 'accountant' ? d.accountant : effGroup === 'company' ? d.company : effGroup === 'status' ? 'eva-review' : 'today');
+    const groups = (order as string[])
+        .map((k) => ({ key: k, reviews: reviews.filter((d) => reviewKeyOf(d) === k), items: human.filter((x) => keyOf(x) === k) }))
+        .filter((g) => g.reviews.length + g.items.length > 0);
+    const plateCount = human.length + reviews.length;
 
     const groupTitle = (k: string): ReactNode => {
         if (effGroup === 'accountant' || effGroup === 'company') return <><ClientAvatar name={k} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{k}</span></>;
@@ -310,31 +305,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </div>
 
                 <div className="flex flex-col gap-4">
-                    {/* Ready for your review — EVA handed these back */}
-                    {evaReview.length > 0 && (
-                        <SectionCard accent={PURPLE} title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Ready for your review')}</span></span>} count={evaReview.length}>
-                            {evaReview.map((d, i) => <DecisionRow key={d.id} d={d} t={t} showOwner={!mine} last={i === evaReview.length - 1} onReview={() => setReview(d)} />)}
-                        </SectionCard>
-                    )}
-
-                    {/* EVA is working on these now */}
-                    {evaRunning.length > 0 && (
-                        <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} thinking /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('EVA is handling')}</span></span>} count={evaRunning.length}>
-                            {evaRunning.map((x, i) => (
-                                <div key={x.id} onClick={() => setTrace(x)} className="flex items-center gap-3 p-4 cursor-pointer" style={i === evaRunning.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                    <ClientAvatar name={x.company} size={30} />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
-                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{x.company} · {t('EVA is {doing}').replace('{doing}', t(evaDoingFor(x.title)))}</p>
-                                    </div>
-                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE }}><span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> {t('Working')}</span>
-                                    <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('Follow')}</button>
-                                </div>
-                            ))}
-                        </SectionCard>
-                    )}
-
-                    {/* the tasks still with a human — grouped, with a Hand-to-EVA action */}
+                    {/* On my plate — your tasks and EVA's drafts to review, grouped, with Hand to EVA / Review */}
                     <div className="pt-2">
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t(mine ? 'On my plate' : 'Handled by your team')}</p>
                         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -345,7 +316,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 mb-4">
-                            {HUMAN_STATUSES.map((s) => {
+                            {(['eva-review', ...HUMAN_STATUSES] as TStatus[]).map((s) => {
                                 const on = statusF.has(s); const st = TSTATUS[s];
                                 return (
                                     <button key={s} onClick={() => toggleStatusF(s)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? st.fg : COLORS.cardBorder}`, background: on ? st.bg : '#fff', color: on ? st.fg : COLORS.textMuted }}>
@@ -354,7 +325,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 );
                             })}
                             {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
-                            <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t(mine ? '{n} on my plate' : '{n} still with the team').replace('{n}', String(human.length))}</span>
+                            <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t(mine ? '{n} on my plate' : '{n} still with the team').replace('{n}', String(plateCount))}</span>
                         </div>
 
                         {groups.length === 0 ? (
@@ -364,7 +335,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 {groups.map((g) => {
                                     const od = g.items.filter((x) => x.bucket === 'overdue').length;
                                     return (
-                                        <SectionCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{groupTitle(g.key)}</span>} count={g.items.length} right={od > 0 ? <span className="text-xs font-medium shrink-0" style={{ color: '#dc2626' }}>{od} {t('overdue')}</span> : undefined}>
+                                        <SectionCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{groupTitle(g.key)}</span>} count={g.reviews.length + g.items.length} right={od > 0 ? <span className="text-xs font-medium shrink-0" style={{ color: '#dc2626' }}>{od} {t('overdue')}</span> : undefined}>
+                                            {g.reviews.map((d, i) => <ReviewRow key={d.id} d={d} groupBy={effGroup} last={i === g.reviews.length - 1 && g.items.length === 0} onReview={() => setReview(d)} />)}
                                             {g.items.map((x, i) => (
                                                 <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onHandToEva={() => handToEva(x.id)} onOpen={() => setTrace(x)} />
                                             ))}
@@ -389,6 +361,25 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
             {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolveDecision(review.id, taken); setReview(null); }} />}
             {trace && <TaskModal task={trace} onClose={() => setTrace(null)} onHandToEva={() => { handToEva(trace.id); setTrace(null); }} onDone={() => { setStatus(trace.id, 'done'); setTrace(null); }} />}
+        </div>
+    );
+}
+
+// An EVA draft waiting for your review — sits in the list like any task, with Review instead of Hand to EVA.
+function ReviewRow({ d, groupBy, last, onReview }: { d: DecisionItem; groupBy: GroupBy; last: boolean; onReview: () => void }) {
+    const { t } = useLang();
+    const st = TSTATUS['eva-review'];
+    return (
+        <div className="flex items-center gap-3 p-4" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+            <button onClick={onReview} className="flex-1 min-w-0 flex items-center gap-3 text-left" title={t('Review')}>
+                <ClientAvatar name={d.company} size={30} />
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate hover:underline" style={{ color: COLORS.text }}>{t(d.label)}</p>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{groupBy !== 'company' ? `${d.company} · ` : ''}<span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span> · {t(d.question)}</p>
+                </div>
+            </button>
+            <Button onClick={onReview}>{t('Review')}</Button>
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
         </div>
     );
 }
