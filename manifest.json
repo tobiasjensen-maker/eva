@@ -19,10 +19,12 @@
       "useToast"
     ],
     "custom": [
+      "BooksWidget",
       "Card",
       "ClientAvatar",
       "ClientDrawer",
       "ClientList",
+      "CountBadge",
       "DecisionReview",
       "DecisionRow",
       "HomeIcon",
@@ -36,7 +38,8 @@
       "SegmentedTabs",
       "SpacesIcon",
       "TaskModal",
-      "TasksIcon"
+      "TasksIcon",
+      "TasksWidget"
     ]
   }
 }

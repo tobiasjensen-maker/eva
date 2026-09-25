@@ -1594,4 +1594,10 @@ const DA: Record<string, string> = {
     'Tell me where you’d like to start, or ask a question about your clients.': 'Fortæl mig, hvor du vil starte, eller spørg om dine kunder.',
     'Showing {n} of your {total} clients': 'Viser {n} af dine {total} kunder',
     'Which of my clients need attention?': 'Hvilke af mine kunder kræver opmærksomhed?',
+    '{from}–{to} of {total} clients': '{from}–{to} af {total} kunder',
+    'No clients match': 'Ingen kunder matcher',
+    'Page': 'Side',
+    'of {n}': 'af {n}',
+    'Previous page': 'Forrige side',
+    'Next page': 'Næste side',
 };

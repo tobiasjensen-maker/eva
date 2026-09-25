@@ -922,14 +922,15 @@ const FEED_BUCKETS: { key: Bucket; label: string }[] = [
     { key: 'older', label: 'Older' },
 ];
 
-// The Activity subpage: the full log of everything that has happened, with
-// advanced filtering (search, status, area, client, date range).
-export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack }: {
+// The Activity log: everything EVA has done, with advanced filtering (search, status,
+// area, client, date range). `embedded` renders it as the Routines page's Activity tab.
+export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false }: {
     entries: LogEntry[];
     setEntries: Dispatch<SetStateAction<LogEntry[]>>;
     scope?: string;
     onAskEva: (user: string, answer: string) => void;
-    onBack: () => void;
+    onBack?: () => void;
+    embedded?: boolean;
 }) {
     const { t } = useLang();
     const A = useActivityActions(setEntries, onAskEva);
@@ -965,12 +966,13 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
     });
 
     return (
-        <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Activity')} onBack={onBack} backLabel={t('Cockpit')} showScope={false}
-                right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />
-            <div className="px-8 pt-5 pb-10 mx-auto" style={{ maxWidth: 1240 }}>
+        <div className={embedded ? '' : 'h-full overflow-y-auto'}>
+            {!embedded && <PageHeader title={t('Activity')} onBack={onBack} backLabel={t('Routines')} showScope={false}
+                right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
+            <div className={embedded ? 'pb-10' : 'px-8 pt-5 pb-10 mx-auto'} style={embedded ? undefined : { maxWidth: 1240 }}>
                 {/* filter bar */}
                 <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {embedded && <PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />}
                     <div className="relative flex-1" style={{ minWidth: 220 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search activity…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={selectStyle} />

@@ -224,3 +224,28 @@ export function whyOf(c: Client): string[] {
     if (s.kind === 'Growth') return ['Compared revenue with the same period last year', 'Checked the thresholds for services and VAT schemes', 'Estimated the value of acting now'];
     return ['Matched the new rule against every client’s activity', 'Found the transactions it applies to', 'Drafted a plain-language note for the client'];
 }
+
+// ---- The logged-in accountant's whole book (their 40) — for the paginated client list ----
+// The 8 detailed clients above plus 32 lighter ones, with books statuses that add up to the
+// Portfolio overview's donut (33 closed · 5 to do · 2 blocked).
+const EXTRA: [string, string][] = [
+    ['Aalborg Auto ApS', 'Automotive'], ['Bakkehuset Café', 'Hospitality'], ['Blå Bølge Sejl', 'Leisure'], ['Dahl Elektrik', 'Construction'],
+    ['Egholm Tømrer', 'Construction'], ['Fisker & Co', 'Wholesale'], ['Frederiksen VVS', 'Construction'], ['Gade Blomster', 'Retail'],
+    ['Hansen Transport', 'Transport'], ['Holm Møbler', 'Retail'], ['Iversen IT', 'Tech & SaaS'], ['Jensen Bageri', 'Hospitality'],
+    ['Kjær Arkitekter', 'Agency'], ['Lind Frisør', 'Health'], ['Lund Logistik', 'Transport'], ['Madsen Maskiner', 'Wholesale'],
+    ['Mølle Kaffe', 'Hospitality'], ['Nielsen Malerfirma', 'Construction'], ['Nord Fisk', 'Wholesale'], ['Olsen Optik', 'Retail'],
+    ['Pedersen Gartneri', 'Retail'], ['Poulsen Tandpleje', 'Dental'], ['Rask Rengøring', 'Services'], ['Rosen Mode', 'Retail'],
+    ['Skov Energi', 'Energy'], ['Strand Hotel', 'Hospitality'], ['Sund Fysioterapi', 'Health'], ['Thomsen Byg', 'Construction'],
+    ['Vang Vin', 'Wholesale'], ['Vest Marketing', 'Agency'], ['Østerby Dyreklinik', 'Health'], ['Bech Rejser', 'Travel'],
+];
+// 28 closed, 3 to do, 1 blocked among the extras (the detailed 8 add 5 · 2 · 1).
+const EXTRA_BOOKS: Books[] = EXTRA.map((_, i) => (i === 17 ? 'blocked' : i === 5 || i === 13 || i === 24 ? 'todo' : 'closed'));
+export const MY_PORTFOLIO: Client[] = [
+    ...CLIENTS.filter((c) => c.accountant === ME),
+    ...EXTRA.map(([name, industry], i): Client => ({
+        id: `x${i}`, no: `C-${1101 + i}`, name, industry, accountant: ME,
+        services: ['Bookkeeping', 'VAT', ...(i % 3 === 0 ? ['Payroll'] : []), ...(i % 5 === 0 ? ['Annual report'] : [])],
+        fee: 3200 + ((i * 1370) % 11000), hours: 3 + (i % 7), eva: 72 + ((i * 7) % 24),
+        books: EXTRA_BOOKS[i], open: EXTRA_BOOKS[i] === 'closed' ? i % 3 === 0 ? 1 : 0 : 2, trend: ((i * 5) % 19) - 3,
+    })),
+];

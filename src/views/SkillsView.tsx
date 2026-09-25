@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
 import { CountBadge, Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
@@ -10,6 +10,14 @@ import { SYSTEMS } from '../systems';
 interface Props {
     skills: Skill[];
     onEnable: (id: string) => void;
+    // Which page this is: Routines (tabs: Routines · Activity) or Connectors (its own menu item).
+    page?: 'routines' | 'connectors';
+    initialTab?: AutoTab;
+    // Connector state lives in App so the Routines and Connectors pages share it.
+    connStatus: Record<string, ConnStatus>;
+    setConnStatus: Dispatch<SetStateAction<Record<string, ConnStatus>>>;
+    // The Activity tab's content (the activity log, rendered embedded by App).
+    activity?: ReactNode;
 }
 
 const SKILL_META: Record<string, { category: string; features: string[] }> = {
@@ -91,7 +99,7 @@ const SYSTEM_AREAS: Record<string, ConnArea[]> = {
         { title: 'Daily briefing', desc: 'Summarise what’s coming up on your day.', actions: [R('Read the day’s events and deadlines'), N('Rank what matters most')] },
     ] }],
 };
-const SYSTEM_CAPS: Capability[] = SYSTEMS.filter((s) => !s.native).map((s) => ({
+export const SYSTEM_CAPS: Capability[] = SYSTEMS.filter((s) => !s.native).map((s) => ({
     id: s.id, name: s.name, logo: '', bg: '#ffffff', mark: s.mark, color: s.color,
     category: s.category, native: false, desc: SYSTEM_DESC[s.id] ?? '', areas: SYSTEM_AREAS[s.id] ?? [],
 }));
@@ -177,7 +185,7 @@ const capSkillTitles = (c: Capability): string[] => capSkills(c).map((s) => s.ti
 const skillCount = (c: Capability): number => capSkills(c).length;
 
 // A connector's live connection status once installed.
-type ConnStatus = 'connected' | 'off' | 'lost';
+export type ConnStatus = 'connected' | 'off' | 'lost';
 
 // ---- Suggested routines — surfaced from what EVA has been doing by hand in the
 // activity feed. Each maps to a template the firm can set up in one click.
@@ -422,24 +430,20 @@ function preinstalledFlows(): LocalFlow[] {
         .map((tpl) => flowFromTemplate(tpl, tpl.id, 'Active'));
 }
 
+// Routines has two tabs: the routines themselves, and the log of what EVA has done.
+// (Connectors is its own menu item; the Office view is parked — see OfficeView.)
 const AUTO_TABS = [
     { k: 'flows', label: 'Routines' },
-    { k: 'capabilities', label: 'Connectors' },
-    { k: 'office', label: 'Office' },
+    { k: 'activity', label: 'Activity' },
 ] as const;
 type AutoTab = (typeof AUTO_TABS)[number]['k'];
 
-export default function AutomationsView({ skills, onEnable }: Props) {
+export default function AutomationsView({ skills, onEnable, page = 'routines', initialTab = 'flows', connStatus, setConnStatus, activity }: Props) {
     const { t } = useLang();
-    const [tab, setTab] = useState<AutoTab>('flows');
+    const [tab, setTab] = useState<AutoTab>(initialTab);
+    useEffect(() => setTab(initialTab), [initialTab]);
     const [openId, setOpenId] = useState<string | null>(null);
     const [newFlow, setNewFlow] = useState(false);
-    // Installed connectors → their live connection status. e-conomic (core) is always
-    // connected and isn't tracked here. The client-business systems (shared with the
-    // Focus cockpit's front door) ship installed and connected.
-    const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() =>
-        Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus]))
-    );
     // The connector sheet: directory / drill-down / consent, all one surface.
     const [sheet, setSheet] = useState<{ start: 'grid' | 'detail' | 'reconnect'; id?: string } | null>(null);
     // Confirm before switching off a connector that routines depend on.
@@ -523,15 +527,26 @@ export default function AutomationsView({ skills, onEnable }: Props) {
         <div className="h-full overflow-y-auto">
             {/* Automations are set up for the practice, not per client — no scope pill here. */}
             <PageHeader
-                title={t('Routines')}
+                title={page === 'connectors' ? t('Connectors') : t('Routines')}
                 showScope={false}
                 right={
-                    tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
-                    : tab === 'capabilities' ? <Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>
+                    page === 'connectors' ? <Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>
+                    : tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
                     : undefined
                 }
             />
             <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
+                {page === 'connectors' ? (
+                    <ConnectorsList
+                        connStatus={connStatus}
+                        onAdd={() => setSheet({ start: 'grid' })}
+                        onDetails={(id) => setSheet({ start: 'detail', id })}
+                        onToggle={toggleConnector}
+                        onReconnect={(id) => setSheet({ start: 'reconnect', id })}
+                        onUninstall={uninstallConnector}
+                        onSimulateLost={simulateLost}
+                    />
+                ) : (<>
                 {/* top-level tabs */}
                 <div className="flex items-center gap-7 mb-6" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     {AUTO_TABS.map((tb) => {
@@ -583,19 +598,8 @@ export default function AutomationsView({ skills, onEnable }: Props) {
                     </div>
                 )}
 
-                {tab === 'capabilities' && (
-                    <ConnectorsList
-                        connStatus={connStatus}
-                        onAdd={() => setSheet({ start: 'grid' })}
-                        onDetails={(id) => setSheet({ start: 'detail', id })}
-                        onToggle={toggleConnector}
-                        onReconnect={(id) => setSheet({ start: 'reconnect', id })}
-                        onUninstall={uninstallConnector}
-                        onSimulateLost={simulateLost}
-                    />
-                )}
-
-                {tab === 'office' && <OfficeView />}
+                {tab === 'activity' && activity}
+                </>)}
             </div>
 
             {newFlow && (
@@ -797,7 +801,7 @@ const OFFICE_ROUTINES: OfficeRoutine[] = [
     { name: 'Payment run optimiser', emoji: '💸', clients: 12, saved: 8, cost: 150, intervention: 38, retire: true },
 ];
 
-function OfficeView() {
+export function OfficeView() {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const [retired, setRetired] = useState<Set<string>>(new Set());

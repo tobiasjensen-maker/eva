@@ -15,7 +15,7 @@ bookkeeping jobs, surfaces what needs a human, and can be extended with third-pa
 A single-page app (hash routing) that mocks a full agentic product surface. All data is
 **mock/placeholder** — there is no backend in the hosted build.
 
-Primary navigation (the mental model) — five rail items. **The Portfolio overview is where
+Primary navigation (the mental model) — six rail items. **The Portfolio overview is where
 the day starts; every other page is "further in".**
 
 - **Portfolio overview** (`src/views/OverviewView.tsx`, `#/home`, also `#/portfolio`,
@@ -25,7 +25,7 @@ the day starts; every other page is "further in".**
   with suggestion chips** that hands off to the EVA panel (answer included; the panel starts
   closed here and opens when you ask), then the day at a glance — **My tasks** (a shortcut into Work: your plate + what EVA is doing), **Ready for your review** (the same decisions as Work's review lane — see below) and
   **Books status** (where your 40 clients' books stand) — then **Clients who need your
-  expertise** (with show-work) and **My clients** (only yours), whose rows open the client
+  expertise** (with show-work) and **My clients** — your whole book of 40 (`MY_PORTFOLIO` in `practice.ts`), paginated 8 per page, whose rows open the client
   profile (talking points, peer benchmarks) and from there the client's deep analysis (the
   former Advisory page, `InsightsView.tsx`, `#/insights`).
   *Replaced:* the step-by-step "My day" chat briefing (in git history before this change);
@@ -33,9 +33,14 @@ the day starts; every other page is "further in".**
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
   follows up and drafts the next step.
 - **Work** (`TaskManagementView.tsx`, formerly "Cockpit") — the board of work across clients.
-- **Routines** (`SkillsView.tsx`) — how EVA works: routines, connectors, office view.
+- **Routines** (`SkillsView.tsx`) — two tabs: **Routines** (suggested + your routines, the
+  builder) and **Activity** (the log of everything EVA has done — `ActivityFeedView` rendered
+  `embedded`; `#/activity` opens this tab). The Office view is parked (`OfficeView`, exported).
+- **Connectors** (`#/connectors`) — its own menu item: the same `SkillsView` in
+  `page="connectors"` mode. Connector status lives in `App`, shared with Routines' template
+  gating.
 - **Practice** (`PracticeView.tsx`) — capacity, profitability, growth & leads, playbooks.
-- Off the rail: **Views** (`#/views`), the Activity log (`#/activity`, under Work).
+- Off the rail: **Views** (`#/views`).
 - **Decisions are one list** (`src/day.ts`, owned by `App`): the overview's "Ready for your
   review" (your items) and Work's review lane (mine / whole practice) render the same objects
   with the same row and Review modal (`src/views/Decisions.tsx`), so wording and state always

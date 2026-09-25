@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { CLIENTS, FIRM_CLIENTS, MY_CLIENTS, ME, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
+import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
 
 // ---- Clients — the whole portfolio in one place ---------------------------------
 // One list of every client the office serves, with the firm's own client number,
@@ -89,11 +89,17 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
     const { t } = useLang();
     const [q, setQ] = useState('');
     const [books, setBooks] = useState<Books | 'any'>('any');
+    const [page, setPage] = useState(1);
+    const PAGE = 8;
 
-    const rows = useMemo(() => {
+    // All 40 of the accountant's clients; filters apply across the whole book, then paginate.
+    const all = useMemo(() => {
         const ql = q.trim().toLowerCase();
-        return CLIENTS.filter((c) => c.accountant === ME && (books === 'any' || c.books === books) && (!ql || c.name.toLowerCase().includes(ql) || c.no.toLowerCase().includes(ql) || c.industry.toLowerCase().includes(ql)));
+        return MY_PORTFOLIO.filter((c) => (books === 'any' || c.books === books) && (!ql || c.name.toLowerCase().includes(ql) || c.no.toLowerCase().includes(ql) || c.industry.toLowerCase().includes(ql)));
     }, [q, books]);
+    useEffect(() => setPage(1), [q, books]);
+    const pages = Math.max(1, Math.ceil(all.length / PAGE));
+    const rows = all.slice((page - 1) * PAGE, page * PAGE);
 
     return (
             <div>
@@ -152,8 +158,16 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                         </table>
                     </div>
                     <div className="flex items-center justify-between px-4 py-2.5 text-xs" style={{ color: COLORS.textMuted }}>
-                        <span>{t('Showing {n} of your {total} clients').replace('{n}', String(rows.length)).replace('{total}', String(MY_CLIENTS))}</span>
-                        <span>{t('One sign-in for every client file')}</span>
+                        <span>{all.length === 0 ? t('No clients match') : t('{from}–{to} of {total} clients').replace('{from}', String((page - 1) * PAGE + 1)).replace('{to}', String((page - 1) * PAGE + rows.length)).replace('{total}', String(all.length))}</span>
+                        {pages > 1 && (
+                            <div className="flex items-center gap-1.5">
+                                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label={t('Previous page')} className="rounded-md w-7 h-7 flex items-center justify-center" style={{ color: page === 1 ? '#c3c3cc' : COLORS.text }}>‹</button>
+                                <span>{t('Page')}</span>
+                                <span className="inline-flex items-center justify-center rounded-md px-2 h-7 font-medium" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>{page}</span>
+                                <span>{t('of {n}').replace('{n}', String(pages))}</span>
+                                <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages} aria-label={t('Next page')} className="rounded-md w-7 h-7 flex items-center justify-center" style={{ color: page === pages ? '#c3c3cc' : COLORS.text }}>›</button>
+                            </div>
+                        )}
                     </div>
                 </Card>
             </div>
