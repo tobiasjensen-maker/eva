@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { ME, type Thread, type ThreadStatus } from '../practice';
 
@@ -58,7 +58,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                     {/* thread list */}
                     <div className="flex flex-col shrink-0" style={{ width: 340, borderRight: `1px solid ${COLORS.cardBorder}` }}>
                         <div className="p-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                            <SegmentedTabs value={tab} onChange={(v) => setTab(v as ThreadStatus | 'all')} options={TAB.map((x) => ({ value: x.key, label: x.key === 'all' ? t(x.label) : `${t(x.label)} · ${count(x.key as ThreadStatus)}` }))} />
+                            <SegmentedTabs value={tab} onChange={(v) => setTab(v as ThreadStatus | 'all')} options={TAB.map((x) => ({ value: x.key, label: x.key === 'all' ? t(x.label) : <>{t(x.label)} <CountBadge n={count(x.key as ThreadStatus)} showZero /></> }))} />
                         </div>
                         <div className="flex-1 overflow-y-auto">
                             {list.map((x) => {

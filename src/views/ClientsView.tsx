@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, ClientAvatar, Orb, SegmentedTabs, COLORS } from '../ui';
+import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { CLIENTS, FIRM_CLIENTS, ME, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
 
@@ -35,7 +35,7 @@ export function ExpertiseCard({ onOpen }: { onOpen?: (c: Client) => void }) {
             <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: '#7c3aed0d' }}>
                 <Orb size={18} />
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Clients who need your expertise')}</span>
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>· {flagged.length}</span>
+                <CountBadge n={flagged.length} />
                 <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t('EVA watched {n} clients’ books overnight').replace('{n}', String(FIRM_CLIENTS))}</span>
             </div>
             {flagged.map((c, i) => {

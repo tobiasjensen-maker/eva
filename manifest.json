@@ -5,9 +5,38 @@
   "type": "prototype",
   "live_url": "https://e-conomic.design/tobiasjensen-maker/agentic-platform/",
   "first_published_at": "2026-09-17",
-  "published_at": ["2026-09-17"],
+  "published_at": [
+    "2026-09-17",
+    "2026-09-25"
+  ],
   "components": {
-    "kit": ["Button", "Icon", "Switch", "BarChart", "Provider", "useToast"],
-    "custom": ["SegmentedTabs", "Orb", "ClientAvatar", "Card", "PageHeader", "ProfileAvatar", "HomeIcon", "TasksIcon", "InsightsIcon", "RoutinesIcon", "SpacesIcon"]
+    "kit": [
+      "Button",
+      "Icon",
+      "Switch",
+      "BarChart",
+      "Provider",
+      "useToast"
+    ],
+    "custom": [
+      "Card",
+      "ClientAvatar",
+      "ClientDrawer",
+      "ClientList",
+      "DecisionReview",
+      "DecisionRow",
+      "HomeIcon",
+      "InboxIcon",
+      "InsightsIcon",
+      "Orb",
+      "PageHeader",
+      "PracticeIcon",
+      "ProfileAvatar",
+      "RoutinesIcon",
+      "SegmentedTabs",
+      "SpacesIcon",
+      "TaskModal",
+      "TasksIcon"
+    ]
   }
 }

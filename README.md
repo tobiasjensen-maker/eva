@@ -1,6 +1,6 @@
 # EVA — Agentic Accounting Platform
 
-An interactive prototype of **EVA**, e-conomic's agentic accounting Virtual Assistant. It shows an AO's day: a conversational daily briefing ("My day"), a practice **Cockpit**, **Advisory**, **Routines/Connectors**, and **Views** — all on mock data, fully client-side.
+An interactive prototype of **EVA**, e-conomic's agentic accounting Virtual Assistant: the accounting office's front door. It opens on a **Portfolio overview** (ask EVA anything, your tasks, what's ready for your review, where every client's books stand, the full client list), with **Inbox**, **Work**, **Routines** and **Practice** behind it. All mock data, fully client-side.
 
 **Live:** https://e-conomic.design/tobiasjensen-maker/agentic-platform/
 

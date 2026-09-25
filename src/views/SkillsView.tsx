@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment, type ReactNode } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
+import { CountBadge, Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
 import { AGREEMENTS } from '../data';
 import { useLang } from '../i18n';
@@ -873,7 +873,7 @@ function SectionCard({ title, count, sub, action, children }: { title: string; c
         <Card className="overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <div>
-                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{title}{count !== undefined ? ` · ${count}` : ''}</p>
+                    <p className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.text }}>{title}{count !== undefined && <CountBadge n={count} showZero />}</p>
                     {sub && <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{sub}</p>}
                 </div>
                 {action}
@@ -1672,11 +1672,7 @@ function FlowDetail({ skill, onBack, onEnable, installed, seed, trial, onUpgrade
                                 style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}
                             >
                                 {t(tb.label)}
-                                {tb.count !== undefined && (
-                                    <span className="rounded-full px-1.5 text-xs font-semibold" style={{ background: on ? '#ececed' : '#f4f4f5', color: COLORS.textMuted, lineHeight: '18px' }}>
-                                        {tb.count.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US')}
-                                    </span>
-                                )}
+                                {tb.count !== undefined && <CountBadge n={tb.count} showZero />}
                                 {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
                             </button>
                         );

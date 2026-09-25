@@ -1,6 +1,6 @@
 import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
+import { CountBadge, Card, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
 import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
 
@@ -790,7 +790,7 @@ function SectionCard({ title, count, action, children }: { title: string; count?
     return (
         <Card className="overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{title}{count !== undefined ? ` · ${count}` : ''}</p>
+                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.text }}>{title}{count !== undefined && <CountBadge n={count} showZero />}</p>
                 {action}
             </div>
             {children}

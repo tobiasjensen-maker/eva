@@ -9,10 +9,23 @@ export interface LiveAgreement { id: string; name: string; number: number }
 // Global "which client am I working on" context, surfaced as a header pill.
 export const ScopeContext = createContext<{ scope: string; onChoose: (id: string) => void; liveAgreement?: LiveAgreement | null; reviewCounts?: Record<string, number> }>({ scope: 'portfolio', onChoose: () => {} });
 
-// Small amber count badge for outstanding review items in the scope picker.
+// The one counter badge — used for every count in the app (menu, section headers,
+// tabs, widgets, pickers) so they all read the same. `onDark` is the menu's subtler
+// variant on the dark sidebar. Hidden at zero unless `showZero`.
+export function CountBadge({ n, onDark, showZero }: { n: number; onDark?: boolean; showZero?: boolean }) {
+    if (!n && !showZero) return null;
+    return (
+        <span className="inline-flex items-center justify-center rounded-full text-[11px] font-semibold shrink-0 tabular-nums"
+            style={{ minWidth: 18, height: 18, padding: '0 6px', background: onDark ? 'rgba(255,255,255,0.14)' : '#ececf0', color: onDark ? 'rgba(255,255,255,0.85)' : '#52525b' }}>
+            {n}
+        </span>
+    );
+}
+// The collapsed menu's equivalent: a small dot in the same subtle tone.
+export const COUNT_DOT = 'rgba(255,255,255,0.75)';
+
 function ReviewCount({ n }: { n: number }) {
-    if (!n) return null;
-    return <span className="rounded-full text-xs font-semibold shrink-0" style={{ background: '#fbf3e0', color: '#b9842b', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{n}</span>;
+    return <CountBadge n={n} />;
 }
 
 // Clients have no real logos in the prototype, so we render a monogram avatar
@@ -226,7 +239,7 @@ export function SidebarTooltip({ label, show = true, children }: { label: string
 }
 
 // Segmented tab control (the Insights period pattern) — reused for date ranges etc.
-export function SegmentedTabs({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+export function SegmentedTabs({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: ReactNode }[] }) {
     return (
         <div className="flex items-center rounded-lg p-0.5" style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}` }}>
             {options.map((o) => {
@@ -235,7 +248,7 @@ export function SegmentedTabs({ value, onChange, options }: { value: string; onC
                     <button
                         key={o.value}
                         onClick={() => onChange(o.value)}
-                        className="rounded-md text-xs font-medium whitespace-nowrap"
+                        className="rounded-md text-xs font-medium whitespace-nowrap inline-flex items-center gap-1.5"
                         style={{
                             padding: '5px 10px',
                             background: active ? '#f1f1f3' : 'transparent',

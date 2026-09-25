@@ -2,7 +2,7 @@
 
 > **Live:** https://e-conomic.design/tobiasjensen-maker/agentic-platform/
 > **Hosted at:** e-conomic/eco-prototypes · prototypes/tobiasjensen-maker/agentic-platform/
-> **Published:** 2026-09-17
+> **Published:** 2026-09-25
 
 An interactive prototype of **EVA**, e-conomic's agentic accounting Virtual Assistant.
 It shows how an accountant/bookkeeper works *with* an AI agent that runs the recurring

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
-import { Card, Orb, MicIcon, COLORS, CANVAS } from '../ui';
+import { Card, CountBadge, Orb, MicIcon, COLORS, CANVAS } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem } from '../day';
 import { BOOKS_STATUS, CLIENTS, FIRM_CLIENTS, ME, type Client } from '../practice';
@@ -67,7 +67,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
         <div className="h-full overflow-y-auto">
             {/* hero — the greeting and the question box */}
             <div className="px-8 pt-10 pb-9" style={{ background: `linear-gradient(180deg, #edf3fb 0%, #f4f0fb 70%, ${CANVAS} 100%)` }}>
-                <div className="mx-auto text-center" style={{ maxWidth: 760 }}>
+                <div className="mx-auto text-center" style={{ maxWidth: 840 }}>
                     <h1 className="text-3xl font-semibold" style={{ color: COLORS.text }}>{t('Good morning, {name}').replace('{name}', 'Tobias')}</h1>
                     <p className="text-sm mt-2" style={{ color: COLORS.textMuted }}>
                         {t('Overnight I handled 1,240 items across {n} clients.').replace('{n}', String(FIRM_CLIENTS))}{' '}
@@ -79,7 +79,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                             return parts.length ? t('{list} need you.').replace('{list}', parts.join(` ${t('and')} `)) : t('Nothing needs you right now.');
                         })()}
                     </p>
-                    <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 rounded-full p-[2px]" style={{ background: 'linear-gradient(90deg,#4c6ef5,#7c3aed 45%,#16a34a)' }}>
+                    <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px]" style={{ maxWidth: 760, background: 'linear-gradient(90deg,#4c6ef5,#7c3aed 45%,#16a34a)' }}>
                         <div className="flex items-center gap-3 rounded-full bg-white pl-4 pr-2 py-2">
                             <Orb size={20} />
                             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Tell me where you’d like to start, or ask a question about your firm.')} className="flex-1 min-w-0 bg-transparent outline-none text-sm py-1" style={{ color: COLORS.text }} />
@@ -91,7 +91,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                     </form>
                     <div className="flex flex-wrap justify-center gap-2 mt-3.5">
                         {chips.map((c) => (
-                            <button key={c} onClick={() => ask(c)} className="rounded-full px-3.5 py-1.5 text-sm" style={{ background: '#fff', border: '1px solid #c9d6f5', color: '#2f55c7' }}
+                            <button key={c} onClick={() => ask(c)} className="rounded-full px-3 py-1 text-[13px] whitespace-nowrap" style={{ background: '#fff', border: '1px solid #c9d6f5', color: '#2f55c7' }}
                                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f5f8ff')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>{c}</button>
                         ))}
                     </div>
@@ -137,7 +137,7 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
     const scheduled = mine.filter((x) => x.status === 'eva-scheduled').length;
     return (
         <>
-        <Widget title={t('My tasks')} right={plate.length > 0 ? <span className="rounded-full text-xs font-semibold" style={{ background: '#1c1b3a', color: '#fff', padding: '1px 8px' }}>{plate.length}</span> : undefined}
+        <Widget title={t('My tasks')} right={<CountBadge n={plate.length} />}
             footer={<div className="flex items-center justify-between gap-2">
                 <span className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}><Orb size={12} /> {t('EVA: {r} in progress · {s} scheduled').replace('{r}', String(running)).replace('{s}', String(scheduled))}</span>
                 <button onClick={() => onGo('activity')} className="text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>
@@ -173,7 +173,7 @@ function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: str
     const [review, setReview] = useState<DecisionItem | null>(null);
     return (
         <>
-            <Widget title={t('Ready for your review')} right={open.length > 0 ? <span className="rounded-full text-xs font-semibold" style={{ background: '#1c1b3a', color: '#fff', padding: '1px 8px' }}>{open.length}</span> : undefined}
+            <Widget title={t('Ready for your review')} right={<CountBadge n={open.length} />}
                 footer={<button onClick={() => onGo('inbox')} className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#4456c7' }}><Icon name="chat" /> {replies > 0 ? t('{n} client replies drafted in your Inbox').replace('{n}', String(replies)) : t('No client replies waiting')} →</button>}>
                 {open.length === 0 ? (
                     <div className="px-4 py-6 flex items-center gap-2.5">

@@ -13,6 +13,8 @@ import {
     PracticeIcon,
     CustomersIcon,
     SidebarTooltip,
+    CountBadge,
+    COUNT_DOT,
     ScopeContext,
 } from './ui';
 
@@ -115,6 +117,8 @@ export default function App() {
     const [threads, setThreads] = useState(THREADS);
     const [inboxFocus, setInboxFocus] = useState<string | null>(null);
     const needsReply = threads.filter((x) => x.status === 'needs').length;
+    // Menu counts — one subtle badge style for every item.
+    const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions };
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -209,8 +213,6 @@ export default function App() {
     }, []);
     const nameOf = (s: string) => (s === 'portfolio' ? 'Portfolio' : liveAgreement && s === liveAgreement.id ? liveAgreement.name : AGREEMENTS.find((a) => a.id === s)?.name ?? 'Portfolio');
     const scopeName = scope === 'portfolio' ? 'All agreements' : nameOf(scope);
-    // Advisory badge counts advisory items in the activity feed (Insights lives there).
-    const advisoryCount = activity.filter((e) => (scope === 'portfolio' || e.client === scope) && e.status === 'needs-review' && isAdvisory(e)).length;
     // Review items (bookkeeping "Needs you") per client, for the scope picker.
     const reviewCounts = useMemo(() => {
         const m: Record<string, number> = {};
@@ -474,23 +476,12 @@ export default function App() {
                             >
                                 <span className="relative flex items-center shrink-0">
                                     <RIcon active={active} />
-                                    {collapsed && id === 'inbox' && needsReply > 0 && (
-                                        <span className="absolute rounded-full" style={{ top: -4, right: -5, width: 8, height: 8, background: '#4c6ef5', border: `2px solid ${SIDEBAR_BG}` }} />
-                                    )}
-                                    {collapsed && id === 'activity' && openDecisions > 0 && (
-                                        <span className="absolute rounded-full" style={{ top: -4, right: -5, width: 8, height: 8, background: '#ed9b2c', border: `2px solid ${SIDEBAR_BG}` }} />
+                                    {collapsed && (badgeFor[id] ?? 0) > 0 && (
+                                        <span className="absolute rounded-full" style={{ top: -3, right: -4, width: 7, height: 7, background: COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />
                                     )}
                                 </span>
                                 {!collapsed && <span className="flex-1">{label}</span>}
-                                {!collapsed && id === 'inbox' && needsReply > 0 && (
-                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#4c6ef5', color: '#fff', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{needsReply}</span>
-                                )}
-                                {!collapsed && id === 'activity' && openDecisions > 0 && (
-                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{openDecisions}</span>
-                                )}
-                                {!collapsed && id === 'insights' && advisoryCount > 0 && (
-                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#7c3aed', color: '#fff', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{advisoryCount}</span>
-                                )}
+                                {!collapsed && <CountBadge n={badgeFor[id] ?? 0} onDark />}
                             </button>
                             </SidebarTooltip>
                         );

@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { Card, ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem } from '../day';
 import { DecisionRow, DecisionReview } from './Decisions';
@@ -136,7 +136,7 @@ function SectionCard({ title, count, right, accent, children }: { title: ReactNo
     return (
         <Card className="overflow-hidden" style={accent ? { borderColor: accent } : undefined}>
             <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: accent ? `${accent}0d` : undefined }}>
-                <div className="flex items-center gap-2 flex-1 min-w-0">{title}{count !== undefined && <span className="text-xs shrink-0" style={{ color: COLORS.textMuted }}>· {count}</span>}</div>
+                <div className="flex items-center gap-2 flex-1 min-w-0">{title}{count !== undefined && <CountBadge n={count} showZero />}</div>
                 {right}
             </div>
             {children}
