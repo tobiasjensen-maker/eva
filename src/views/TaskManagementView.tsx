@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
@@ -12,12 +12,12 @@ import { DecisionRow, DecisionReview } from './Decisions';
 // following what EVA did is a first-class part of that overview.
 
 // Human statuses + EVA's own states (running / drafted-for-review / auto-done).
-type TStatus = 'todo' | 'in-progress' | 'waiting' | 'review' | 'done' | 'eva-scheduled' | 'eva-running' | 'eva-review' | 'eva-done';
+export type TStatus = 'todo' | 'in-progress' | 'waiting' | 'review' | 'done' | 'eva-scheduled' | 'eva-running' | 'eva-review' | 'eva-done';
 type TPriority = 'high' | 'medium' | 'low';
-type Bucket = 'overdue' | 'today' | 'week' | 'later';
-const isEva = (s: TStatus) => s.startsWith('eva-');
+export type Bucket = 'overdue' | 'today' | 'week' | 'later';
+export const isEva = (s: TStatus) => s.startsWith('eva-');
 
-interface Task {
+export interface Task {
     id: string;
     title: string;      // task type
     company: string;    // client
@@ -33,7 +33,7 @@ const ME = 'Tobias Holm Jensen'; // the logged-in accountant (matches the sideba
 const ACCOUNTANTS = [ME, 'Mette Sørensen', 'Jonas Vestergaard', 'Sofie Lund', 'Anders Holm', 'Camilla Berg'];
 const COMPANIES = ['Nordic Build ApS', 'Café Solsikke', 'Tech Equipment AS', 'Office Supplies Co', 'Digital Marketing Pro', 'Cloud Hosting Ltd', 'Bryg & Co ApS', 'Lys Design', 'Fjord Fitness', 'Aarhus Tandklinik'];
 
-const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; dot: string }> = {
+export const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; dot: string }> = {
     'todo': { label: 'Not started', bg: '#f1f1f3', fg: '#52525b', dot: '#a8a8b0' },
     'in-progress': { label: 'In progress', bg: '#eef4fb', fg: '#2f6fb0', dot: '#4c6ef5' },
     'waiting': { label: 'Waiting on client', bg: '#fbf3e0', fg: '#92710f', dot: '#b9842b' },
@@ -56,13 +56,13 @@ const BUCKETS: { key: Bucket; label: string }[] = [
     { key: 'week', label: 'Due this week' },
     { key: 'later', label: 'Later' },
 ];
-const dueColor = (b: Bucket) => (b === 'overdue' ? '#dc2626' : b === 'today' ? '#b9842b' : COLORS.textMuted);
+export const dueColor = (b: Bucket) => (b === 'overdue' ? '#dc2626' : b === 'today' ? '#b9842b' : COLORS.textMuted);
 
 let seq = 0;
 const T = (title: string, company: string, accountant: string, dueLabel: string, bucket: Bucket, status: TStatus, priority: TPriority, evaWhen?: string): Task =>
     ({ id: `t${seq++}`, title, company, accountant, dueLabel, bucket, status, priority, evaWhen });
 
-const TASKS: Task[] = [
+export const TASKS: Task[] = [
     // (EVA's drafts awaiting sign-off live in the shared decisions list — src/day.ts.)
     // EVA is working on these right now
     T('Missing receipts (5)', 'Tech Equipment AS', ME, 'Overdue 3 days', 'overdue', 'eva-running', 'medium'),
@@ -77,7 +77,9 @@ const TASKS: Task[] = [
     T('Missing receipts (3)', 'Lys Design', 'Sofie Lund', 'Done today', 'today', 'eva-done', 'medium'),
     T('Payroll run — June', 'Café Solsikke', 'Sofie Lund', 'Done today', 'week', 'eva-done', 'medium'),
     // Still with the team
+    T('Debtor follow-up', 'Café Solsikke', ME, 'Overdue 2 days', 'overdue', 'waiting', 'medium'),
     T('Payroll run — June', 'Office Supplies Co', ME, 'Today', 'today', 'todo', 'high'),
+    T('Annual report draft', 'Nordic Build ApS', ME, 'In 3 days', 'week', 'in-progress', 'high'),
     T('VAT reconciliation', 'Digital Marketing Pro', ME, 'In 10 days', 'later', 'todo', 'low'),
     T('Month-end close', 'Café Solsikke', 'Sofie Lund', 'Overdue 1 day', 'overdue', 'waiting', 'high'),
     T('Quarterly report', 'Lys Design', 'Sofie Lund', 'In 3 days', 'week', 'in-progress', 'medium'),
@@ -167,13 +169,14 @@ function PopMenu({ trigger, items }: { trigger: ReactNode; items: { label: strin
 
 const PURPLE = '#7c3aed';
 
-export default function TaskManagementView({ decisions, onResolveDecision, onAddDecision }: {
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision }: {
+    tasks: Task[];
+    setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
     onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
     onAddDecision: (d: DecisionItem) => void;
 }) {
     const { t } = useLang();
-    const [tasks, setTasks] = useState<Task[]>(TASKS);
     const [perspective, setPerspective] = useState<'mine' | 'practice'>('mine');
     const [groupBy, setGroupBy] = useState<GroupBy>('deadline');
     const [q, setQ] = useState('');
@@ -185,23 +188,9 @@ export default function TaskManagementView({ decisions, onResolveDecision, onAdd
     const patch = (id: string, p: Partial<Task>) => setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
     const setStatus = (id: string, s: TStatus) => patch(id, { status: s });
     const reassign = (id: string, a: string) => patch(id, { accountant: a });
-    const approve = (id: string) => patch(id, { status: 'eva-done' });
-    const sendBack = (id: string) => patch(id, { status: 'review' });
-    // Hand a human task to EVA: it starts working, then hands a draft back — as a
-    // decision in the shared list, so it shows here and on the Portfolio overview alike.
     function handToEva(id: string) {
         const task = tasks.find((x) => x.id === id);
-        patch(id, { status: 'eva-running' });
-        if (!task) return;
-        setTimeout(() => {
-            setTasks((prev) => prev.filter((x) => x.id !== id));
-            onAddDecision({
-                id: `d-${task.id}`, company: task.company, accountant: task.accountant, label: task.title,
-                question: evaFlagFor(task.title), recommend: 'Approve EVA’s draft.', confirm: 'Approve', alt: 'Take over',
-                ack: 'Approved — done.', ackAlt: 'It’s back with you.', steps: evaStepsFor(task.title),
-                evidence: [{ label: 'Task', value: task.title }, { label: 'Client', value: task.company }, { label: 'Due', value: task.dueLabel }],
-            });
-        }, 1800);
+        if (task) handTaskToEva(task, setTasks, onAddDecision);
     }
     const toggleStatusF = (s: TStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
@@ -285,7 +274,7 @@ export default function TaskManagementView({ decisions, onResolveDecision, onAdd
                     {evaRunning.length > 0 && (
                         <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} thinking /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('EVA is handling')}</span></span>} count={evaRunning.length}>
                             {evaRunning.map((x, i) => (
-                                <div key={x.id} className="flex items-center gap-3 p-4" style={i === evaRunning.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                <div key={x.id} onClick={() => setTrace(x)} className="flex items-center gap-3 p-4 cursor-pointer" style={i === evaRunning.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                     <ClientAvatar name={x.company} size={30} />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
@@ -302,7 +291,7 @@ export default function TaskManagementView({ decisions, onResolveDecision, onAdd
                     {evaScheduled.length > 0 && (
                         <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled by EVA')}</span></span>} count={evaScheduled.length}>
                             {evaScheduled.map((x, i) => (
-                                <div key={x.id} className="flex items-center gap-3 p-4" style={i === evaScheduled.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                <div key={x.id} onClick={() => setTrace(x)} className="flex items-center gap-3 p-4 cursor-pointer" style={i === evaScheduled.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                     <ClientAvatar name={x.company} size={30} />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
@@ -347,7 +336,7 @@ export default function TaskManagementView({ decisions, onResolveDecision, onAdd
                                     return (
                                         <SectionCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{groupTitle(g.key)}</span>} count={g.items.length} right={od > 0 ? <span className="text-xs font-medium shrink-0" style={{ color: '#dc2626' }}>{od} {t('overdue')}</span> : undefined}>
                                             {g.items.map((x, i) => (
-                                                <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onHandToEva={() => handToEva(x.id)} />
+                                                <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onHandToEva={() => handToEva(x.id)} onOpen={() => setTrace(x)} />
                                             ))}
                                         </SectionCard>
                                     );
@@ -360,7 +349,7 @@ export default function TaskManagementView({ decisions, onResolveDecision, onAdd
                     {evaDone.length > 0 && (
                         <SectionCard title={<span className="flex items-center gap-2"><Icon name="circle-tick" style={{ color: '#16a34a' }} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Completed by EVA')}</span></span>} count={evaDone.length}>
                             {evaDone.map((x, i) => (
-                                <div key={x.id} className="flex items-center gap-3 p-4" style={i === evaDone.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                <div key={x.id} onClick={() => setTrace(x)} className="flex items-center gap-3 p-4 cursor-pointer" style={i === evaDone.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                     <span style={{ opacity: 0.6 }}><ClientAvatar name={x.company} size={30} /></span>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
@@ -375,12 +364,12 @@ export default function TaskManagementView({ decisions, onResolveDecision, onAdd
             </div>
 
             {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolveDecision(review.id, taken); setReview(null); }} />}
-            {trace && <EvaTraceModal task={trace} onClose={() => setTrace(null)} onApprove={trace.status === 'eva-review' ? () => { approve(trace.id); setTrace(null); } : undefined} onSendBack={trace.status === 'eva-review' ? () => { sendBack(trace.id); setTrace(null); } : undefined} />}
+            {trace && <TaskModal task={trace} onClose={() => setTrace(null)} onHandToEva={() => { handToEva(trace.id); setTrace(null); }} onDone={() => { setStatus(trace.id, 'done'); setTrace(null); }} />}
         </div>
     );
 }
 
-function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, onHandToEva }: { task: Task; groupBy: GroupBy; showAccountant: boolean; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onHandToEva: () => void }) {
+function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, onHandToEva, onOpen }: { task: Task; groupBy: GroupBy; showAccountant: boolean; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onHandToEva: () => void; onOpen: () => void }) {
     const { t } = useLang();
     const st = TSTATUS[task.status];
     const prio = TPRIO[task.priority];
@@ -390,13 +379,15 @@ function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, on
 
     return (
         <div className="flex items-center gap-3 p-4" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-            <ClientAvatar name={task.company} size={30} />
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(task.title)}</p>
-                <p className="text-xs mt-0.5 truncate flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                    {secondary.map((n, i) => <span key={i} className="flex items-center gap-1.5">{i > 0 && <span>·</span>}{n}</span>)}
-                </p>
-            </div>
+            <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-3 text-left" title={t('Open task')}>
+                <ClientAvatar name={task.company} size={30} />
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate hover:underline" style={{ color: COLORS.text }}>{t(task.title)}</p>
+                    <p className="text-xs mt-0.5 truncate flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                        {secondary.map((n, i) => <span key={i} className="flex items-center gap-1.5">{i > 0 && <span>·</span>}{n}</span>)}
+                    </p>
+                </div>
+            </button>
 
             {/* hand this task to EVA */}
             <button onClick={onHandToEva} title={t('Hand this task to EVA')} className="inline-flex items-center gap-1.5 rounded-full font-semibold shrink-0" style={{ padding: '4px 10px 4px 6px', fontSize: 12, background: '#f3f0fb', color: '#6d28d9', border: '1px solid #e6dcfb' }}
@@ -419,53 +410,97 @@ function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, on
     );
 }
 
-// "What did EVA do" — the trace that keeps EVA's work followable.
-function EvaTraceModal({ task, onClose, onApprove, onSendBack }: { task: Task; onClose: () => void; onApprove?: () => void; onSendBack?: () => void }) {
+// What a task is — the description shown when you open it.
+export function taskBriefFor(task: Task): string {
+    const s = task.title.toLowerCase(), c = task.company;
+    if (s.includes('payroll')) return `Run this month’s payroll for ${c}: collect hours and changes, calculate salaries and deductions, and post the salary journals.`;
+    if (s.includes('vat return')) return `Prepare and file ${c}’s VAT return: reconcile the VAT accounts, check any unusual lines, and submit it to SKAT before the deadline.`;
+    if (s.includes('vat')) return `Reconcile ${c}’s VAT accounts against the calculation and resolve any differences before the return is filed.`;
+    if (s.includes('bank')) return `Match ${c}’s bank transactions to invoices and bills, book them, and resolve anything that can’t be matched.`;
+    if (s.includes('receipt')) return `Collect the missing receipts from ${c} so every entry has its documentation.`;
+    if (s.includes('debtor')) return `Follow up ${c}’s overdue customer invoices — send reminders and agree next steps with the client.`;
+    if (s.includes('month-end')) return `Close ${c}’s books for the month: completeness checks, accruals, control-account reconciliations and sign-off.`;
+    if (s.includes('year-end')) return `Close ${c}’s financial year: final adjustments, reconciliations and the year-end checklist.`;
+    if (s.includes('annual report')) return `Draft ${c}’s annual report in the statutory format, ready for review and approval.`;
+    if (s.includes('quarterly')) return `Prepare ${c}’s quarterly report with the key numbers and a short commentary.`;
+    if (s.includes('supplier')) return `Validate and approve ${c}’s supplier invoices before they’re booked and paid.`;
+    return `Complete this task for ${c}.`;
+}
+
+// Hand a task to EVA: it starts working, then returns the draft as a decision in the
+// shared list — the same wherever it was handed over (Work or the Portfolio overview).
+export function handTaskToEva(task: Task, setTasks: Dispatch<SetStateAction<Task[]>>, onAddDecision: (d: DecisionItem) => void) {
+    setTasks((prev) => prev.map((x) => (x.id === task.id ? { ...x, status: 'eva-running' } : x)));
+    setTimeout(() => {
+        setTasks((prev) => prev.filter((x) => x.id !== task.id));
+        onAddDecision({
+            id: `d-${task.id}`, company: task.company, accountant: task.accountant, label: task.title,
+            question: evaFlagFor(task.title), recommend: 'Approve EVA’s draft.', confirm: 'Approve', alt: 'Take over',
+            ack: 'Approved — done.', ackAlt: 'It’s back with you.', steps: evaStepsFor(task.title),
+            evidence: [{ label: 'Task', value: task.title }, { label: 'Client', value: task.company }, { label: 'Due', value: task.dueLabel }],
+        });
+    }, 1800);
+}
+
+// A task, opened — the same modal from Work and from the Portfolio overview.
+export function TaskModal({ task, onClose, onHandToEva, onDone }: { task: Task; onClose: () => void; onHandToEva?: () => void; onDone?: () => void }) {
     const { t } = useLang();
-    const steps = evaStepsFor(task.title);
+    const st = TSTATUS[task.status];
+    const prio = TPRIO[task.priority];
+    const eva = isEva(task.status);
+    const stepsTitle = task.status === 'eva-running' ? 'What EVA is doing' : task.status === 'eva-scheduled' ? 'What EVA will do' : task.status === 'eva-done' ? 'What EVA did' : 'How EVA usually does it';
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
-            <div className="bg-white rounded-2xl w-full anim-in" style={{ maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                    <div className="flex items-center gap-2.5 min-w-0">
-                        <Orb size={22} />
-                        <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{t(task.title)}</p>
-                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{task.company} · {t('Supervised by {name}').replace('{name}', task.accountant)}</p>
-                        </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full anim-in overflow-hidden" style={{ maxWidth: 540, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <ClientAvatar name={task.company} size={32} />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t(task.title)}</p>
+                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{task.company} · {t('Responsible: {name}').replace('{name}', task.accountant)}</p>
                     </div>
-                    <button onClick={onClose} style={{ color: COLORS.textMuted }} className="rounded-md p-1 hover:bg-black/5"><Icon name="close" /></button>
+                    <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
                 </div>
-                <div className="px-5 py-4">
-                    <p className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t(task.status === 'eva-scheduled' ? 'What EVA will do' : 'What EVA did')}</p>
-                    <ol className="flex flex-col gap-2">
-                        {steps.map((s, i) => (
-                            <li key={i} className="flex items-start gap-2.5">
-                                <span className="flex items-center justify-center shrink-0 rounded-full mt-0.5" style={{ width: 18, height: 18, background: '#eef7ef', color: '#15803d', fontSize: 11 }}><Icon name="tick" /></span>
-                                <span className="text-sm" style={{ color: COLORS.text }}>{t(s)}</span>
-                            </li>
-                        ))}
-                    </ol>
-                    {task.status === 'eva-review' && (
-                        <div className="rounded-lg p-3 mt-4 flex items-start gap-2.5" style={{ background: '#fbf3e0', border: '1px solid #efdcb0' }}>
-                            <span className="shrink-0" style={{ color: '#b9842b' }}><Icon name="circle-warning" /></span>
-                            <div className="min-w-0">
-                                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#92710f' }}>{t('Needs your review')}</p>
-                                <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(evaFlagFor(task.title))}</p>
-                            </div>
+
+                <div className="px-5 py-4 flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
+                        <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: '#f1f1f3', color: dueColor(task.bucket) }}>{t(task.dueLabel)}{task.evaWhen ? ` · ${task.evaWhen}` : ''}</span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: '#f1f1f3', color: '#52525b' }}><span className="rounded-full" style={{ width: 6, height: 6, background: prio.color }} />{t('Priority')}: {t(prio.label)}</span>
+                    </div>
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: COLORS.textMuted }}>{t('Description')}</p>
+                        <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{t(taskBriefFor(task))}</p>
+                    </div>
+
+                    {task.status === 'waiting' && (
+                        <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: '#fbf3e0', border: '1px solid #efdcb0' }}>
+                            <span className="shrink-0" style={{ color: '#b9842b' }}><Icon name="time" /></span>
+                            <p className="text-sm" style={{ color: COLORS.text }}>{t('Waiting on the client — EVA follows up automatically every 3 days.')}</p>
                         </div>
                     )}
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t(stepsTitle)}</p>
+                        <ol className="flex flex-col gap-1.5">
+                            {evaStepsFor(task.title).map((s, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm" style={{ color: COLORS.text }}>
+                                    {task.status === 'eva-done'
+                                        ? <span className="flex items-center justify-center shrink-0 rounded-full mt-0.5" style={{ width: 16, height: 16, background: '#eef7ef', color: '#15803d', fontSize: 10 }}><Icon name="tick" /></span>
+                                        : <span className="flex items-center justify-center shrink-0 rounded-full mt-0.5 text-[10px] font-semibold" style={{ width: 16, height: 16, background: '#f1f1f3', color: '#52525b' }}>{i + 1}</span>}
+                                    {t(s)}
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
                 </div>
-                <div className="px-5 py-4 flex items-center justify-between gap-2" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Full trace · you can always see what EVA did')}</span>
-                    {onApprove ? (
-                        <div className="flex gap-2">
-                            {onSendBack && <Button onClick={onSendBack}>{t('Take over')}</Button>}
-                            <Button appearance="primary" onClick={onApprove}><Icon name="circle-tick" /> {t('Approve')}</Button>
-                        </div>
-                    ) : (
-                        <Button onClick={onClose}>{t('Close')}</Button>
-                    )}
+
+                <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{eva ? t('Full trace · you can always see what EVA did') : t('EVA can take this on and hand you a draft to approve.')}</span>
+                    <div className="flex gap-2 shrink-0">
+                        {!eva && onDone && <Button onClick={onDone}><Icon name="circle-tick" /> {t('Mark done')}</Button>}
+                        {!eva && onHandToEva ? <Button appearance="primary" onClick={onHandToEva}>{t('Hand to EVA')}</Button> : <Button onClick={onClose}>{t('Close')}</Button>}
+                    </div>
                 </div>
             </div>
         </div>

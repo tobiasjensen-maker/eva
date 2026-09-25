@@ -22,8 +22,7 @@ the day starts; every other page is "further in".**
   `#/clients`) — Home and Clients merged, modelled on Intuit Accountant Suite's home. A
   greeting with a live line ("2 decisions and 3 client replies need you"), a **question box
   with suggestion chips** that hands off to the EVA panel (answer included; the panel starts
-  closed here and opens when you ask), then the day at a glance — **Today** (calendar, "View
-  the week"), **Ready for your review** (the same decisions as Work's review lane — see below) and
+  closed here and opens when you ask), then the day at a glance — **My tasks** (a shortcut into Work: your plate + what EVA is doing), **Ready for your review** (the same decisions as Work's review lane — see below) and
   **Books status** (where all 212 clients' books stand) — then **Clients who need your
   expertise** (with show-work) and the **full client list**, whose rows open the client
   profile (talking points, peer benchmarks) and from there the client's deep analysis (the
@@ -40,7 +39,11 @@ the day starts; every other page is "further in".**
   review" (your items) and Work's review lane (mine / whole practice) render the same objects
   with the same row and Review modal (`src/views/Decisions.tsx`), so wording and state always
   match. "Hand to EVA" in Work returns the drafted task into this list.
-- Shared state in `App`: decisions, client threads, firm data (`src/practice.ts`).
+- **Tasks are one list too** (`TASKS` in `TaskManagementView.tsx`, state owned by `App`):
+  Work's board and the overview's "My tasks" share it. Clicking a task in either opens the same
+  `TaskModal` (description, status/due/priority, EVA's steps, Hand to EVA / Mark done), and
+  `handTaskToEva` behaves the same from both.
+- Shared state in `App`: decisions, tasks, client threads, firm data (`src/practice.ts`).
 
 ## The Connectors feature (most recent work)
 

@@ -7,32 +7,14 @@ import { BOOKS_STATUS, CLIENTS, FIRM_CLIENTS, ME, type Client } from '../practic
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
 import { DecisionRow, DecisionReview } from './Decisions';
+import { TSTATUS, TaskModal, dueColor, handTaskToEva, isEva, type Task } from './TaskManagementView';
+import type { Dispatch, SetStateAction } from 'react';
 
 // ---- Portfolio overview — where the AO starts the day ----------------------------
 // One page for the morning: a greeting and a question box ("ask anything about your
-// firm") at the top, then the day at a glance — today's calendar, the decisions only
+// firm") at the top, then the day at a glance — your tasks, the decisions only
 // you can make, where every client's books stand — the clients who need your
 // expertise, and the whole portfolio. Asking a question hands off to the EVA panel.
-
-// Today's calendar (the Outlook connector).
-const SKED: Record<string, { bg: string; fg: string }> = {
-    'Deadline': { bg: '#fdecec', fg: '#c0392b' },
-    'Advisory': { bg: '#f3f0fb', fg: '#7c3aed' },
-    'Payroll': { bg: '#fbf3e0', fg: '#92710f' },
-    'Period close': { bg: '#eef4fb', fg: '#2f6fb0' },
-    'Meeting': { bg: '#e9f7ef', fg: '#15803d' },
-};
-type Event = { when: string; title: string; kind: keyof typeof SKED; note?: string; today?: boolean };
-export const SCHEDULE: Event[] = [
-    { when: '09:30', title: 'Team stand-up', kind: 'Meeting', today: true },
-    { when: '11:00', title: 'Client call — Bryg & Co', kind: 'Meeting', today: true },
-    { when: '15:30', title: 'Review — Q1 VAT, Nordic Build', kind: 'Deadline', today: true },
-    { when: 'Thu 14:00', title: 'Runway call — Café Solsikke', kind: 'Advisory' },
-    { when: 'Fri 09:00', title: 'VAT filing deadline', kind: 'Deadline', note: '3 clients' },
-    { when: 'Fri 06:00', title: 'Payroll run — Aarhus Tandklinik', kind: 'Payroll' },
-    { when: 'Fri', title: 'Month-end close — Fjord Fitness', kind: 'Period close' },
-    { when: 'Mon 10:00', title: 'Quarterly review — Nordic Build ApS', kind: 'Meeting' },
-];
 
 // EVA's answers to questions asked from the overview (shown in the EVA panel).
 export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: number; replies: number }): string {
@@ -62,7 +44,10 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
     return da ? 'Spørg mig om din dag, en kunde, kapacitet, lønsomhed eller hvem der er klar til rådgivning.' : 'Ask me about your day, a client, team capacity, profitability, or who’s ready for an advisory conversation.';
 }
 
-export default function OverviewView({ decisions, replies, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
+export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, replies, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
+    tasks: Task[];
+    setTasks: Dispatch<SetStateAction<Task[]>>;
+    onAddDecision: (d: DecisionItem) => void;
     decisions: DecisionItem[];
     replies: number;
     onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
@@ -116,7 +101,7 @@ export default function OverviewView({ decisions, replies, onResolveDecision, on
             <div className="mx-auto px-8 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
                 {/* the day at a glance */}
                 <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
-                    <TodayWidget t={t} />
+                    <TasksWidget t={t} tasks={tasks} setTasks={setTasks} onAddDecision={onAddDecision} onGo={onGo} />
                     <NeedsYouWidget t={t} decisions={decisions} replies={replies} onResolve={onResolveDecision} onGo={onGo} />
                     <BooksWidget t={t} onGo={onGo} />
                 </div>
@@ -142,27 +127,42 @@ function Widget({ title, right, children, footer }: { title: string; right?: Rea
     );
 }
 
-function TodayWidget({ t }: { t: (s: string) => string }) {
-    const [week, setWeek] = useState(false);
-    const rows = SCHEDULE.filter((e) => week || e.today);
+// My tasks — a shortcut into Work: what's on your plate, and what EVA is doing for you.
+function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: string) => string; tasks: Task[]; setTasks: Dispatch<SetStateAction<Task[]>>; onAddDecision: (d: DecisionItem) => void; onGo: (v: ViewId) => void }) {
+    const [open, setOpen] = useState<Task | null>(null);
+    const ORDER: Record<string, number> = { overdue: 0, today: 1, week: 2, later: 3 };
+    const mine = tasks.filter((x) => x.accountant === ME);
+    const plate = mine.filter((x) => !isEva(x.status) && x.status !== 'done').sort((a, b) => ORDER[a.bucket] - ORDER[b.bucket]);
+    const running = mine.filter((x) => x.status === 'eva-running').length;
+    const scheduled = mine.filter((x) => x.status === 'eva-scheduled').length;
     return (
-        <Widget title={t('Today')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('From your calendar')}</span>}
-            footer={<button onClick={() => setWeek((w) => !w)} className="text-xs font-medium" style={{ color: '#4456c7' }}>{week ? t('Show today only') : `${t('View the week')} →`}</button>}>
-            {rows.map((e, i) => {
-                const k = SKED[e.kind];
-                const firstLater = week && !e.today && (i === 0 || rows[i - 1].today);
+        <>
+        <Widget title={t('My tasks')} right={plate.length > 0 ? <span className="rounded-full text-xs font-semibold" style={{ background: '#1c1b3a', color: '#fff', padding: '1px 8px' }}>{plate.length}</span> : undefined}
+            footer={<div className="flex items-center justify-between gap-2">
+                <span className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}><Orb size={12} /> {t('EVA: {r} in progress · {s} scheduled').replace('{r}', String(running)).replace('{s}', String(scheduled))}</span>
+                <button onClick={() => onGo('activity')} className="text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>
+            </div>}>
+            {plate.length === 0 ? (
+                <div className="px-4 py-6 flex items-center gap-2.5">
+                    <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
+                    <p className="text-sm" style={{ color: COLORS.text }}>{t('Nothing on your plate — EVA has it.')}</p>
+                </div>
+            ) : plate.map((x, i) => {
+                const st = TSTATUS[x.status];
                 return (
-                    <div key={e.title}>
-                        {firstLater && <p className="px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Later this week')}</p>}
-                        <div className="flex items-center gap-3 px-4 py-2">
-                            <span className="shrink-0 text-xs font-semibold" style={{ color: COLORS.text, width: 58 }}>{t(e.when)}</span>
-                            <span className="shrink-0 rounded-full" style={{ width: 7, height: 7, background: k.fg }} />
-                            <p className="text-sm truncate flex-1 min-w-0" style={{ color: COLORS.text }}>{t(e.title)}</p>
+                    <button key={x.id} onClick={() => setOpen(x)} className="w-full text-left flex items-center gap-3 px-4 py-2.5" style={i === 0 ? undefined : { borderTop: `1px solid ${COLORS.cardBorder}` }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
+                            <p className="text-xs truncate mt-0.5" style={{ color: COLORS.textMuted }}>{x.company} · <span style={{ color: dueColor(x.bucket), fontWeight: 500 }}>{t(x.dueLabel)}</span></p>
                         </div>
-                    </div>
+                        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
+                    </button>
                 );
             })}
         </Widget>
+        {open && <TaskModal task={open} onClose={() => setOpen(null)} onHandToEva={() => { handTaskToEva(open, setTasks, onAddDecision); setOpen(null); }} onDone={() => { setTasks((prev) => prev.map((x) => (x.id === open.id ? { ...x, status: 'done' } : x))); setOpen(null); }} />}
+        </>
     );
 }
 
