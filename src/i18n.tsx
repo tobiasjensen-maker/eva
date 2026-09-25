@@ -1580,4 +1580,5 @@ const DA: Record<string, string> = {
     'You stand behind this — EVA logs your decision.': 'Du står inde for det — EVA logger din beslutning.',
     'To do': 'At gøre',
     'Blocked': 'Blokeret',
+    'Shift + Enter for a new line': 'Shift + Enter for ny linje',
 };

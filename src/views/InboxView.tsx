@@ -139,9 +139,21 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                                 </div>
                             )}
 
-                            <form onSubmit={(e) => { e.preventDefault(); send(draft); }} className="mx-5 mb-5 flex items-center gap-2 rounded-xl px-3 py-2" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                                <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t('Write to {name}…').replace('{name}', sel.contact.split(' ')[0])} className="flex-1 min-w-0 bg-transparent outline-none text-sm" style={{ color: COLORS.text }} />
-                                <button type="submit" disabled={!draft.trim()} className="rounded-lg px-3.5 py-1.5 text-sm font-medium" style={{ background: draft.trim() ? '#1c1b3a' : '#ececf0', color: draft.trim() ? '#fff' : '#b0b0b8' }}>{t('Send')}</button>
+                            <form onSubmit={(e) => { e.preventDefault(); send(draft); }} className="mx-5 mb-5 flex flex-col gap-2 rounded-xl px-3.5 pt-3 pb-2.5" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                {/* Enter sends, Shift+Enter adds a new line */}
+                                <textarea
+                                    value={draft}
+                                    onChange={(e) => setDraft(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(draft); } }}
+                                    rows={4}
+                                    placeholder={t('Write to {name}…').replace('{name}', sel.contact.split(' ')[0])}
+                                    className="w-full bg-transparent outline-none text-sm leading-relaxed resize-none"
+                                    style={{ color: COLORS.text, minHeight: 88 }}
+                                />
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Shift + Enter for a new line')}</span>
+                                    <button type="submit" disabled={!draft.trim()} className="rounded-lg px-3.5 py-1.5 text-sm font-medium" style={{ background: draft.trim() ? '#1c1b3a' : '#ececf0', color: draft.trim() ? '#fff' : '#b0b0b8' }}>{t('Send')}</button>
+                                </div>
                             </form>
                         </div>
                     )}
