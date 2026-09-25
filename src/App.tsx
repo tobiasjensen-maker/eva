@@ -285,8 +285,8 @@ export default function App() {
         view === 'home'
             ? {
                   subtitle: 'portfolio assistant',
-                  intro: "I'm EVA. Ask me about your day, a client, who's ready for an advisory conversation, or how the practice is doing.",
-                  chips: ['Walk me through my day', 'Who are my least profitable clients?', 'Who on my team is over capacity?'],
+                  intro: "I'm EVA. Ask me about your day, one of your clients, or who in your portfolio is ready for an advisory conversation.",
+                  chips: ['Walk me through my day', 'Which of my clients need attention?', 'Who are my least profitable clients?'],
                   respond: (q: string) => overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }),
               }
         : view === 'inbox'

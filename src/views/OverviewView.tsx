@@ -3,7 +3,7 @@ import { Icon } from '@economic/taco';
 import { Card, CountBadge, Orb, MicIcon, COLORS, CANVAS } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem } from '../day';
-import { BOOKS_STATUS, CLIENTS, FIRM_CLIENTS, ME, type Client } from '../practice';
+import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client } from '../practice';
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
 import { DecisionRow, DecisionReview } from './Decisions';
@@ -20,28 +20,34 @@ import type { Dispatch, SetStateAction } from 'react';
 export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: number; replies: number }): string {
     const s = q.toLowerCase();
     const da = lang === 'da';
-    const worth = CLIENTS.filter((c) => c.signal).length;
+    const mine = CLIENTS.filter((c) => c.accountant === ME);
+    const names = (list: typeof mine) => list.map((c) => c.name).join(', ');
+    const worth = mine.filter((c) => c.signal);
     if (/walk|my day|start|today|dag|i dag|gennem/.test(s))
         return da
-            ? `Her er din tirsdag: 3 møder (første: team-standup 09:30). ${ctx.decisions} beslutninger i bøgerne — ét tryk hver på oversigten. ${ctx.replies} kundesamtaler med udkast til svar i indbakken. ${worth} kunder, der er værd at bruge tid på — Café Solsikkes likviditet haster mest. Skal vi starte med beslutningerne?`
-            : `Here’s your Tuesday: 3 meetings (first: Team stand-up at 09:30). ${ctx.decisions} decision${ctx.decisions === 1 ? '' : 's'} in the books — one tap each on the overview. ${ctx.replies} client conversation${ctx.replies === 1 ? '' : 's'} with a drafted reply in your Inbox. ${worth} clients worth your time — Café Solsikke’s cash runway is the most urgent. Shall we start with the decisions?`;
+            ? `Her er din tirsdag: ${ctx.decisions} beslutninger klar til gennemgang, ${ctx.replies} kundesamtaler med udkast til svar, og dine opgaver står i Mine opgaver. ${worth.length} af dine kunder er værd at bruge tid på — Café Solsikkes likviditet haster mest. Skal vi starte med gennemgangene?`
+            : `Here’s your Tuesday: ${ctx.decisions} decision${ctx.decisions === 1 ? '' : 's'} ready for your review, ${ctx.replies} client conversation${ctx.replies === 1 ? '' : 's'} with a drafted reply, and your tasks are in My tasks. ${worth.length} of your clients are worth your time — Café Solsikke’s cash runway is the most urgent. Shall we start with the reviews?`;
     if (/cash|runway|likvidit/.test(s)) {
-        const list = CLIENTS.filter((c) => c.signal?.kind === 'Cash flow').map((c) => c.name);
-        return da ? `${list.length} kunder har likviditetsudfordringer: ${list.join(', ')}. Café Solsikke er tættest på — ca. seks ugers likviditet. Åbn en kunde for samtalepunkter.` : `${list.length} clients have cash-flow issues: ${list.join(', ')}. Café Solsikke is nearest — about six weeks of runway. Open a client for talking points.`;
+        const list = mine.filter((c) => c.signal?.kind === 'Cash flow');
+        return da ? `${list.length} af dine kunder har likviditetsudfordringer: ${names(list)} — ca. seks ugers likviditet. Åbn kunden for samtalepunkter.` : `${list.length === 1 ? 'One of your clients has' : `${list.length} of your clients have`} cash-flow issues: ${names(list)} — about six weeks of runway. Open the client for talking points.`;
     }
-    if (/advis|ready for|rådgivning|klar til/.test(s))
-        return da ? 'Fire kunder vokser 10%+ uden rådgivning: Grøn Energi (+25%), Cloud Hosting (+22%), Fjord Fitness (+14%) og Nordic Build (+12%). Jeg har samtalepunkter klar for hver.' : 'Four clients are growing 10%+ with no advisory yet: Grøn Energi (+25%), Cloud Hosting (+22%), Fjord Fitness (+14%) and Nordic Build (+12%). I have talking points ready for each — open them from the client list.';
+    if (/advis|ready for|rådgivning|klar til/.test(s)) {
+        const list = mine.filter((c) => c.trend >= 10 && !c.services.includes('Advisory'));
+        return da ? `${list.length} af dine kunder vokser 10%+ uden rådgivning: ${list.map((c) => `${c.name} (+${c.trend}%)`).join(', ')}. Jeg har samtalepunkter klar for hver.` : `${list.length} of your clients are growing 10%+ with no advisory yet: ${list.map((c) => `${c.name} (+${c.trend}%)`).join(', ')}. I have talking points ready for each — open them from My clients.`;
+    }
+    if (/attention|need|kræver|opmærksom/.test(s))
+        return da ? `Af dine kunder kræver ${names(worth)} opmærksomhed — Café Solsikke (likviditet) og Digital Marketing Pro (kundekoncentration) først.` : `Across your clients, ${names(worth)} need attention — Café Solsikke (cash runway) and Digital Marketing Pro (customer concentration) first.`;
     if (/expense|cost|udgift|omkostning/.test(s))
-        return da ? 'Nørre Bageri (mel og energi +31%) og Café Solsikke (varekøb 38% af omsætningen mod 31% hos lignende) har de største omkostningsstigninger.' : 'Nørre Bageri (flour and energy up 31%) and Café Solsikke (food costs 38% of revenue vs. 31% for peers) have the sharpest cost increases.';
-    if (/capacity|team|kapacitet|travl/.test(s))
-        return da ? 'Mette er på 116% og Jonas på 56%. Flyt tre af Mettes kunder til Jonas (31 t/md) — klar under Praksis → Kapacitet.' : 'Mette is at 116% and Jonas at 56%. Move three of Mette’s clients to Jonas (31 h/mo) — it’s ready to apply under Practice → Capacity.';
-    if (/profit|lønsom|reprice|price/.test(s))
-        return da ? 'Café Solsikke (382 kr/t), Lys Design (433 kr/t) og Nørre Bageri (460 kr/t) ligger under jeres mål på 900 kr/t.' : 'Café Solsikke (382 kr/h), Lys Design (433 kr/h) and Nørre Bageri (460 kr/h) sit below your 900 kr/h target — reprice drafts are under Practice → Profitability.';
+        return da ? 'Café Solsikkes varekøb er 38% af omsætningen mod 31% hos lignende — den største omkostningsstigning blandt dine kunder.' : 'Café Solsikke’s food costs are 38% of revenue vs. 31% for similar cafés — the sharpest cost increase among your clients.';
+    if (/profit|lønsom|reprice|price/.test(s)) {
+        const low = mine.filter((c) => rateOf(c) < TARGET_RATE).sort((a, b) => rateOf(a) - rateOf(b));
+        return da ? `Blandt dine kunder ligger ${low.map((c) => `${c.name} (${rateOf(c)} kr/t)`).join(' og ')} under målet på ${TARGET_RATE} kr/t.` : `Among your clients, ${low.map((c) => `${c.name} (${rateOf(c)} kr/h)`).join(' and ')} sit below the ${TARGET_RATE} kr/h target — reprice drafts are under Practice → Profitability.`;
+    }
     if (/week|ahead|uge|kommende/.test(s))
-        return da ? 'Resten af ugen: likviditetsmøde med Café Solsikke torsdag, momsfrist for 3 kunder fredag, lønkørsel og månedsafslutning fredag, kvartalsgennemgang med Nordic Build mandag.' : 'The rest of the week: runway call with Café Solsikke on Thursday, VAT deadline for 3 clients on Friday, a payroll run and a month-end close on Friday, and a quarterly review with Nordic Build on Monday.';
+        return da ? 'Resten af ugen: likviditetsmøde med Café Solsikke torsdag, momsfrist fredag, lønkørsel og månedsafslutning fredag, kvartalsgennemgang med Nordic Build mandag.' : 'The rest of the week: runway call with Café Solsikke on Thursday, a VAT deadline on Friday, a payroll run and a month-end close on Friday, and a quarterly review with Nordic Build on Monday.';
     if (/wait|reply|inbox|venter|svar/.test(s))
         return da ? `${ctx.replies} kundesamtaler venter på dig med udkast til svar; to venter på kunden, og jeg rykker automatisk.` : `${ctx.replies} client conversations need you, each with a drafted reply; two are waiting on the client and I’ll follow up automatically.`;
-    return da ? 'Spørg mig om din dag, en kunde, kapacitet, lønsomhed eller hvem der er klar til rådgivning.' : 'Ask me about your day, a client, team capacity, profitability, or who’s ready for an advisory conversation.';
+    return da ? 'Spørg mig om din dag, en af dine kunder, eller hvem der er klar til rådgivning.' : 'Ask me about your day, one of your clients, or who’s ready for an advisory conversation.';
 }
 
 export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, replies, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
@@ -59,7 +65,6 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     const { t } = useLang();
     const [q, setQ] = useState('');
     const [sel, setSel] = useState<Client | null>(null);
-    const open = decisions.filter((d) => !d.done && d.accountant === ME).length;
     const chips = [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
     const ask = (text: string) => { if (text.trim()) { onAsk(text.trim()); setQ(''); } };
 
@@ -69,20 +74,10 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
             <div className="px-8 pt-10 pb-9" style={{ background: `linear-gradient(180deg, #edf3fb 0%, #f4f0fb 70%, ${CANVAS} 100%)` }}>
                 <div className="mx-auto text-center" style={{ maxWidth: 840 }}>
                     <h1 className="text-3xl font-semibold" style={{ color: COLORS.text }}>{t('Good morning, {name}').replace('{name}', 'Tobias')}</h1>
-                    <p className="text-sm mt-2" style={{ color: COLORS.textMuted }}>
-                        {t('Overnight I handled 1,240 items across {n} clients.').replace('{n}', String(FIRM_CLIENTS))}{' '}
-                        {(() => {
-                            const parts = [
-                                open ? (open === 1 ? t('1 decision') : t('{n} decisions').replace('{n}', String(open))) : '',
-                                replies ? (replies === 1 ? t('1 client reply') : t('{n} client replies').replace('{n}', String(replies))) : '',
-                            ].filter(Boolean);
-                            return parts.length ? t('{list} need you.').replace('{list}', parts.join(` ${t('and')} `)) : t('Nothing needs you right now.');
-                        })()}
-                    </p>
                     <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px]" style={{ maxWidth: 760, background: 'linear-gradient(90deg,#7c3aed,#ed9b2c)' /* EVA purple → e-conomic orange */ }}>
                         <div className="flex items-center gap-3 rounded-full bg-white pl-4 pr-2 py-2">
                             <Orb size={20} />
-                            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Tell me where you’d like to start, or ask a question about your firm.')} className="flex-1 min-w-0 bg-transparent outline-none text-sm py-1" style={{ color: COLORS.text }} />
+                            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Tell me where you’d like to start, or ask a question about your clients.')} className="flex-1 min-w-0 bg-transparent outline-none text-sm py-1" style={{ color: COLORS.text }} />
                             <span className="shrink-0" style={{ color: COLORS.textMuted }}><MicIcon /></span>
                             <button type="submit" disabled={!q.trim()} className="shrink-0 flex items-center justify-center rounded-full" style={{ width: 32, height: 32, background: q.trim() ? '#1c1b3a' : '#ececf0', color: q.trim() ? '#fff' : '#b0b0b8' }} aria-label={t('Send')}>
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>

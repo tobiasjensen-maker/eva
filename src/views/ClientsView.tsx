@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { CLIENTS, FIRM_CLIENTS, ME, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
+import { CLIENTS, FIRM_CLIENTS, MY_CLIENTS, ME, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
 
 // ---- Clients — the whole portfolio in one place ---------------------------------
 // One list of every client the office serves, with the firm's own client number,
@@ -23,7 +23,6 @@ const BOOKS: Record<Books, { label: string; bg: string; fg: string }> = {
     blocked: { label: 'Blocked', bg: '#fdecec', fg: '#c0392b' },
 };
 const kr = (n: number) => `${n.toLocaleString('da-DK')} kr`;
-const first = (n: string) => (n === ME ? 'You' : n.split(' ')[0]);
 
 // Cross-client "who needs your expertise" — self-contained so Advisory can reuse it.
 export function ExpertiseCard({ onOpen }: { onOpen?: (c: Client) => void }) {
@@ -83,27 +82,26 @@ export function ExpertiseCard({ onOpen }: { onOpen?: (c: Client) => void }) {
     );
 }
 
-// The full client list — search, filters and the table. Selecting a client is left
-// to the host page (the Portfolio overview opens the profile drawer).
+// The accountant's own client list — search, a status filter and the table. It's the
+// Portfolio overview's list, so it shows only the logged-in accountant's clients (the
+// whole office lives under Practice). Selecting a client is left to the host page.
 export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
     const { t } = useLang();
-    const [scope, setScope] = useState<'mine' | 'all'>('all');
     const [q, setQ] = useState('');
     const [books, setBooks] = useState<Books | 'any'>('any');
 
     const rows = useMemo(() => {
         const ql = q.trim().toLowerCase();
-        return CLIENTS.filter((c) => (scope === 'all' || c.accountant === ME) && (books === 'any' || c.books === books) && (!ql || c.name.toLowerCase().includes(ql) || c.no.toLowerCase().includes(ql) || c.industry.toLowerCase().includes(ql)));
-    }, [scope, q, books]);
+        return CLIENTS.filter((c) => c.accountant === ME && (books === 'any' || c.books === books) && (!ql || c.name.toLowerCase().includes(ql) || c.no.toLowerCase().includes(ql) || c.industry.toLowerCase().includes(ql)));
+    }, [q, books]);
 
     return (
             <div>
                 <div className="flex items-center gap-2 mb-3">
-                    <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('All clients')}</h2>
+                    <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('My clients')}</h2>
                     <Button><Icon name="circle-plus" /> {t('Add client')}</Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <SegmentedTabs value={scope} onChange={(v) => setScope(v as 'mine' | 'all')} options={[{ value: 'all', label: t('All clients') }, { value: 'mine', label: t('My clients') }]} />
                     <div className="relative flex-1" style={{ minWidth: 220 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search by name, client number or industry…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
@@ -116,7 +114,7 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                         <table className="w-full text-sm" style={{ minWidth: 820 }}>
                             <thead>
                                 <tr style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                                    {['No.', 'Client', 'Responsible', 'Services', 'Books', 'EVA', 'Needs you', 'Fee / mo'].map((h) => (
+                                    {['No.', 'Client', 'Services', 'Books', 'EVA', 'Needs you', 'Fee / mo'].map((h) => (
                                         <th key={h} className="text-left text-xs font-medium px-4 py-2.5 whitespace-nowrap" style={{ color: COLORS.textMuted }}>{t(h)}</th>
                                     ))}
                                 </tr>
@@ -137,7 +135,6 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap"><ClientAvatar name={c.accountant} size={18} /><span className="text-xs" style={{ color: COLORS.text }}>{t(first(c.accountant))}</span></span></td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-1 whitespace-nowrap" title={c.services.map((s) => t(s)).join(', ')}>
                                                     {c.services.slice(0, 2).map((s) => <span key={s} className="rounded px-1.5 py-0.5 text-xs" style={{ background: '#f1f1f3', color: '#52525b' }}>{t(s)}</span>)}
@@ -155,7 +152,7 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                         </table>
                     </div>
                     <div className="flex items-center justify-between px-4 py-2.5 text-xs" style={{ color: COLORS.textMuted }}>
-                        <span>{t('Showing {n} of {total} clients').replace('{n}', String(rows.length)).replace('{total}', String(FIRM_CLIENTS))}</span>
+                        <span>{t('Showing {n} of your {total} clients').replace('{n}', String(rows.length)).replace('{total}', String(MY_CLIENTS))}</span>
                         <span>{t('One sign-in for every client file')}</span>
                     </div>
                 </Card>

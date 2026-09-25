@@ -1591,4 +1591,7 @@ const DA: Record<string, string> = {
     'EVA can take this on and hand you a draft to approve.': 'EVA kan overtage den og give dig et udkast til godkendelse.',
     'Open task': 'Åbn opgave',
     'How EVA usually does it': 'Sådan gør EVA det typisk',
+    'Tell me where you’d like to start, or ask a question about your clients.': 'Fortæl mig, hvor du vil starte, eller spørg om dine kunder.',
+    'Showing {n} of your {total} clients': 'Viser {n} af dine {total} kunder',
+    'Which of my clients need attention?': 'Hvilke af mine kunder kræver opmærksomhed?',
 };

@@ -19,12 +19,13 @@ Primary navigation (the mental model) — five rail items. **The Portfolio overv
 the day starts; every other page is "further in".**
 
 - **Portfolio overview** (`src/views/OverviewView.tsx`, `#/home`, also `#/portfolio`,
-  `#/clients`) — Home and Clients merged, modelled on Intuit Accountant Suite's home. A
-  greeting with a live line ("2 decisions and 3 client replies need you"), a **question box
+  `#/clients`) — Home and Clients merged, modelled on Intuit Accountant Suite's home. **Scoped to the
+  logged-in accountant's own portfolio (40 clients) — the whole office lives under Practice.**
+  A greeting, a **question box
   with suggestion chips** that hands off to the EVA panel (answer included; the panel starts
   closed here and opens when you ask), then the day at a glance — **My tasks** (a shortcut into Work: your plate + what EVA is doing), **Ready for your review** (the same decisions as Work's review lane — see below) and
-  **Books status** (where all 212 clients' books stand) — then **Clients who need your
-  expertise** (with show-work) and the **full client list**, whose rows open the client
+  **Books status** (where your 40 clients' books stand) — then **Clients who need your
+  expertise** (with show-work) and **My clients** (only yours), whose rows open the client
   profile (talking points, peer benchmarks) and from there the client's deep analysis (the
   former Advisory page, `InsightsView.tsx`, `#/insights`).
   *Replaced:* the step-by-step "My day" chat briefing (in git history before this change);
