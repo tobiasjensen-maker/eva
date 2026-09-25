@@ -15,7 +15,7 @@ bookkeeping jobs, surfaces what needs a human, and can be extended with third-pa
 A single-page app (hash routing) that mocks a full agentic product surface. All data is
 **mock/placeholder** — there is no backend in the hosted build.
 
-Primary navigation (the mental model) — six rail items. **The Portfolio overview is where
+Primary navigation (the mental model) — five rail items. **The Portfolio overview is where
 the day starts; every other page is "further in".**
 
 - **Portfolio overview** (`src/views/OverviewView.tsx`, `#/home`, also `#/portfolio`,
@@ -32,13 +32,14 @@ the day starts; every other page is "further in".**
   "Walk me through my day" in the question box carries its spirit.
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
   follows up and drafts the next step.
-- **Work** (`TaskManagementView.tsx`, formerly "Cockpit") — the board of work across clients.
-- **Routines** (`SkillsView.tsx`) — two tabs: **Routines** (suggested + your routines, the
-  builder) and **Activity** (the log of everything EVA has done — `ActivityFeedView` rendered
-  `embedded`; `#/activity` opens this tab). The Office view is parked (`OfficeView`, exported).
-- **Connectors** (`#/connectors`) — its own menu item: the same `SkillsView` in
-  `page="connectors"` mode. Connector status lives in `App`, shared with Routines' template
-  gating.
+- **Work** (`TaskManagementView.tsx`, `#/work`) — the one place for work, three tabs:
+  - **Tasks** — your plate + what's ready for your review + what EVA is handling now and has
+    scheduled (My work / Whole practice). "Completed by EVA" is a pointer into Activity.
+  - **Activity** (`#/activity`) — everything EVA has done: `ActivityFeedView` rendered `embedded`.
+  - **Routines** (`#/routines`) — what's automated: `SkillsView page="routines"` (content only);
+    opening a routine takes over the page (`bare`) and Back returns to the tab.
+- **Connectors** (`#/connectors`) — its own menu item: `SkillsView page="connectors"`. Connector
+  status lives in `App`, shared with Routines' template gating. The Office view is parked.
 - **Practice** (`PracticeView.tsx`) — capacity, profitability, growth & leads, playbooks.
 - Off the rail: **Views** (`#/views`).
 - **Decisions are one list** (`src/day.ts`, owned by `App`): the overview's "Ready for your

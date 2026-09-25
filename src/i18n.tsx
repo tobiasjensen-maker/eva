@@ -1600,4 +1600,7 @@ const DA: Record<string, string> = {
     'of {n}': 'af {n}',
     'Previous page': 'Forrige side',
     'Next page': 'Næste side',
+    'Tasks': 'Opgaver',
+    'EVA completed {n} tasks for you recently': 'EVA har for nylig klaret {n} opgaver for dig',
+    'What EVA runs for you on its own — and routines it suggests from what it has been doing by hand.': 'Det, EVA kører selv for dig — og rutiner, EVA foreslår ud fra det, den har gjort i hånden.',
 };

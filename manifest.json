@@ -24,6 +24,7 @@
       "ClientAvatar",
       "ClientDrawer",
       "ClientList",
+      "ConnectorsIcon",
       "CountBadge",
       "DecisionReview",
       "DecisionRow",

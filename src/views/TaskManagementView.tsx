@@ -169,7 +169,16 @@ function PopMenu({ trigger, items }: { trigger: ReactNode; items: { label: strin
 
 const PURPLE = '#7c3aed';
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision }: {
+// Work — the one place for work: what's on your plate and what EVA is handling now
+// (Tasks), everything EVA has done (Activity), and what's automated (Routines).
+export type WorkTab = 'tasks' | 'activity' | 'routines';
+
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, tab, onTab, activityLog, routines, bare }: {
+    tab: WorkTab;
+    onTab: (t: WorkTab) => void;
+    activityLog: ReactNode;   // the Activity tab (the embedded activity log)
+    routines: ReactNode;      // the Routines tab (routine configuration)
+    bare?: boolean;           // a routine is open — its detail takes the whole page
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
@@ -236,13 +245,19 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     };
 
     return (
-        <div className="h-full overflow-y-auto">
-            <PageHeader
-                title={t('Work')}
-                showScope={false}
-                right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>}
-            />
-            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1240 }}>
+        <div className={bare ? 'h-full' : 'h-full overflow-y-auto'}>
+            {!bare && (
+                <PageHeader
+                    title={t('Work')}
+                    showScope={false}
+                    badge={<SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
+                    right={tab === 'tasks' ? <Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button> : undefined}
+                />
+            )}
+            <div className={bare ? 'h-full' : 'mx-auto px-8 pt-5 pb-10'} style={bare ? undefined : { maxWidth: 1240 }}>
+                {tab === 'activity' && activityLog}
+                {tab === 'routines' && routines}
+                {tab === 'tasks' && (<>
                 {/* perspective — my work vs. the whole practice */}
                 <div className="mb-5 flex">
                     <SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />
@@ -345,22 +360,16 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                         )}
                     </div>
 
-                    {/* Completed by EVA — the audit trail of what EVA did */}
+                    {/* What EVA has already done lives in the Activity tab */}
                     {evaDone.length > 0 && (
-                        <SectionCard title={<span className="flex items-center gap-2"><Icon name="circle-tick" style={{ color: '#16a34a' }} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Completed by EVA')}</span></span>} count={evaDone.length}>
-                            {evaDone.map((x, i) => (
-                                <div key={x.id} onClick={() => setTrace(x)} className="flex items-center gap-3 p-4 cursor-pointer" style={i === evaDone.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                    <span style={{ opacity: 0.6 }}><ClientAvatar name={x.company} size={30} /></span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
-                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{x.company} · {t('Auto-completed by EVA')} · {t(x.dueLabel)}</p>
-                                    </div>
-                                    <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See what EVA did')}</button>
-                                </div>
-                            ))}
-                        </SectionCard>
+                        <button onClick={() => onTab('activity')} className="flex items-center gap-3 rounded-xl px-4 py-3 text-left" style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}` }}>
+                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: '#eef7ef', color: '#16a34a' }}><Icon name="circle-tick" /></span>
+                            <span className="text-sm flex-1" style={{ color: COLORS.text }}>{t('EVA completed {n} tasks for you recently').replace('{n}', String(evaDone.length))}</span>
+                            <span className="text-sm font-medium" style={{ color: '#4456c7' }}>{t('See all activity')} →</span>
+                        </button>
                     )}
                 </div>
+                </>)}
             </div>
 
             {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolveDecision(review.id, taken); setReview(null); }} />}

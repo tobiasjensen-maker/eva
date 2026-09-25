@@ -10,14 +10,14 @@ import { SYSTEMS } from '../systems';
 interface Props {
     skills: Skill[];
     onEnable: (id: string) => void;
-    // Which page this is: Routines (tabs: Routines · Activity) or Connectors (its own menu item).
+    // 'routines' renders as the Work page's Routines tab (content only); 'connectors' is the
+    // Connectors menu item's full page.
     page?: 'routines' | 'connectors';
-    initialTab?: AutoTab;
+    // Tells the host when a routine is open (its detail takes over the whole page).
+    onDetailChange?: (open: boolean) => void;
     // Connector state lives in App so the Routines and Connectors pages share it.
     connStatus: Record<string, ConnStatus>;
     setConnStatus: Dispatch<SetStateAction<Record<string, ConnStatus>>>;
-    // The Activity tab's content (the activity log, rendered embedded by App).
-    activity?: ReactNode;
 }
 
 const SKILL_META: Record<string, { category: string; features: string[] }> = {
@@ -430,18 +430,10 @@ function preinstalledFlows(): LocalFlow[] {
         .map((tpl) => flowFromTemplate(tpl, tpl.id, 'Active'));
 }
 
-// Routines has two tabs: the routines themselves, and the log of what EVA has done.
-// (Connectors is its own menu item; the Office view is parked — see OfficeView.)
-const AUTO_TABS = [
-    { k: 'flows', label: 'Routines' },
-    { k: 'activity', label: 'Activity' },
-] as const;
-type AutoTab = (typeof AUTO_TABS)[number]['k'];
+// Routines render inside Work (its Routines tab); the Office view is parked — see OfficeView.
 
-export default function AutomationsView({ skills, onEnable, page = 'routines', initialTab = 'flows', connStatus, setConnStatus, activity }: Props) {
+export default function AutomationsView({ skills, onEnable, page = 'routines', onDetailChange, connStatus, setConnStatus }: Props) {
     const { t } = useLang();
-    const [tab, setTab] = useState<AutoTab>(initialTab);
-    useEffect(() => setTab(initialTab), [initialTab]);
     const [openId, setOpenId] = useState<string | null>(null);
     const [newFlow, setNewFlow] = useState(false);
     // The connector sheet: directory / drill-down / consent, all one surface.
@@ -508,6 +500,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', i
     }
 
     const openFlow = openId ? allFlows.find((s) => s.id === openId) ?? null : null;
+    useEffect(() => { onDetailChange?.(!!openFlow); }, [!!openFlow]); // eslint-disable-line react-hooks/exhaustive-deps
     if (openFlow) {
         const seed = flows.find((f) => f.skill.id === openFlow.id)?.seed;
         return (
@@ -523,49 +516,48 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', i
         );
     }
 
-    return (
-        <div className="h-full overflow-y-auto">
-            {/* Automations are set up for the practice, not per client — no scope pill here. */}
-            <PageHeader
-                title={page === 'connectors' ? t('Connectors') : t('Routines')}
-                showScope={false}
-                right={
-                    page === 'connectors' ? <Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>
-                    : tab === 'flows' ? <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
-                    : undefined
-                }
-            />
-            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
-                {page === 'connectors' ? (
-                    <ConnectorsList
-                        connStatus={connStatus}
-                        onAdd={() => setSheet({ start: 'grid' })}
-                        onDetails={(id) => setSheet({ start: 'detail', id })}
-                        onToggle={toggleConnector}
-                        onReconnect={(id) => setSheet({ start: 'reconnect', id })}
-                        onUninstall={uninstallConnector}
-                        onSimulateLost={simulateLost}
-                    />
-                ) : (<>
-                {/* top-level tabs */}
-                <div className="flex items-center gap-7 mb-6" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                    {AUTO_TABS.map((tb) => {
-                        const on = tab === tb.k;
-                        return (
-                            <button
-                                key={tb.k}
-                                onClick={() => setTab(tb.k)}
-                                className="relative"
-                                style={{ padding: '10px 2px', fontSize: 15, fontWeight: 600, color: on ? COLORS.text : COLORS.textMuted }}
-                            >
-                                {t(tb.label)}
-                                {on && <span className="absolute left-0 right-0" style={{ bottom: -1, height: 2, background: COLORS.text, borderRadius: 2 }} />}
-                            </button>
-                        );
-                    })}
-                </div>
+    const modals = (
+        <>
+            {newFlow && (
+                <NewFlowModal
+                    installed={installedCaps}
+                    preselectId={preselect}
+                    onScratch={createScratch}
+                    onStartTrial={startTrial}
+                    onClose={() => { setNewFlow(false); setPreselect(null); }}
+                />
+            )}
 
-                {tab === 'flows' && (
+            {sheet && (
+                <ConnectorSheet
+                    start={sheet.start}
+                    startId={sheet.id}
+                    connStatus={connStatus}
+                    onConnect={connectConnector}
+                    onUninstall={uninstallConnector}
+                    onClose={() => setSheet(null)}
+                />
+            )}
+
+            {switchOff && (
+                <SwitchOffConfirm
+                    cap={CAPABILITIES.find((c) => c.id === switchOff.id)!}
+                    deps={switchOff.deps}
+                    onKeep={() => setSwitchOff(null)}
+                    onConfirm={() => { setConnStatus((prev) => ({ ...prev, [switchOff.id]: 'off' })); setSwitchOff(null); }}
+                />
+            )}
+        </>
+    );
+
+    // Routines — the Work page's Routines tab: what's automated, and what could be.
+    if (page === 'routines') {
+        return (
+            <>
+                <div className="flex items-center gap-3 mb-4">
+                    <p className="text-sm flex-1" style={{ color: COLORS.textMuted }}>{t('What EVA runs for you on its own — and routines it suggests from what it has been doing by hand.')}</p>
+                    <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
+                </div>
                     <div className="flex flex-col gap-6 pb-10">
                         {/* Suggested routines, drawn from what EVA has been doing by hand */}
                         {suggestions.length > 0 && (
@@ -596,41 +588,27 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', i
                             </SectionCard>
                         )}
                     </div>
-                )}
+                {modals}
+            </>
+        );
+    }
 
-                {tab === 'activity' && activity}
-                </>)}
-            </div>
-
-            {newFlow && (
-                <NewFlowModal
-                    installed={installedCaps}
-                    preselectId={preselect}
-                    onScratch={createScratch}
-                    onStartTrial={startTrial}
-                    onClose={() => { setNewFlow(false); setPreselect(null); }}
-                />
-            )}
-
-            {sheet && (
-                <ConnectorSheet
-                    start={sheet.start}
-                    startId={sheet.id}
+    // Connectors — its own menu item and page.
+    return (
+        <div className="h-full overflow-y-auto">
+            <PageHeader title={t('Connectors')} showScope={false} right={<Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>} />
+            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
+                <ConnectorsList
                     connStatus={connStatus}
-                    onConnect={connectConnector}
+                    onAdd={() => setSheet({ start: 'grid' })}
+                    onDetails={(id) => setSheet({ start: 'detail', id })}
+                    onToggle={toggleConnector}
+                    onReconnect={(id) => setSheet({ start: 'reconnect', id })}
                     onUninstall={uninstallConnector}
-                    onClose={() => setSheet(null)}
+                    onSimulateLost={simulateLost}
                 />
-            )}
-
-            {switchOff && (
-                <SwitchOffConfirm
-                    cap={CAPABILITIES.find((c) => c.id === switchOff.id)!}
-                    deps={switchOff.deps}
-                    onKeep={() => setSwitchOff(null)}
-                    onConfirm={() => { setConnStatus((prev) => ({ ...prev, [switchOff.id]: 'off' })); setSwitchOff(null); }}
-                />
-            )}
+            </div>
+            {modals}
         </div>
     );
 }

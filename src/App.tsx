@@ -6,7 +6,6 @@ import {
     EconomicLogo,
     NodeMark,
     ProfileAvatar,
-    RoutinesIcon,
     TasksIcon,
     HomeIcon,
     InboxIcon,
@@ -27,7 +26,7 @@ import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
-import TaskManagementView, { tasksAnswer, TASKS } from './views/TaskManagementView';
+import TaskManagementView, { tasksAnswer, TASKS, type WorkTab } from './views/TaskManagementView';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
 import PracticeView from './views/PracticeView';
@@ -63,12 +62,11 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'home', label: 'Portfolio overview', Icon: HomeIcon },
     // Every client conversation in one place.
     { id: 'inbox', label: 'Inbox', Icon: InboxIcon },
-    // The board of work across clients — what EVA and the team are doing ("My work" / "Whole practice").
+    // Work — one place: your plate + what EVA is handling (Tasks), what EVA has done
+    // (Activity), and what's automated (Routines).
     { id: 'activity', label: 'Work', Icon: TasksIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
-    // How EVA works — the routines, and the Activity log of what EVA has done.
-    { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
     // The systems EVA works through (and the skills each exposes).
     { id: 'connectors', label: 'Connectors', Icon: ConnectorsIcon },
     // The office as a business — capacity, profitability, growth, playbooks.
@@ -76,12 +74,16 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     // (Advisory → a client's analysis, reached from Clients; Views → #/views, off the rail.)
 ];
 
+// Work's tabs map to their own views/URLs, so each tab is linkable.
+const WORK_TAB_OF: Partial<Record<ViewId, WorkTab>> & Record<'activity' | 'activitylog' | 'skills', WorkTab> = { activity: 'tasks', activitylog: 'activity', skills: 'routines' };
+const WORK_VIEW_OF: Record<WorkTab, ViewId> = { tasks: 'activity', activity: 'activitylog', routines: 'skills' };
+
 const VIEW_IDS: ViewId[] = ['home', 'inbox', 'practice', 'connectors', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { home: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', connectors: 'connectors', chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'home', portfolio: 'home', overview: 'home', practice: 'practice', connectors: 'connectors', integrations: 'connectors', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { home: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', connectors: 'connectors', chat: 'chat', activity: 'work', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'home', portfolio: 'home', overview: 'home', practice: 'practice', connectors: 'connectors', integrations: 'connectors', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', work: 'activity', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -114,6 +116,7 @@ export default function App() {
     const openDecisions = dayDecisions.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen').length;
     // A task handed to EVA in Work comes back as a decision in the same shared list.
     const addDecision = (d: DecisionItem) => setDayDecisions((all) => [d, ...all]);
+    const [routineOpen, setRoutineOpen] = useState(false);
     // Connector status — shared by Routines (template gating) and the Connectors page.
     const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() => Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus])));
     // The work board's tasks — shared by Work and the Portfolio overview's "My tasks".
@@ -468,8 +471,8 @@ export default function App() {
                 <nav className="flex flex-col gap-1 mt-3" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
                     {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
                         // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
-                        // Sub-pages keep their parent lit: the Activity log under Routines, a client's analysis under the overview.
-                        const active = view === id || (id === 'skills' && view === 'activitylog') || (id === 'home' && view === 'insights');
+                        // Sub-pages keep their parent lit: Work's Activity and Routines tabs, a client's analysis under the overview.
+                        const active = view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
@@ -707,18 +710,22 @@ export default function App() {
                     />
                 )}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                {view === 'activity' && <TaskManagementView tasks={tasks} setTasks={setTasks} decisions={dayDecisions} onResolveDecision={resolveDecision} onAddDecision={addDecision} />}
-                {view === 'customers' && <CustomersView />}
-                {(view === 'skills' || view === 'activitylog') && (
-                    <SkillsView
-                        skills={skills}
-                        onEnable={enableSkill}
-                        initialTab={view === 'activitylog' ? 'activity' : 'flows'}
-                        connStatus={connStatus}
-                        setConnStatus={setConnStatus}
-                        activity={<ActivityFeedView embedded entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                {/* Work — one page, three tabs, one URL each: #/work (Tasks), #/activity, #/routines */}
+                {(view === 'activity' || view === 'activitylog' || view === 'skills') && (
+                    <TaskManagementView
+                        tab={WORK_TAB_OF[view]}
+                        onTab={(tb) => goView(WORK_VIEW_OF[tb])}
+                        bare={view === 'skills' && routineOpen}
+                        tasks={tasks}
+                        setTasks={setTasks}
+                        decisions={dayDecisions}
+                        onResolveDecision={resolveDecision}
+                        onAddDecision={addDecision}
+                        activityLog={<ActivityFeedView embedded entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                        routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} />}
                     />
                 )}
+                {view === 'customers' && <CustomersView />}
                 {view === 'connectors' && <SkillsView page="connectors" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>
