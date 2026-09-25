@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
 import { CountBadge, Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
@@ -15,6 +15,8 @@ interface Props {
     page?: 'routines' | 'connectors';
     // Tells the host when a routine is open (its detail takes over the whole page).
     onDetailChange?: (open: boolean) => void;
+    // Bumped by the Work header's New routine button to open the builder.
+    newRoutineTick?: number;
     // Connector state lives in App so the Routines and Connectors pages share it.
     connStatus: Record<string, ConnStatus>;
     setConnStatus: Dispatch<SetStateAction<Record<string, ConnStatus>>>;
@@ -432,7 +434,7 @@ function preinstalledFlows(): LocalFlow[] {
 
 // Routines render inside Work (its Routines tab); the Office view is parked — see OfficeView.
 
-export default function AutomationsView({ skills, onEnable, page = 'routines', onDetailChange, connStatus, setConnStatus }: Props) {
+export default function AutomationsView({ skills, onEnable, page = 'routines', onDetailChange, newRoutineTick = 0, connStatus, setConnStatus }: Props) {
     const { t } = useLang();
     const [openId, setOpenId] = useState<string | null>(null);
     const [newFlow, setNewFlow] = useState(false);
@@ -501,6 +503,9 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
 
     const openFlow = openId ? allFlows.find((s) => s.id === openId) ?? null : null;
     useEffect(() => { onDetailChange?.(!!openFlow); }, [!!openFlow]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Only a new click opens the builder — not remounting with an old tick.
+    const seenTick = useRef(newRoutineTick);
+    useEffect(() => { if (newRoutineTick !== seenTick.current) { seenTick.current = newRoutineTick; setNewFlow(true); } }, [newRoutineTick]);
     if (openFlow) {
         const seed = flows.find((f) => f.skill.id === openFlow.id)?.seed;
         return (
@@ -554,10 +559,6 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     if (page === 'routines') {
         return (
             <>
-                <div className="flex items-center gap-3 mb-4">
-                    <p className="text-sm flex-1" style={{ color: COLORS.textMuted }}>{t('What EVA runs for you on its own — and routines it suggests from what it has been doing by hand.')}</p>
-                    <Button appearance="primary" onClick={() => setNewFlow(true)}><Icon name="circle-plus" /> {t('New routine')}</Button>
-                </div>
                     <div className="flex flex-col gap-6 pb-10">
                         {/* Suggested routines, drawn from what EVA has been doing by hand */}
                         {suggestions.length > 0 && (

@@ -33,10 +33,12 @@ the day starts; every other page is "further in".**
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
   follows up and drafts the next step.
 - **Work** (`TaskManagementView.tsx`, `#/work`) — the one place for work, three tabs:
-  - **Tasks** — your plate + what's ready for your review + what EVA is handling now and has
-    scheduled — always your own work (the office-wide view lives under Practice). "Completed by EVA" is a pointer into Activity.
+  - **Tasks** — your plate + what's ready for your review + what EVA is handling right now —
+    always your own work (the office-wide view lives under Practice). "Completed by EVA" is a pointer into Activity.
   - **Activity** (`#/activity`) — everything EVA has done: `ActivityFeedView` rendered `embedded`.
-  - **Routines** (`#/routines`) — what's automated: `SkillsView page="routines"` (content only);
+  - **Routines** (`#/routines`) — what's planned and automated: **Scheduled for EVA** (EVA's
+    scheduled tasks + the active routines' next runs, in time order) above the routines
+    (`SkillsView page="routines"`, content only; "New routine" sits in the page header);
     opening a routine takes over the page (`bare`) and Back returns to the tab.
 - **Connectors** (`#/connectors`) — its own menu item: `SkillsView page="connectors"`. Connector
   status lives in `App`, shared with Routines' template gating. The Office view is parked.

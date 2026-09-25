@@ -173,12 +173,26 @@ const PURPLE = '#7c3aed';
 // (Tasks), everything EVA has done (Activity), and what's automated (Routines).
 export type WorkTab = 'tasks' | 'activity' | 'routines';
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, tab, onTab, activityLog, routines, bare }: {
+// The active routines' next runs — shown with EVA's scheduled tasks on the Routines tab.
+const PLANNED_RUNS: { when: string; title: string; scope: string }[] = [
+    { when: 'Tonight at 22:00', title: 'AI bank reconciliation', scope: 'All 40 of your clients' },
+    { when: 'Every hour', title: 'Smart voucher creation', scope: 'New receipts and bills as they arrive' },
+    { when: 'Tomorrow at 07:00', title: 'Supplier invoice processor', scope: '14 invoices waiting across 6 clients' },
+    { when: '10 Oct at 06:00', title: 'VAT return auto-filing', scope: '12 clients due this quarter' },
+];
+// Order "when" labels in time: continuous first, then tonight, tomorrow, weekdays, dates.
+const whenRank = (w: string) => {
+    const day = /^Every/.test(w) ? 0 : /^Tonight/.test(w) ? 1 : /^Tomorrow/.test(w) ? 2 : /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(w) ? 3 : 4;
+    return day * 10000 + Number((w.match(/(\d{2}):(\d{2})/) ?? ['', '0', '0']).slice(1).join(''));
+};
+
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, tab, onTab, activityLog, routines, bare, onNewRoutine }: {
     tab: WorkTab;
     onTab: (t: WorkTab) => void;
     activityLog: ReactNode;   // the Activity tab (the embedded activity log)
     routines: ReactNode;      // the Routines tab (routine configuration)
     bare?: boolean;           // a routine is open — its detail takes the whole page
+    onNewRoutine: () => void; // the header's New routine (opens the builder in the Routines tab)
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
@@ -251,12 +265,34 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     title={t('Work')}
                     showScope={false}
                     badge={<SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
-                    right={tab === 'tasks' ? <Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button> : undefined}
+                    right={tab === 'tasks' ? <Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>
+                        : tab === 'routines' ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
             )}
             <div className={bare ? 'h-full' : 'mx-auto px-8 pt-5 pb-10'} style={bare ? undefined : { maxWidth: 1240 }}>
                 {tab === 'activity' && activityLog}
-                {tab === 'routines' && routines}
+                {tab === 'routines' && (
+                    <div className="flex flex-col gap-6">
+                        {/* What's planned and scheduled for EVA — specific tasks and the routines' next runs */}
+                        <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
+                            {[
+                                ...evaScheduled.map((x) => ({ key: x.id, when: x.evaWhen ?? '', title: t(x.title), sub: x.company, via: t('Scheduled task'), task: x as Task | undefined })),
+                                ...PLANNED_RUNS.map((r) => ({ key: r.title, when: r.when, title: t(r.title), sub: t(r.scope), via: t('Routine'), task: undefined as Task | undefined })),
+                            ].sort((a, b) => whenRank(a.when) - whenRank(b.when)).map((r, i, arr) => (
+                                <div key={r.key} onClick={r.task ? () => setTrace(r.task!) : undefined} className={`flex items-center gap-3 p-4 ${r.task ? 'cursor-pointer' : ''}`} style={i === arr.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE, width: 150 }}><Icon name="time" /> {t(r.when)}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{r.title}</p>
+                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{r.sub}</p>
+                                    </div>
+                                    <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: r.task ? '#f3f0fb' : '#f1f1f3', color: r.task ? PURPLE : '#52525b' }}>{r.via}</span>
+                                    {r.task && <span className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See plan')}</span>}
+                                </div>
+                            ))}
+                        </SectionCard>
+                        {routines}
+                    </div>
+                )}
                 {tab === 'tasks' && (<>
 
                 {/* overview KPIs */}
@@ -293,23 +329,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                     </div>
                                     <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE }}><span className="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> {t('Working')}</span>
                                     <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('Follow')}</button>
-                                </div>
-                            ))}
-                        </SectionCard>
-                    )}
-
-                    {/* EVA has these scheduled to run soon */}
-                    {evaScheduled.length > 0 && (
-                        <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled by EVA')}</span></span>} count={evaScheduled.length}>
-                            {evaScheduled.map((x, i) => (
-                                <div key={x.id} onClick={() => setTrace(x)} className="flex items-center gap-3 p-4 cursor-pointer" style={i === evaScheduled.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                    <ClientAvatar name={x.company} size={30} />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
-                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{x.company} · <span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA will run this')}</span></p>
-                                    </div>
-                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE }}><Icon name="time" /> {x.evaWhen}</span>
-                                    <button onClick={() => setTrace(x)} className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See plan')}</button>
                                 </div>
                             ))}
                         </SectionCard>

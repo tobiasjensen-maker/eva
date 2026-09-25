@@ -117,6 +117,7 @@ export default function App() {
     // A task handed to EVA in Work comes back as a decision in the same shared list.
     const addDecision = (d: DecisionItem) => setDayDecisions((all) => [d, ...all]);
     const [routineOpen, setRoutineOpen] = useState(false);
+    const [newRoutineTick, setNewRoutineTick] = useState(0);
     // Connector status — shared by Routines (template gating) and the Connectors page.
     const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() => Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus])));
     // The work board's tasks — shared by Work and the Portfolio overview's "My tasks".
@@ -716,13 +717,14 @@ export default function App() {
                         tab={WORK_TAB_OF[view]}
                         onTab={(tb) => goView(WORK_VIEW_OF[tb])}
                         bare={view === 'skills' && routineOpen}
+                        onNewRoutine={() => setNewRoutineTick((n) => n + 1)}
                         tasks={tasks}
                         setTasks={setTasks}
                         decisions={dayDecisions}
                         onResolveDecision={resolveDecision}
                         onAddDecision={addDecision}
                         activityLog={<ActivityFeedView embedded entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                        routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} />}
+                        routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}
                 {view === 'customers' && <CustomersView />}
