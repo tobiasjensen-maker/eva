@@ -2,6 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
+import { SEED_DECISIONS, type DecisionItem } from '../day';
+import { DecisionRow, DecisionReview } from './Decisions';
 
 // ---- Praksis / AO-house task management ------------------------------------
 // The firm's overview across every client company: what needs doing, when, and
@@ -61,10 +63,7 @@ const T = (title: string, company: string, accountant: string, dueLabel: string,
     ({ id: `t${seq++}`, title, company, accountant, dueLabel, bucket, status, priority, evaWhen });
 
 const TASKS: Task[] = [
-    // EVA has drafted these and handed them back for sign-off
-    T('VAT return — Q1', 'Nordic Build ApS', ME, 'Due today', 'today', 'eva-review', 'high'),
-    T('Supplier invoice approval', 'Digital Marketing Pro', ME, 'Today', 'today', 'eva-review', 'medium'),
-    T('Bank reconciliation', 'Cloud Hosting Ltd', 'Anders Holm', 'Today', 'today', 'eva-review', 'medium'),
+    // (EVA's drafts awaiting sign-off live in the shared decisions list — src/day.ts.)
     // EVA is working on these right now
     T('Missing receipts (5)', 'Tech Equipment AS', ME, 'Overdue 3 days', 'overdue', 'eva-running', 'medium'),
     T('Debtor follow-up', 'Bryg & Co ApS', 'Jonas Vestergaard', 'In 2 days', 'week', 'eva-running', 'low'),
@@ -168,7 +167,11 @@ function PopMenu({ trigger, items }: { trigger: ReactNode; items: { label: strin
 
 const PURPLE = '#7c3aed';
 
-export default function TaskManagementView() {
+export default function TaskManagementView({ decisions, onResolveDecision, onAddDecision }: {
+    decisions: DecisionItem[];
+    onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
+    onAddDecision: (d: DecisionItem) => void;
+}) {
     const { t } = useLang();
     const [tasks, setTasks] = useState<Task[]>(TASKS);
     const [perspective, setPerspective] = useState<'mine' | 'practice'>('mine');
@@ -176,6 +179,7 @@ export default function TaskManagementView() {
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<TStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
+    const [review, setReview] = useState<DecisionItem | null>(null);
     const mine = perspective === 'mine';
 
     const patch = (id: string, p: Partial<Task>) => setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
@@ -183,10 +187,21 @@ export default function TaskManagementView() {
     const reassign = (id: string, a: string) => patch(id, { accountant: a });
     const approve = (id: string) => patch(id, { status: 'eva-done' });
     const sendBack = (id: string) => patch(id, { status: 'review' });
-    // Hand a human task to EVA: it starts working, then hands a draft back.
+    // Hand a human task to EVA: it starts working, then hands a draft back — as a
+    // decision in the shared list, so it shows here and on the Portfolio overview alike.
     function handToEva(id: string) {
+        const task = tasks.find((x) => x.id === id);
         patch(id, { status: 'eva-running' });
-        setTimeout(() => patch(id, { status: 'eva-review' }), 1800);
+        if (!task) return;
+        setTimeout(() => {
+            setTasks((prev) => prev.filter((x) => x.id !== id));
+            onAddDecision({
+                id: `d-${task.id}`, company: task.company, accountant: task.accountant, label: task.title,
+                question: evaFlagFor(task.title), recommend: 'Approve EVA’s draft.', confirm: 'Approve', alt: 'Take over',
+                ack: 'Approved — done.', ackAlt: 'It’s back with you.', steps: evaStepsFor(task.title),
+                evidence: [{ label: 'Task', value: task.title }, { label: 'Client', value: task.company }, { label: 'Due', value: task.dueLabel }],
+            });
+        }, 1800);
     }
     const toggleStatusF = (s: TStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
@@ -196,7 +211,8 @@ export default function TaskManagementView() {
     const matchQ = (x: Task) => !ql || t(x.title).toLowerCase().includes(ql) || x.company.toLowerCase().includes(ql) || x.accountant.toLowerCase().includes(ql);
     const all = scoped.filter(matchQ);
 
-    const evaReview = all.filter((x) => x.status === 'eva-review');
+    // Ready for your review — the shared decisions, scoped like everything else here.
+    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
     const evaRunning = all.filter((x) => x.status === 'eva-running');
     const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
     const evaDone = all.filter((x) => x.status === 'eva-done');
@@ -210,7 +226,7 @@ export default function TaskManagementView() {
     const kpis = [
         { label: t('Open tasks'), value: String(activeAll.length), sub: t(mine ? 'across {n} of your clients' : 'across {n} companies').replace('{n}', String(companyCount)), color: COLORS.text, accent: '' },
         { label: t('Handled by EVA'), value: String(evaAll.length), sub: t('{n}% of the workload').replace('{n}', String(automatedPct)), color: '#16a34a', accent: '' },
-        { label: t('Ready for your review'), value: String(scoped.filter((x) => x.status === 'eva-review').length), sub: t('EVA drafts to approve'), color: PURPLE, accent: PURPLE },
+        { label: t('Ready for your review'), value: String(evaReview.length), sub: t('EVA drafts to approve'), color: PURPLE, accent: PURPLE },
         { label: t('Overdue'), value: String(overdue.length), sub: t('need attention'), color: '#dc2626', accent: '#dc2626' },
     ];
 
@@ -261,16 +277,7 @@ export default function TaskManagementView() {
                     {/* Ready for your review — EVA handed these back */}
                     {evaReview.length > 0 && (
                         <SectionCard accent={PURPLE} title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Ready for your review')}</span></span>} count={evaReview.length}>
-                            {evaReview.map((x, i) => (
-                                <div key={x.id} className="flex items-center gap-3 p-4" style={i === evaReview.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                    <ClientAvatar name={x.company} size={30} />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
-                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{x.company} · <span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span></p>
-                                    </div>
-                                    <Button appearance="primary" onClick={() => setTrace(x)}>{t('Review')}</Button>
-                                </div>
-                            ))}
+                            {evaReview.map((d, i) => <DecisionRow key={d.id} d={d} t={t} showOwner={!mine} last={i === evaReview.length - 1} onReview={() => setReview(d)} />)}
                         </SectionCard>
                     )}
 
@@ -367,6 +374,7 @@ export default function TaskManagementView() {
                 </div>
             </div>
 
+            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolveDecision(review.id, taken); setReview(null); }} />}
             {trace && <EvaTraceModal task={trace} onClose={() => setTrace(null)} onApprove={trace.status === 'eva-review' ? () => { approve(trace.id); setTrace(null); } : undefined} onSendBack={trace.status === 'eva-review' ? () => { sendBack(trace.id); setTrace(null); } : undefined} />}
         </div>
     );
@@ -469,7 +477,7 @@ export function tasksAnswer(q: string, lang: 'en' | 'da' = 'en'): string {
     const s = q.toLowerCase();
     const da = lang === 'da';
     const eva = TASKS.filter((x) => isEva(x.status));
-    const review = TASKS.filter((x) => x.status === 'eva-review');
+    const review = SEED_DECISIONS.map((d) => ({ title: d.label, company: d.company })); // drafts awaiting sign-off
     const running = TASKS.filter((x) => x.status === 'eva-running');
     const open = TASKS.filter((x) => x.status !== 'done' && x.status !== 'eva-done');
     if (/eva|automat|take over|overtag|selv/.test(s)) {

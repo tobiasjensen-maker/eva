@@ -34,7 +34,7 @@ import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
-import { SEED_DECISIONS } from './day';
+import { SEED_DECISIONS, type DecisionItem } from './day';
 import { useEcoConnection } from './eco';
 import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from './eva';
 
@@ -105,7 +105,10 @@ export default function App() {
     // is reflected in the Cockpit's Focus view and vice-versa.
     const [dayDecisions, setDayDecisions] = useState(SEED_DECISIONS);
     const resolveDecision = (id: string, taken: 'confirm' | 'alt') => setDayDecisions((d) => d.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
-    const openDecisions = dayDecisions.filter((d) => !d.done).length;
+    // The logged-in accountant's open decisions — the Work badge and the overview count.
+    const openDecisions = dayDecisions.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen').length;
+    // A task handed to EVA in Work comes back as a decision in the same shared list.
+    const addDecision = (d: DecisionItem) => setDayDecisions((all) => [d, ...all]);
     // Client conversations — shared so the rail badge and client profiles stay in sync.
     const [threads, setThreads] = useState(THREADS);
     const [inboxFocus, setInboxFocus] = useState<string | null>(null);
@@ -696,7 +699,7 @@ export default function App() {
                     />
                 )}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                {view === 'activity' && <TaskManagementView />}
+                {view === 'activity' && <TaskManagementView decisions={dayDecisions} onResolveDecision={resolveDecision} onAddDecision={addDecision} />}
                 {view === 'activitylog' && (
                     <ActivityFeedView
                         entries={activity}

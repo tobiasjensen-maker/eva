@@ -14,6 +14,7 @@ export const KIND: Record<string, { bg: string; fg: string }> = {
 export type DecisionItem = {
     id: string;
     company: string;
+    accountant: string; // who stands behind it (My work vs. Whole practice)
     label: string;      // task type — also the trace key
     question: string;   // what EVA is unsure about
     recommend: string;  // EVA's recommendation
@@ -40,12 +41,15 @@ export type ValueItem = {
 };
 
 export const SEED_DECISIONS: DecisionItem[] = [
-    { id: 'd-vat', company: 'Nordic Build ApS', label: 'VAT return — Q1', question: 'A reverse-charge VAT line on an EU purchase looks unusual.', recommend: 'Book it as an EU acquisition and file to SKAT.', confirm: 'Confirm & file', alt: 'It’s domestic', ack: 'Done — Nordic Build’s Q1 VAT return is filed to SKAT. ✅', ackAlt: 'Got it — I’ll rebook it as domestic and hold the return for you.',
+    { id: 'd-vat', company: 'Nordic Build ApS', accountant: 'Tobias Holm Jensen', label: 'VAT return — Q1', question: 'A reverse-charge VAT line on an EU purchase looks unusual.', recommend: 'Book it as an EU acquisition and file to SKAT.', confirm: 'Confirm & file', alt: 'It’s domestic', ack: 'Done — Nordic Build’s Q1 VAT return is filed to SKAT. ✅', ackAlt: 'Got it — I’ll rebook it as domestic and hold the return for you.',
         steps: ['Pulled the Q1 VAT accounts and reconciled them against the calculation', 'Drafted the return for SKAT', 'Stopped on one line I’m not confident about'],
         evidence: [{ label: 'Supplier', value: 'Holz Handel GmbH (Germany)' }, { label: 'Amount', value: '48.200 kr' }, { label: 'Booked as', value: 'Domestic purchase, 25% VAT' }, { label: 'Why it looks off', value: 'EU supplier with a German VAT number — normally reverse charge' }] },
-    { id: 'd-supplier', company: 'Digital Marketing Pro', label: 'Supplier invoice approval', question: 'This supplier charge is 12% above their usual.', recommend: 'It matches the new contract — approve and book it.', confirm: 'Approve', alt: 'Query supplier', ack: 'Approved and booked to Digital Marketing Pro. ✅', ackAlt: 'Flagged for the supplier — I’ll hold it until they confirm.',
+    { id: 'd-supplier', company: 'Digital Marketing Pro', accountant: 'Tobias Holm Jensen', label: 'Supplier invoice approval', question: 'This supplier charge is 12% above their usual.', recommend: 'It matches the new contract — approve and book it.', confirm: 'Approve', alt: 'Query supplier', ack: 'Approved and booked to Digital Marketing Pro. ✅', ackAlt: 'Flagged for the supplier — I’ll hold it until they confirm.',
         steps: ['Read the invoice and matched it to the supplier', 'Compared the amount with the last 12 invoices', 'Found the new contract in the documents from March'],
         evidence: [{ label: 'Supplier', value: 'AdTech Nordic ApS' }, { label: 'This invoice', value: '36.400 kr' }, { label: 'Usual amount', value: '32.500 kr (12-month average)' }, { label: 'Contract', value: 'New rate from 1 March, signed by the client' }] },
+    { id: 'd-bank', company: 'Cloud Hosting Ltd', accountant: 'Anders Holm', label: 'Bank reconciliation', question: '8 of 150 bank lines couldn’t be matched automatically.', recommend: 'Post them to a suspense account and ask the client.', confirm: 'Approve', alt: 'Let me look', ack: 'Approved — parked in suspense and I’ve messaged the client. ✅', ackAlt: 'Opening the eight lines — I’ll wait on your call.',
+        steps: ['Imported the bank statement', 'Matched 142 of 150 lines and booked them', 'Left 8 lines I couldn’t match with confidence'],
+        evidence: [{ label: 'Bank account', value: 'Danske Bank · 7310' }, { label: 'Unmatched', value: '8 lines · 23.940 kr in total' }, { label: 'Largest', value: '9.800 kr from “STRIPE PAYOUT 0921”' }, { label: 'Likely cause', value: 'Payouts not yet exported from Stripe' }] },
 ];
 
 export const SEED_VALUES: ValueItem[] = [

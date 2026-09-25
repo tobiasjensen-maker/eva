@@ -23,7 +23,7 @@ the day starts; every other page is "further in".**
   greeting with a live line ("2 decisions and 3 client replies need you"), a **question box
   with suggestion chips** that hands off to the EVA panel (answer included; the panel starts
   closed here and opens when you ask), then the day at a glance — **Today** (calendar, "View
-  the week"), **Needs your decision** (answerable in place; links to the Inbox replies) and
+  the week"), **Ready for your review** (the same decisions as Work's review lane — see below) and
   **Books status** (where all 212 clients' books stand) — then **Clients who need your
   expertise** (with show-work) and the **full client list**, whose rows open the client
   profile (talking points, peer benchmarks) and from there the client's deep analysis (the
@@ -36,7 +36,11 @@ the day starts; every other page is "further in".**
 - **Routines** (`SkillsView.tsx`) — how EVA works: routines, connectors, office view.
 - **Practice** (`PracticeView.tsx`) — capacity, profitability, growth & leads, playbooks.
 - Off the rail: **Views** (`#/views`), the Activity log (`#/activity`, under Work).
-- Shared state in `App`: decisions (`src/day.ts`), client threads, firm data (`src/practice.ts`).
+- **Decisions are one list** (`src/day.ts`, owned by `App`): the overview's "Ready for your
+  review" (your items) and Work's review lane (mine / whole practice) render the same objects
+  with the same row and Review modal (`src/views/Decisions.tsx`), so wording and state always
+  match. "Hand to EVA" in Work returns the drafted task into this list.
+- Shared state in `App`: decisions, client threads, firm data (`src/practice.ts`).
 
 ## The Connectors feature (most recent work)
 
