@@ -3151,6 +3151,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .mt-3 {
   margin-top: 0.75rem;
 }
+.mt-3\.5 {
+  margin-top: 0.875rem;
+}
 .mt-4 {
   margin-top: 1rem;
 }
@@ -3968,12 +3971,6 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   border-top-left-radius: 0px;
   border-top-right-radius: 0px;
 }
-.rounded-br-md {
-  border-bottom-right-radius: 0.375rem;
-}
-.rounded-tl-md {
-  border-top-left-radius: 0.375rem;
-}
 .\!border-0 {
   border-width: 0px !important;
 }
@@ -4281,6 +4278,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .p-7 {
   padding: 1.75rem;
 }
+.p-\[2px\] {
+  padding: 2px;
+}
 .p-\[3px\] {
   padding: 3px;
 }
@@ -4415,10 +4415,6 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
 }
-.py-7 {
-  padding-top: 1.75rem;
-  padding-bottom: 1.75rem;
-}
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
@@ -4467,6 +4463,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .pb-8 {
   padding-bottom: 2rem;
+}
+.pb-9 {
+  padding-bottom: 2.25rem;
 }
 .pb-\[7px\] {
   padding-bottom: 7px;
@@ -4528,6 +4527,12 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .pr-8 {
   padding-right: 2rem;
 }
+.pt-1 {
+  padding-top: 0.25rem;
+}
+.pt-10 {
+  padding-top: 2.5rem;
+}
 .pt-2 {
   padding-top: 0.5rem;
 }
@@ -4536,6 +4541,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .pt-3 {
   padding-top: 0.75rem;
+}
+.pt-3\.5 {
+  padding-top: 0.875rem;
 }
 .pt-4 {
   padding-top: 1rem;
