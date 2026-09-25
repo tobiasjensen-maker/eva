@@ -79,7 +79,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                             return parts.length ? t('{list} need you.').replace('{list}', parts.join(` ${t('and')} `)) : t('Nothing needs you right now.');
                         })()}
                     </p>
-                    <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px]" style={{ maxWidth: 760, background: '#ed9b2c' /* e-conomic orange */ }}>
+                    <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px]" style={{ maxWidth: 760, background: 'linear-gradient(90deg,#7c3aed,#ed9b2c)' /* EVA purple → e-conomic orange */ }}>
                         <div className="flex items-center gap-3 rounded-full bg-white pl-4 pr-2 py-2">
                             <Orb size={20} />
                             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Tell me where you’d like to start, or ask a question about your firm.')} className="flex-1 min-w-0 bg-transparent outline-none text-sm py-1" style={{ color: COLORS.text }} />
