@@ -2820,6 +2820,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .top-1\/2 {
   top: 50%;
 }
+.top-\[-3px\] {
+  top: -3px;
+}
 .top-full {
   top: 100%;
 }
@@ -2919,6 +2922,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .mx-3 {
   margin-left: 0.75rem;
   margin-right: 0.75rem;
+}
+.mx-5 {
+  margin-left: 1.25rem;
+  margin-right: 1.25rem;
 }
 .mx-auto {
   margin-left: auto;
@@ -3887,6 +3894,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .overflow-visible {
   overflow: visible;
 }
+.overflow-x-auto {
+  overflow-x: auto;
+}
 .overflow-y-auto {
   overflow-y: auto;
 }
@@ -4449,6 +4459,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .pb-5 {
   padding-bottom: 1.25rem;
 }
+.pb-6 {
+  padding-bottom: 1.5rem;
+}
 .pb-7 {
   padding-bottom: 1.75rem;
 }
@@ -4493,6 +4506,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .pl-9 {
   padding-left: 2.25rem;
+}
+.pl-\[56px\] {
+  padding-left: 56px;
 }
 .pr-1 {
   padding-right: 0.25rem;
@@ -4548,6 +4564,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .font-display {
   font-family: Helvetica, Arial, sans-serif;
 }
+.font-mono {
+  font-family: Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
 .\!text-xs {
   font-size: 0.75rem !important;
   line-height: 1rem !important;
@@ -4562,6 +4581,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .text-\[0\.55rem\] {
   font-size: 0.55rem;
+}
+.text-\[11px\] {
+  font-size: 11px;
 }
 .text-base {
   font-size: 1rem;
