@@ -6,13 +6,11 @@ import {
     EconomicLogo,
     NodeMark,
     ProfileAvatar,
-    InsightsIcon,
     RoutinesIcon,
     TasksIcon,
     HomeIcon,
     InboxIcon,
     PracticeIcon,
-    SpacesIcon,
     CustomersIcon,
     SidebarTooltip,
     ScopeContext,
@@ -58,20 +56,21 @@ const WELCOME_MSG =
 const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.Element }[] = [
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
     // Home is "My day" — EVA's conversational morning briefing (the landing surface).
+    // Where the day starts — the agenda, walked through with EVA.
     { id: 'home', label: 'Home', Icon: HomeIcon },
     // Every client conversation in one place.
     { id: 'inbox', label: 'Inbox', Icon: InboxIcon },
-    // The whole portfolio — one list, one sign-in, a profile per client.
+    // The whole portfolio. A client's deep analysis (the old Advisory page) opens from here.
     { id: 'clients', label: 'Clients', Icon: CustomersIcon },
-    // Cockpit is the structured control centre ("My work" / "Whole practice").
-    { id: 'activity', label: 'Cockpit', Icon: TasksIcon },
-    { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
+    // The board of work across clients — what EVA and the team are doing ("My work" / "Whole practice").
+    { id: 'activity', label: 'Work', Icon: TasksIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
+    // How EVA works — routines and the connectors they run on.
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
-    { id: 'spaces', label: 'Views', Icon: SpacesIcon },
     // The office as a business — capacity, profitability, growth, playbooks.
     { id: 'practice', label: 'Practice', Icon: PracticeIcon },
+    // (Advisory → a client's analysis, reached from Clients; Views → #/views, off the rail.)
 ];
 
 const VIEW_IDS: ViewId[] = ['home', 'inbox', 'clients', 'practice', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
@@ -115,6 +114,13 @@ export default function App() {
     const [threads, setThreads] = useState(THREADS);
     const [inboxFocus, setInboxFocus] = useState<string | null>(null);
     const needsReply = threads.filter((x) => x.status === 'needs').length;
+    // Send EVA's suggested next step on a thread (from Home) — same outcome as "Approve & send" in the Inbox.
+    const resolveThread = (id: string) => setThreads((all) => all.map((x) => x.id !== id || !x.suggestion ? x : {
+        ...x,
+        status: 'done' as const,
+        messages: [...x.messages, { from: 'firm' as const, who: 'Tobias Holm Jensen', at: 'Now', text: x.suggestion.reply }, { from: 'eva' as const, who: 'EVA', at: 'Now', text: x.suggestion.result }],
+        suggestion: undefined,
+    }));
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -449,7 +455,8 @@ export default function App() {
                 <nav className="flex flex-col gap-1 mt-3" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
                     {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
                         // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
-                        const active = view === id || (id === 'activity' && view === 'activitylog');
+                        // Sub-pages keep their parent lit: the activity log under Work, a client's analysis under Clients.
+                        const active = view === id || (id === 'activity' && view === 'activitylog') || (id === 'clients' && view === 'insights');
                         const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
@@ -688,7 +695,7 @@ export default function App() {
                     />
                 )}
                 {view === 'practice' && <PracticeView />}
-                {view === 'home' && <HomeView onOpenCockpit={() => goView('activity')} decisions={dayDecisions} values={dayValues} onResolveDecision={resolveDecision} onResolveValue={resolveValue} />}
+                {view === 'home' && <HomeView onGo={goView} decisions={dayDecisions} values={dayValues} threads={threads} onResolveDecision={resolveDecision} onResolveValue={resolveValue} onResolveThread={resolveThread} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                 {view === 'activity' && <TaskManagementView />}
                 {view === 'activitylog' && (

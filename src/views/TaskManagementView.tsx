@@ -233,7 +233,7 @@ export default function TaskManagementView() {
     return (
         <div className="h-full overflow-y-auto">
             <PageHeader
-                title={t('Cockpit')}
+                title={t('Work')}
                 showScope={false}
                 right={<Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>}
             />

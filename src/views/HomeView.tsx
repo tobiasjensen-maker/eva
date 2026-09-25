@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button } from '@economic/taco';
+import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, ProfileAvatar, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { KIND, type DecisionItem, type ValueItem } from '../day';
+import { FIRM_CLIENTS, type Thread } from '../practice';
+import type { ViewId } from '../types';
 
 // ---- Home · "My day" ----------------------------------------------------------
-// Not the Cockpit. This is EVA talking you through your day like a personal
-// assistant — one beat at a time. Nothing dumps on screen at once: EVA says a
-// thing, waits for you to act or say "go", and only then reveals the next.
+// Where the AO starts the day. EVA opens with the day's agenda — meetings,
+// decisions, client replies, what's worth your time — then walks through it one
+// group at a time. Rows tick off as you go and each one links to the page where
+// you'd go deeper, so the rest of the app is "further in", never "somewhere else".
 
 const ME_FIRST = 'Tobias';
 const ACCENT = '#1c1b3a'; // dark navy — the user's own voice (proceed chip + send button)
@@ -34,19 +37,13 @@ const SCHEDULE: Event[] = [
     { when: 'Mon 10:00', title: 'Quarterly review — Nordic Build ApS', kind: 'Meeting', client: 'Nordic Build ApS' },
 ];
 
-// The briefing, kept to a few messages: an opening, the decisions as ONE message,
-// the advisory items as ONE message, and a close. A `next` chip gates the reveal;
-// the card groups advance on their own once you've dealt with them.
-type Beat =
-    | { intro: true }
-    | { glance: true; next: string }
-    | { decisions: true }
-    | { values: true; next: string }
-    | { close: true };
+// The briefing: the agenda, then one message per group that needs you, then a
+// close. Empty groups are skipped; a group advances once you've dealt with it.
+type Beat = { intro: true } | { decisions: true } | { replies: true } | { values: true; next: string } | { close: true };
 const BEATS: Beat[] = [
     { intro: true },
-    { glance: true, next: 'What needs me?' },
     { decisions: true },
+    { replies: true },
     { values: true, next: 'That’s enough for now' },
     { close: true },
 ];
@@ -55,8 +52,8 @@ type Item =
     | { key: string; who: 'eva'; type: 'text'; node: ReactNode }
     | { key: string; who: 'eva'; type: 'intro' }
     | { key: string; who: 'eva'; type: 'decisions'; ids: string[] }
+    | { key: string; who: 'eva'; type: 'replies'; ids: string[] }
     | { key: string; who: 'eva'; type: 'values'; ids: string[] }
-    | { key: string; who: 'eva'; type: 'schedule' }
     | { key: string; who: 'user'; type: 'text'; node: ReactNode };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -65,7 +62,7 @@ function homeAnswer(q: string, lang: 'en' | 'da'): { text: string; openCockpit?:
     const s = q.toLowerCase();
     const da = lang === 'da';
     if (/cockpit|board|full|everything|list|tavle|oversigt/.test(s))
-        return { text: da ? 'Åbner Cockpit — det er hele tavlen på tværs af alle kunder.' : 'Opening the Cockpit — that’s the full board across every client.', openCockpit: true };
+        return { text: da ? 'Åbner Arbejde — hele tavlen på tværs af alle kunder.' : 'Opening Work — the full board across every client.', openCockpit: true };
     // Firm-level questions — the AO running the practice, not just the books.
     if (/advis|ready for|rådgivning|klar til/.test(s))
         return { text: da ? 'Fire kunder vokser 10%+ uden rådgivning: Grøn Energi (+25%), Cloud Hosting (+22%), Fjord Fitness (+14%) og Nordic Build (+12%). Jeg har samtalepunkter klar for hver — se dem under Kunder.' : 'Four clients are growing 10%+ with no advisory yet: Grøn Energi (+25%), Cloud Hosting (+22%), Fjord Fitness (+14%) and Nordic Build (+12%). I have talking points ready for each — open them under Clients.' };
@@ -86,7 +83,16 @@ function homeAnswer(q: string, lang: 'en' | 'da'): { text: string; openCockpit?:
     return { text: da ? 'Jeg kan tage dig gennem hvad der kørte i nat, hvad der venter på kunder, ugen der kommer, eller en enkelt kundes bøger. Hvad vil hjælpe?' : 'I can walk you through what ran overnight, what’s waiting on clients, the week ahead, or any single client’s books. What would help?' };
 }
 
-export default function HomeView({ onOpenCockpit, decisions, values, onResolveDecision, onResolveValue }: { onOpenCockpit: () => void; decisions: DecisionItem[]; values: ValueItem[]; onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void; onResolveValue: (id: string) => void }) {
+export default function HomeView({ onGo, decisions, values, threads, onResolveDecision, onResolveValue, onResolveThread }: {
+    onGo: (v: ViewId) => void;
+    decisions: DecisionItem[];
+    values: ValueItem[];
+    threads: Thread[];
+    onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
+    onResolveValue: (id: string) => void;
+    onResolveThread: (id: string) => void;
+}) {
+    const onOpenCockpit = () => onGo('activity');
     const { t, lang } = useLang();
     const [feed, setFeed] = useState<Item[]>([]);
     const [typing, setTyping] = useState(false);
@@ -94,8 +100,9 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
     const [pendingChip, setPendingChip] = useState<string | null>(null);
     const [input, setInput] = useState('');
     // Latest items in a ref so async beat-playing sees resolutions made mid-flow.
-    const itemsRef = useRef({ decisions, values });
-    itemsRef.current = { decisions, values };
+    const itemsRef = useRef({ decisions, values, threads });
+    itemsRef.current = { decisions, values, threads };
+    const needsReply = (ts: Thread[]) => ts.filter((x) => x.status === 'needs' && x.suggestion);
     const scrollRef = useRef<HTMLDivElement>(null);
     const seq = useRef(0);
     const idxRef = useRef(-1);
@@ -127,8 +134,21 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
         setTyping(true);
         await sleep(700);
         setTyping(false);
-        if ('intro' in beat) { push({ key: key(), who: 'eva', type: 'intro' }); await advance(); return; }
-        if ('glance' in beat) { push({ key: key(), who: 'eva', type: 'schedule' }); setPendingChip(beat.next); return; }
+        if ('intro' in beat) {
+            push({ key: key(), who: 'eva', type: 'intro' });
+            // One clear first step, named after whatever needs you first; nothing open → straight to the close.
+            const { decisions: ds, threads: ts, values: vs } = itemsRef.current;
+            const first = ds.some((d) => !d.done) ? 'Start with the decisions' : needsReply(ts).length ? 'Start with the client replies' : vs.some((v) => !v.done) ? 'Show me what’s worth my time' : null;
+            if (first) setPendingChip(first); else await advance();
+            return;
+        }
+        if ('replies' in beat) {
+            const ids = needsReply(itemsRef.current.threads).map((x) => x.id);
+            if (ids.length === 0) { await advance(); return; }
+            push({ key: key(), who: 'eva', type: 'replies', ids });
+            shownAny.current = true;
+            return; // advances once each reply is sent or parked
+        }
         if ('close' in beat) {
             // If nothing needed the user this visit, EVA just reassures rather than recap.
             push({ key: key(), who: 'eva', type: 'text', node: shownAny.current ? t('That’s everything that needs you today. I’ll keep the rest running and flag anything that changes. Ask me anything.') : t('You’re all caught up — everything’s handled and every ledger’s current. I’ll flag anything that comes up. Ask me anything.') });
@@ -176,6 +196,14 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
         const remaining = itemsRef.current.decisions.filter((x) => !x.done && x.id !== d.id).length;
         if (remaining === 0) await advance();
     }
+    // A client reply: send EVA's suggested answer, or park it for the Inbox.
+    const parked = useRef<Set<string>>(new Set());
+    const [, setBump] = useState(0); // re-render when a reply is parked (the set lives in a ref)
+    async function actReply(th: Thread, send: boolean) {
+        if (send) onResolveThread(th.id); else { parked.current.add(th.id); setBump((n) => n + 1); }
+        const remaining = needsReply(itemsRef.current.threads).filter((x) => x.id !== th.id && !parked.current.has(x.id)).length;
+        if (remaining === 0) await advance();
+    }
     async function actValue(v: ValueItem, take: boolean) {
         if (take) onResolveValue(v.id);
         dealt.current.add(v.id);
@@ -191,7 +219,7 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
         evaSay(a.text, { openCockpit: a.openCockpit });
     }
 
-    const exploreChips = [t('Which clients are ready for an advisory call?'), t('Who on my team is over capacity?'), t('Who’s waiting on clients?'), t('Open the Cockpit')];
+    const exploreChips = [t('Which clients are ready for an advisory call?'), t('Who on my team is over capacity?'), t('How’s the week ahead?'), t('Open Work')];
 
     return (
         <div className="h-full flex flex-col">
@@ -220,9 +248,14 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
                                     {it.type === 'text' && <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{it.node}</p>}
                                     {it.type === 'intro' && (
                                         <div className="flex flex-col gap-2.5">
-                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Good morning, {name}. 👋 Here’s your Tuesday — I went through all 40 clients overnight.').replace('{name}', ME_FIRST)}</p>
-                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{t('Here’s where things stand.')}</p>
-                                            <SummaryCard t={t} />
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Good morning, {name}. 👋 Here’s your Tuesday:').replace('{name}', ME_FIRST)}</p>
+                                            <TodayCard t={t} decisions={decisions} values={values} replies={needsReply(threads).length} onGo={onGo} />
+                                        </div>
+                                    )}
+                                    {it.type === 'replies' && (
+                                        <div className="flex flex-col gap-2.5">
+                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{it.ids.length > 1 ? t('{n} client conversations need you — I’ve drafted each next step:').replace('{n}', String(it.ids.length)) : t('One client conversation needs you — I’ve drafted the next step:')}</p>
+                                            {it.ids.map((id) => threads.find((x) => x.id === id)).filter((x): x is Thread => !!x).map((th) => <ReplyCard key={th.id} th={th} t={t} parked={parked.current.has(th.id)} onAct={actReply} onOpen={() => onGo('inbox')} />)}
                                         </div>
                                     )}
                                     {it.type === 'decisions' && (
@@ -235,12 +268,6 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
                                         <div className="flex flex-col gap-2.5">
                                             <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{shownAny.current && feed.some((f) => f.type === 'decisions') ? t('That’s the books clear. 🎯 Here’s where your time is worth most:') : t('Here’s where your time is worth most:')}</p>
                                             {it.ids.map((id) => values.find((x) => x.id === id)).filter((v): v is ValueItem => !!v).map((v) => <ValueCard key={v.id} v={v} t={t} onAct={actValue} />)}
-                                        </div>
-                                    )}
-                                    {it.type === 'schedule' && (
-                                        <div className="flex flex-col gap-2.5">
-                                            <p className="text-sm leading-relaxed" style={{ color: COLORS.text, paddingTop: 3 }}>{t('Here’s your day at a glance:')}</p>
-                                            <ScheduleCard t={t} />
                                         </div>
                                     )}
                                 </div>
@@ -277,7 +304,7 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
                                 exploreChips.map((c, i) => (
                                     <button
                                         key={c}
-                                        onClick={() => (i === exploreChips.length - 1 ? (pushUser(c), evaSay(t('Opening the Cockpit — that’s the full board across every client.'), { openCockpit: true })) : submit(c))}
+                                        onClick={() => (i === exploreChips.length - 1 ? (pushUser(c), evaSay(t('Opening Work — the full board across every client.'), { openCockpit: true })) : submit(c))}
                                         className="rounded-full px-3 py-1.5 text-sm anim-in"
                                         style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff', color: COLORS.text }}
                                         onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
@@ -321,24 +348,76 @@ function Dot({ d = 0 }: { d?: number }) {
     return <span className="rounded-full" style={{ width: 5, height: 5, background: '#c3c3cc', display: 'inline-block', animation: 'evaBlink 1s ease-in-out infinite', animationDelay: `${d}s` }} />;
 }
 
-function SummaryCard({ t }: { t: (s: string) => string }) {
-    const stats = [
-        { n: '31', label: t('clients ran overnight'), c: COLORS.text },
-        { n: '6', label: t('closed clean'), c: '#16a34a' },
-        { n: '3', label: t('raised something'), c: '#b9842b' },
-        { n: '1,240', label: t('items handled'), c: '#4456c7' },
+// The day's agenda — the shape of the day in four rows. Counts tick down live as
+// you work through the briefing; each row links to where you'd go deeper.
+function TodayCard({ t, decisions, values, replies, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; values: ValueItem[]; replies: number; onGo: (v: ViewId) => void }) {
+    const [showDay, setShowDay] = useState(false);
+    const meetings = SCHEDULE.filter((e) => e.today);
+    const rows: { icon: string; label: string; count: number; doneText: string; sub?: string; go?: { label: string; view: ViewId } }[] = [
+        { icon: 'circle-tick', label: 'Decisions in the books', count: decisions.filter((d) => !d.done).length, doneText: 'All decided', go: { label: 'Work', view: 'activity' } },
+        { icon: 'chat', label: 'Client conversations', count: replies, doneText: 'All answered', go: { label: 'Inbox', view: 'inbox' } },
+        { icon: 'ai-stars', label: 'Worth your time', count: values.filter((v) => !v.done).length, doneText: 'All handled', go: { label: 'Clients', view: 'clients' } },
     ];
     return (
-        <Card className="p-4 mt-1" style={{ maxWidth: 460 }}>
-            <div className="grid grid-cols-4 gap-2">
-                {stats.map((s) => (
-                    <div key={s.label}>
-                        <p className="text-xl font-semibold leading-none" style={{ color: s.c }}>{s.n}</p>
-                        <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{s.label}</p>
+        <>
+            <Card className="overflow-hidden mt-1" style={{ maxWidth: 520 }}>
+                {/* meetings — expands to the day's calendar */}
+                <div className="flex items-center gap-3 px-3.5 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <span className="flex items-center justify-center shrink-0 rounded-md" style={{ width: 28, height: 28, background: '#eef4fb', color: '#2f6fb0' }}><Icon name="time" /></span>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium" style={{ color: COLORS.text }}>{meetings.length} {t('meetings today')}</p>
+                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('First: {title} at {time}').replace('{title}', t(meetings[0].title)).replace('{time}', meetings[0].when)}</p>
                     </div>
-                ))}
+                    <button onClick={() => setShowDay((v) => !v)} className="text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>{showDay ? t('Hide') : t('View day')}</button>
+                </div>
+                {rows.map((r) => {
+                    const done = r.count === 0;
+                    return (
+                        <div key={r.label} className="flex items-center gap-3 px-3.5 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <span className="flex items-center justify-center shrink-0 rounded-md" style={{ width: 28, height: 28, background: done ? '#e9f7ef' : '#f3f0fb', color: done ? '#15803d' : '#6d28d9' }}><Icon name={(done ? 'circle-tick' : r.icon) as never} /></span>
+                            <p className="text-sm font-medium flex-1 min-w-0" style={{ color: done ? COLORS.textMuted : COLORS.text }}>{t(r.label)}</p>
+                            {done
+                                ? <span className="text-xs font-medium shrink-0" style={{ color: '#15803d' }}>✓ {t(r.doneText)}</span>
+                                : <span className="rounded-full text-xs font-semibold shrink-0" style={{ background: '#1c1b3a', color: '#fff', padding: '1px 8px' }}>{r.count}</span>}
+                            {r.go && <button onClick={() => onGo(r.go!.view)} className="text-xs font-medium shrink-0" style={{ color: '#4456c7', width: 64, textAlign: 'right' }}>{t(r.go.label)} →</button>}
+                        </div>
+                    );
+                })}
+                <p className="px-3.5 py-2.5 text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted, background: '#fafafa' }}>
+                    <Orb size={12} /> {t('Overnight I handled 1,240 items across {n} clients — nothing’s on fire.').replace('{n}', String(FIRM_CLIENTS))}
+                </p>
+            </Card>
+            {showDay && <ScheduleCard t={t} />}
+        </>
+    );
+}
+
+// A client conversation that needs you, with EVA's drafted next step.
+function ReplyCard({ th, t, parked, onAct, onOpen }: { th: Thread; t: (s: string) => string; parked: boolean; onAct: (th: Thread, send: boolean) => void; onOpen: () => void }) {
+    const done = th.status === 'done';
+    const last = [...th.messages].reverse().find((m) => m.from === 'client') ?? th.messages[th.messages.length - 1];
+    const result = done ? th.messages[th.messages.length - 1]?.text : '';
+    return (
+        <Card className="p-3.5 mt-1" style={{ maxWidth: 520 }}>
+            <div className="flex items-start gap-2.5">
+                <ClientAvatar name={th.contact} size={26} />
+                <div className="min-w-0 flex-1">
+                    <p className="text-xs" style={{ color: COLORS.textMuted }}>{th.client} · {t(th.subject)}</p>
+                    <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{last.from === 'client' ? `“${t(last.text)}”` : t(last.text)}</p>
+                    {!done && !parked && th.suggestion && <p className="text-sm mt-1 flex items-start gap-1.5" style={{ color: '#6d28d9' }}><span className="shrink-0 mt-0.5"><Orb size={13} /></span><span>{t('My call')}: {t(th.suggestion.action)}</span></p>}
+                </div>
             </div>
-            <p className="text-xs mt-3 pt-3" style={{ color: COLORS.textMuted, borderTop: `1px solid ${COLORS.cardBorder}` }}>{t('The rest are mid-flight. Nothing’s on fire.')}</p>
+            {done ? (
+                <p className="text-sm mt-2 pl-9" style={{ color: '#15803d' }}>✓ {t('Sent')} — {t(result)}</p>
+            ) : parked ? (
+                <p className="text-sm mt-2 pl-9" style={{ color: COLORS.textMuted }}>{t('Left in your Inbox')}</p>
+            ) : (
+                <div className="flex items-center gap-2 mt-3 pl-9">
+                    <Button onClick={() => { onAct(th, false); onOpen(); }}>{t('Open in Inbox')}</Button>
+                    <Button onClick={() => onAct(th, false)}>{t('Later')}</Button>
+                    <Button appearance="primary" onClick={() => onAct(th, true)}>{t('Approve & send')}</Button>
+                </div>
+            )}
         </Card>
     );
 }

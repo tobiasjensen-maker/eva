@@ -15,46 +15,29 @@ bookkeeping jobs, surfaces what needs a human, and can be extended with third-pa
 A single-page app (hash routing) that mocks a full agentic product surface. All data is
 **mock/placeholder** — there is no backend in the hosted build.
 
-Primary navigation (the mental model):
+Primary navigation (the mental model) — six rail items, simplified from eight. **Home is
+where the day starts; every other page is "further in".**
 
-- **Home ("My day")** — the landing surface and daily briefing. EVA walks you through the
-  day a beat at a time: greeting+summary → **"your day at a glance"** (today's calendar, with
-  a "View the week" toggle, from the Outlook connector) → the decisions as ONE message → the
-  advisory items as ONE message → a close. Continue-chips gate the reveal; a composer lets
-  you talk back; on return, already-handled items are skipped and EVA says you're caught up.
-  `src/views/HomeView.tsx`; routes `#/home`, `#/my-day`, `#/today`. No floating EVA
-  side-panel here — Home *is* the conversation.
-- **Shared "your day" state** (`src/day.ts`, lifted into `App`): the decisions + advisory
-  moments are one source of truth used by Home; acting there also drives the Cockpit nav
-  badge (`openDecisions`).
-- **Cockpit** — the structured practice board (`src/views/TaskManagementView.tsx`): a
-  **My work / Whole practice** perspective toggle, KPIs, and the task sections (Ready for
-  your review, EVA is handling, Scheduled by EVA, On my plate, Completed by EVA). The old
-  Focus/exception-first cockpit view was removed — the daily briefing (Home) covers it now.
-- **Inbox** (`src/views/InboxView.tsx`) — every client conversation in one place, tied to
-  the transaction it's about. EVA asks clients for missing details, follows up on its own,
-  and proposes the next step on a reply ("Approve & send"). Needs action / Waiting on
-  client / All; client settings (AI follow-up, alerts). Rail badge = threads needing you.
-- **Clients** (`src/views/ClientsView.tsx`) — the whole portfolio in one list with the
-  firm's own client numbers, responsible accountant, services, books status and EVA share.
-  A client opens a profile drawer: **talking points** for the next conversation, **peer
-  benchmarks**, and "why EVA flagged this" (show-work). Also exports `ExpertiseCard`
-  ("Clients who need your expertise"), reused at the top of Advisory (portfolio scope).
-- **Practice** (`src/views/PracticeView.tsx`) — the office as a business: **Capacity**
-  (team utilisation + EVA's rebalancing suggestion), **Profitability** (effective rate per
-  client vs. target, reprice proposals), **Growth** (services clients are ready for + inbound
-  leads from e-conomic) and **Playbooks** (industry setups — chart, routines, connectors,
-  guardrails — applied to many clients in one push).
-- Firm data for these three lives in `src/practice.ts` (clients, team, threads, playbooks,
-  opportunities, talking points, benchmarks). Inspired by Intuit Accountant Suite, framed
-  by the 25 Sep 2026 vision workshop (top jobs: client relationship · advisory · practice).
-- **Advisory** — the advisory layer (proactive review + financial insights), kept
-  separate from the core bookkeeping tasks.
-- **Routines** — the agentic taxonomy in action: a Routine (job) is a Trigger →
-  Conditions → Actions flow. Includes a routine builder, an Office (partner) view, and
-  **Connectors**.
-- **Views** — saved artefact-style views.
-- **EVA** — the assistant, as a resizable side-panel that expands to a full-window chat.
+- **Home ("My day")** — the start of the day. EVA opens with the **day's agenda**: meetings
+  (expand to the calendar / the week), decisions in the books, client conversations, and
+  what's worth your time — counts tick off live and each row links to the page behind it.
+  Then EVA walks through each non-empty group as one message (decisions → client replies →
+  worth your time → close), one clear continue-chip at a time. Client replies can be sent
+  straight from Home. On return, handled items are skipped. `src/views/HomeView.tsx`.
+- **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
+  follows up and drafts the next step. Shares thread state with Home (`threads` in App).
+- **Clients** (`ClientsView.tsx`) — the portfolio with firm client numbers; a client opens a
+  profile (talking points, peer benchmarks, why EVA flagged it) and from there their deep
+  analysis — the former **Advisory** page (`InsightsView.tsx`, `#/insights`, scoped to the
+  client; Clients stays lit in the rail).
+- **Work** (`TaskManagementView.tsx`, formerly "Cockpit") — the board of work across clients:
+  My work / Whole practice, KPIs, EVA lanes. Renamed so it no longer competes with Home.
+- **Routines** (`SkillsView.tsx`) — how EVA works: routines, connectors, office view.
+- **Practice** (`PracticeView.tsx`) — the office as a business: capacity, profitability,
+  growth & leads, playbooks.
+- Off the rail: **Views** (`#/views`) and the Activity log (`#/activity`, under Work).
+- Shared state in `App`: day decisions/advisory (`src/day.ts`), client threads, and firm data
+  (`src/practice.ts`). EVA side panel on every page except Home (Home *is* the conversation).
 
 ## The Connectors feature (most recent work)
 

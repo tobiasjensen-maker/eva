@@ -1,7 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Button, Icon, BarChart } from '@economic/taco';
 import { Card, PageHeader, PeriodPicker, COLORS } from '../ui';
-import { ExpertiseCard } from './ClientsView';
 import { useLang } from '../i18n';
 import { getAccounts, getCustomers, getInvoices } from '../eco';
 import { AdvisoryList, type LogEntry } from './ActivityView';
@@ -524,9 +523,6 @@ export default function InsightsView({ scope = 'portfolio', scopeName = 'All agr
                         ))}
                     </div>
                 )}
-
-                {/* cross-client portfolio insights — who needs the AO's expertise, with show-work */}
-                {scope === 'portfolio' && <div className="mb-6"><ExpertiseCard /></div>}
 
                 {/* EVA flags & suggestions */}
                 {activity && setActivity && onAskEva && (
