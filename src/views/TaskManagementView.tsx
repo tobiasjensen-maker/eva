@@ -186,13 +186,13 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     onAddDecision: (d: DecisionItem) => void;
 }) {
     const { t } = useLang();
-    const [perspective, setPerspective] = useState<'mine' | 'practice'>('mine');
     const [groupBy, setGroupBy] = useState<GroupBy>('deadline');
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<TStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
     const [review, setReview] = useState<DecisionItem | null>(null);
-    const mine = perspective === 'mine';
+    // Work is the logged-in accountant's own work (the whole office lives under Practice).
+    const mine = true;
 
     const patch = (id: string, p: Partial<Task>) => setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
     const setStatus = (id: string, s: TStatus) => patch(id, { status: s });
@@ -258,10 +258,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 {tab === 'activity' && activityLog}
                 {tab === 'routines' && routines}
                 {tab === 'tasks' && (<>
-                {/* perspective — my work vs. the whole practice */}
-                <div className="mb-5 flex">
-                    <SegmentedTabs value={perspective} onChange={(v) => setPerspective(v as 'mine' | 'practice')} options={[{ value: 'mine', label: t('My work') }, { value: 'practice', label: t('Whole practice') }]} />
-                </div>
 
                 {/* overview KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
