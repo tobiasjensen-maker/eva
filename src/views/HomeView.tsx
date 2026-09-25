@@ -66,6 +66,13 @@ function homeAnswer(q: string, lang: 'en' | 'da'): { text: string; openCockpit?:
     const da = lang === 'da';
     if (/cockpit|board|full|everything|list|tavle|oversigt/.test(s))
         return { text: da ? 'Åbner Cockpit — det er hele tavlen på tværs af alle kunder.' : 'Opening the Cockpit — that’s the full board across every client.', openCockpit: true };
+    // Firm-level questions — the AO running the practice, not just the books.
+    if (/advis|ready for|rådgivning|klar til/.test(s))
+        return { text: da ? 'Fire kunder vokser 10%+ uden rådgivning: Grøn Energi (+25%), Cloud Hosting (+22%), Fjord Fitness (+14%) og Nordic Build (+12%). Jeg har samtalepunkter klar for hver — se dem under Kunder.' : 'Four clients are growing 10%+ with no advisory yet: Grøn Energi (+25%), Cloud Hosting (+22%), Fjord Fitness (+14%) and Nordic Build (+12%). I have talking points ready for each — open them under Clients.' };
+    if (/capacity|over capacity|team|kapacitet|travl/.test(s))
+        return { text: da ? 'Mette er på 116% og Jonas på 56%. Flyt Solvang Tømrer, Kilde Klinik og Nørre Bageri (31 t/md) til Jonas, så lander begge mellem 79% og 94%. Klar under Praksis → Kapacitet.' : 'Mette is at 116% and Jonas at 56%. Move Solvang Tømrer, Kilde Klinik and Nørre Bageri (31 h/mo) to Jonas and both land between 79% and 94%. It’s ready to apply under Practice → Capacity.' };
+    if (/profit|lønsom|reprice|price/.test(s))
+        return { text: da ? 'Café Solsikke (382 kr/t), Lys Design (433 kr/t) og Nørre Bageri (460 kr/t) ligger langt under jeres mål på 900 kr/t. Faste pakker ville løfte dem.' : 'Café Solsikke (382 kr/h), Lys Design (433 kr/h) and Nørre Bageri (460 kr/h) sit well below your 900 kr/h target. Fixed-fee packages would lift them — drafts are one click under Practice → Profitability.' };
     if (/week|ahead|coming|schedul|uge|kommende/.test(s))
         return { text: da ? 'Ugen er let. 12 routiner er planlagt — 3 momsangivelser, 2 lønkørsler og en månedsafslutning for Fjord Fitness fredag. Jeg kører dem og viser dig kun det, der kræver dig. Intet er forfaldent.' : 'The week’s light. 12 routines are scheduled — 3 VAT returns, 2 payrolls, and a month-end close for Fjord Fitness on Friday. I’ll run them and only surface what needs you. Nothing overdue.' };
     if (/wait|client|receipt|chas|owe|venter|kunde|bilag/.test(s))
@@ -184,7 +191,7 @@ export default function HomeView({ onOpenCockpit, decisions, values, onResolveDe
         evaSay(a.text, { openCockpit: a.openCockpit });
     }
 
-    const exploreChips = [t('How’s the week ahead?'), t('Who’s waiting on clients?'), t('Open the Cockpit')];
+    const exploreChips = [t('Which clients are ready for an advisory call?'), t('Who on my team is over capacity?'), t('Who’s waiting on clients?'), t('Open the Cockpit')];
 
     return (
         <div className="h-full flex flex-col">

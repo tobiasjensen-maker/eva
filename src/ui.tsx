@@ -699,6 +699,26 @@ export function TasksIcon({ active }: { active: boolean }) {
     );
 }
 
+// Inbox — a tray: every client conversation in one place.
+export function InboxIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <path d="M4 13.5l2.2-7.1A2 2 0 0 1 8.1 5h7.8a2 2 0 0 1 1.9 1.4L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18v-4.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="M4 13.5h4.2l1.3 2h5l1.3-2H20" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
+// Practice — the office as a business (a briefcase).
+export function PracticeIcon({ active }: { active: boolean }) {
+    return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={railIconStyle(active)}>
+            <rect x="3.5" y="7.5" width="17" height="12" rx="2" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 // "My day" — a sunrise: EVA greeting you at the start of the day.
 export function HomeIcon({ active }: { active: boolean }) {
     return (

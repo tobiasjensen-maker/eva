@@ -10,6 +10,8 @@ import {
     RoutinesIcon,
     TasksIcon,
     HomeIcon,
+    InboxIcon,
+    PracticeIcon,
     SpacesIcon,
     CustomersIcon,
     SidebarTooltip,
@@ -26,6 +28,10 @@ import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView } from './
 import SkillsView from './views/SkillsView';
 import TaskManagementView, { tasksAnswer } from './views/TaskManagementView';
 import HomeView from './views/HomeView';
+import ClientsView from './views/ClientsView';
+import InboxView from './views/InboxView';
+import PracticeView from './views/PracticeView';
+import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, rateOf, TARGET_RATE } from './practice';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
@@ -53,6 +59,10 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     // Chat is reached via the expand icon in the EVA side panel, not the rail.
     // Home is "My day" — EVA's conversational morning briefing (the landing surface).
     { id: 'home', label: 'Home', Icon: HomeIcon },
+    // Every client conversation in one place.
+    { id: 'inbox', label: 'Inbox', Icon: InboxIcon },
+    // The whole portfolio — one list, one sign-in, a profile per client.
+    { id: 'clients', label: 'Clients', Icon: CustomersIcon },
     // Cockpit is the structured control centre ("My work" / "Whole practice").
     { id: 'activity', label: 'Cockpit', Icon: TasksIcon },
     { id: 'insights', label: 'Advisory', Icon: InsightsIcon },
@@ -60,14 +70,16 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
     { id: 'spaces', label: 'Views', Icon: SpacesIcon },
+    // The office as a business — capacity, profitability, growth, playbooks.
+    { id: 'practice', label: 'Practice', Icon: PracticeIcon },
 ];
 
-const VIEW_IDS: ViewId[] = ['home', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
+const VIEW_IDS: ViewId[] = ['home', 'inbox', 'clients', 'practice', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { home: 'home', chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { home: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', chat: 'chat', activity: 'review', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
+const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -99,6 +111,10 @@ export default function App() {
     const resolveDecision = (id: string, taken: 'confirm' | 'alt') => setDayDecisions((d) => d.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
     const resolveValue = (id: string) => setDayValues((v) => v.map((x) => (x.id === id ? { ...x, done: true } : x)));
     const openDecisions = dayDecisions.filter((d) => !d.done).length;
+    // Client conversations — shared so the rail badge and client profiles stay in sync.
+    const [threads, setThreads] = useState(THREADS);
+    const [inboxFocus, setInboxFocus] = useState<string | null>(null);
+    const needsReply = threads.filter((x) => x.status === 'needs').length;
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -217,6 +233,25 @@ export default function App() {
             ? 'Hver handling automatiserer én opgave — afstemning, rykkere, bilagsindsamling, overvågning og mere. Åbn en handling for at sætte dens udløser, autonomi og værn. Hvad vil du automatisere?'
             : 'Each skill automates one job — reconciliation, reminders, document collection, monitoring and more. Open a skill to set its trigger, autonomy and guardrails. What do you want to automate?';
     }
+    // Firm-level questions — capacity, profitability, who needs you — for Clients / Inbox / Practice.
+    function firmAnswer(q: string): string {
+        const s = q.toLowerCase();
+        const da = lang === 'da';
+        if (/capacity|over|busy|utili|kapacitet|travl|team/.test(s)) {
+            const over = TEAM.filter((m) => m.booked > m.capacity).map((m) => m.name.split(' ')[0]);
+            const room = TEAM.filter((m) => m.booked / m.capacity < 0.65).map((m) => m.name.split(' ')[0]);
+            return da ? `${over.join(', ')} er over kapacitet; ${room.join(', ')} har plads. Jeg foreslår at flytte 3 af Mettes kunder til Jonas (31 t/md).` : `${over.join(', ')} is over capacity; ${room.join(', ')} has room. I’d move 3 of Mette’s clients to Jonas (31 h/mo) — it’s ready to apply under Practice → Capacity.`;
+        }
+        if (/profit|rate|price|pris|lønsom|margin/.test(s)) {
+            const low = FIRM_CLIENT_LIST.filter((c) => rateOf(c) < TARGET_RATE).sort((a, b) => rateOf(a) - rateOf(b)).slice(0, 3).map((c) => `${c.name} (${rateOf(c)} kr/h)`);
+            return da ? `Mindst lønsomme: ${low.join(', ')}. Faste pakker og to rutiner mere ville give ca. 11.000 kr/md.` : `Least profitable right now: ${low.join(', ')}. Fixed-fee packages plus two more routines would add about 11.000 kr a month.`;
+        }
+        if (/advis|ready|sell|opportun|grow|vækst|salg/.test(s))
+            return da ? 'Fire kunder vokser 10%+ uden rådgivning — Grøn Energi, Cloud Hosting, Fjord Fitness og Nordic Build. Det er ca. 32.000 kr/md i en kvartalspakke.' : 'Four clients are growing 10%+ with no advisory yet — Grøn Energi, Cloud Hosting, Fjord Fitness and Nordic Build. That’s about 32.000 kr/mo as a quarterly package; the proposals are one click under Practice → Growth.';
+        if (/wait|reply|inbox|message|svar|besked|venter/.test(s))
+            return da ? `${needsReply} samtaler venter på dig; jeg har foreslået næste skridt i hver. To venter på kunden — jeg rykker automatisk.` : `${needsReply} conversations need you — I’ve proposed the next step in each. Two are waiting on the client; I’ll follow up automatically.`;
+        return da ? 'Spørg mig om kapacitet, lønsomhed pr. kunde, hvem der er klar til rådgivning, eller hvad der venter i indbakken.' : 'Ask me about team capacity, profitability per client, who’s ready for an advisory conversation, or what’s waiting in the inbox.';
+    }
     function spacesAnswer(q: string): string {
         const s = q.toLowerCase().replace(/[?.!]/g, '').trim();
         const da = lang === 'da';
@@ -240,7 +275,28 @@ export default function App() {
     // The contextual EVA chat panel (third shell block) — present on every content page.
     const subjectLabel = scope === 'portfolio' ? (lang === 'da' ? 'din portefølje' : 'your portfolio') : scopeName;
     const chatPanel =
-        view === 'activity'
+        view === 'clients'
+            ? {
+                  subtitle: 'portfolio assistant',
+                  intro: "I'm EVA. Ask me which clients need you, who's ready for an advisory conversation, or how a client compares with its peers.",
+                  chips: ['Which clients are ready for an advisory call?', 'Who are my least profitable clients?', 'Which clients have cash-flow issues?'],
+                  respond: firmAnswer,
+              }
+        : view === 'inbox'
+            ? {
+                  subtitle: 'inbox assistant',
+                  intro: "I'm EVA. I ask clients for missing details, follow up when they go quiet, and draft the next step when they reply. What do you need?",
+                  chips: ['What’s waiting on me?', 'Summarise today’s client replies', 'Who hasn’t answered yet?'],
+                  respond: firmAnswer,
+              }
+        : view === 'practice'
+            ? {
+                  subtitle: 'practice assistant',
+                  intro: "I'm EVA. Ask me about your team's capacity, which clients are profitable, and where the practice can grow.",
+                  chips: ['Who on my team is over capacity?', 'Which clients should we reprice?', 'What could we sell next?'],
+                  respond: firmAnswer,
+              }
+        : view === 'activity'
             ? {
                   subtitle: 'practice assistant',
                   intro: "I'm EVA. Ask me what I've taken over, what's waiting on your approval, who's overloaded, or what's due this week.",
@@ -412,11 +468,17 @@ export default function App() {
                             >
                                 <span className="relative flex items-center shrink-0">
                                     <RIcon active={active} />
+                                    {collapsed && id === 'inbox' && needsReply > 0 && (
+                                        <span className="absolute rounded-full" style={{ top: -4, right: -5, width: 8, height: 8, background: '#4c6ef5', border: `2px solid ${SIDEBAR_BG}` }} />
+                                    )}
                                     {collapsed && id === 'activity' && openDecisions > 0 && (
                                         <span className="absolute rounded-full" style={{ top: -4, right: -5, width: 8, height: 8, background: '#ed9b2c', border: `2px solid ${SIDEBAR_BG}` }} />
                                     )}
                                 </span>
                                 {!collapsed && <span className="flex-1">{label}</span>}
+                                {!collapsed && id === 'inbox' && needsReply > 0 && (
+                                    <span className="rounded-full text-xs font-semibold" style={{ background: '#4c6ef5', color: '#fff', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{needsReply}</span>
+                                )}
                                 {!collapsed && id === 'activity' && openDecisions > 0 && (
                                     <span className="rounded-full text-xs font-semibold" style={{ background: '#ed9b2c', color: '#1f1d2e', padding: '1px 7px', minWidth: 18, textAlign: 'center' }}>{openDecisions}</span>
                                 )}
@@ -613,6 +675,19 @@ export default function App() {
                         onClose={() => goView(chatReturn)}
                     />
                 )}
+                {view === 'inbox' && <InboxView threads={threads} setThreads={setThreads} focusClient={inboxFocus} />}
+                {view === 'clients' && (
+                    <ClientsView
+                        onMessage={(client) => { setInboxFocus(client); goView('inbox'); }}
+                        onOpenBooks={(name) => {
+                            // Clients that are also agreements open in their own scope; the rest in a new tab.
+                            const a = AGREEMENTS.find((x) => x.name === name);
+                            if (a) { applyScope(a.id); goView('insights'); }
+                            else toast.information(lang === 'da' ? `Åbner ${name}s regnskab i en ny fane` : `Opening ${name}’s books in a new tab`);
+                        }}
+                    />
+                )}
+                {view === 'practice' && <PracticeView />}
                 {view === 'home' && <HomeView onOpenCockpit={() => goView('activity')} decisions={dayDecisions} values={dayValues} onResolveDecision={resolveDecision} onResolveValue={resolveValue} />}
                 {view === 'insights' && <InsightsView scope={scope} scopeName={scopeName} live={!!liveAgreement && scope === liveAgreement.id} pro={insightsPro} onUpgrade={upgradeInsights} activity={activity} setActivity={setActivity} onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                 {view === 'activity' && <TaskManagementView />}
