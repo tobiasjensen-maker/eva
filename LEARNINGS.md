@@ -171,4 +171,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - **Benchmarks** now state their source (public, aggregated statistics — no identifiable customer).
 - Also: Inbox thread list is resizable; the composer grows with the message; Tasks list is always
   grouped by status; Activity log is always grouped by day.
-
+- Modals (review, cash forecast, budget, month-end): fixed header and footer, one vertical scroller in
+  between (`flex-1 min-h-0 space-y-*`, no horizontal overflow). Lists inside set `marginBottom: 0` —
+  a global `ul` margin otherwise adds 40px of empty space.

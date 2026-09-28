@@ -42,7 +42,7 @@ export function DecisionReview({ d, t, onClose, onResolve }: { d: DecisionItem; 
                     <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
                 </div>
 
-                <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto flex-1 min-h-0">
+                <div className="px-5 py-4 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
                     <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: '#fbf3e0', border: '1px solid #efdcb0' }}>
                         <span className="shrink-0" style={{ color: '#b9842b' }}><Icon name="circle-warning" /></span>
                         <div className="min-w-0">

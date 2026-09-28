@@ -83,7 +83,7 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 920, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <ClientAvatar name={company} size={32} />
                     <div className="min-w-0 flex-1">
                         <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Budget 2027')}</p>
@@ -93,7 +93,7 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
                     <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
                 </div>
 
-                <div className="px-5 py-4 overflow-y-auto flex flex-col gap-4">
+                <div className="px-5 py-4 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 min-h-0 space-y-4">
                     {view === 'ao' ? (<>
                         {/* the owner's goals — asked for directly, not guessed */}
                         <div className="rounded-xl p-3.5" style={{ background: '#fff7ed', border: '1px solid #efddc0' }}>
@@ -101,10 +101,10 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
                                 <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t('What {name} wants from 2027').replace('{name}', name)}</p>
                                 {onMessage && <button onClick={onMessage} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Ask {name} to confirm →').replace('{name}', name)}</button>}
                             </div>
-                            <ul className="mt-1.5 flex flex-col gap-0.5">{b.goals.map((g) => <li key={g} className="text-sm" style={{ color: COLORS.text }}>• {t(g)}</li>)}</ul>
+                            <ul style={{ marginBottom: 0 }} className="mt-1.5 flex flex-col gap-0.5">{b.goals.map((g) => <li key={g} className="text-sm" style={{ color: COLORS.text }}>• {t(g)}</li>)}</ul>
                         </div>
 
-                        <div className="grid gap-4" style={{ gridTemplateColumns: '240px 1fr' }}>
+                        <div className="grid gap-4" style={{ gridTemplateColumns: '240px minmax(0, 1fr)' }}>
                             {/* assumptions */}
                             <div className="flex flex-col gap-2.5">
                                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Assumptions')}</p>
@@ -197,7 +197,7 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
                             </div>
                             <div>
                                 <p className="text-sm font-semibold mb-1.5" style={{ color: COLORS.text }}>{t('What the plan is built on')}</p>
-                                <ul className="flex flex-col gap-1 text-sm" style={{ color: COLORS.text }}>
+                                <ul className="flex flex-col gap-1 text-sm" style={{ marginBottom: 0, color: COLORS.text }}>
                                     <li>• {t('Sales grow {g}% on this year').replace('{g}', String(growth))}{site ? `, ${t('plus the second location from July')}` : ''}.</li>
                                     <li>• {t('You keep {m} kr of every 100 kr in sales after the cost of goods.').replace('{m}', String(margin))}</li>
                                     <li>• {hires ? t('{n} new hire(s) during the year.').replace('{n}', String(hires)) : t('No new hires planned.')}</li>
@@ -207,7 +207,7 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
                     )}
                 </div>
 
-                <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex items-center justify-between gap-2 px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     <span className="text-xs" style={{ color: shared ? '#15803d' : COLORS.textMuted }}>{shared ? `✓ ${t('Shared with {name} — read-only. You’ll see when they’ve opened it.').replace('{name}', name)}` : t('Nothing is shared until you choose to.')}</span>
                     <div className="flex gap-2">
                         <Button onClick={exportIt}><Icon name="download" /> {t('Export to Excel')}</Button>

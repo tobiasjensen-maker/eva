@@ -88,14 +88,14 @@ function MonthEndReport({ onClose, flags }: { onClose: () => void; flags: number
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 760, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex items-start gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <div className="min-w-0 flex-1">
                         <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Month-end report · September 2026')}</p>
                         <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Your {n} clients · draft — final on 1 October').replace('{n}', String(rows.length))}</p>
                     </div>
                     <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
                 </div>
-                <div className="px-5 py-4 overflow-y-auto flex flex-col gap-3">
+                <div className="px-5 py-4 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 min-h-0 space-y-3">
                     <div className="rounded-lg p-3 text-sm flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26', color: COLORS.text }}>
                         <Orb size={16} />
                         <span>{t('{c} of {n} clients are closed. The rest are waiting on {m} documents from clients — EVA keeps chasing them.').replace('{c}', String(rows.filter((r) => r.status === 'closed').length)).replace('{n}', String(rows.length)).replace('{m}', String(rows.reduce((a, r) => a + r.missing, 0)))} {flags ? t('{f} controlling flag(s) still need your review.').replace('{f}', String(flags)) : t('Controlling found nothing else.')}</span>
@@ -115,7 +115,7 @@ function MonthEndReport({ onClose, flags }: { onClose: () => void; flags: number
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center justify-end gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex items-center justify-end gap-2 px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     <Button onClick={exportIt}><Icon name="download" /> {t('Export to Excel')}</Button>
                     <Button appearance="primary" onClick={onClose}>{t('Done')}</Button>
                 </div>

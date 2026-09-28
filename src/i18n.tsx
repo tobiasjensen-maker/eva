@@ -1791,4 +1791,7 @@ const DA: Record<string, string> = {
     'Grow steadily without adding fixed costs': 'Vokse stabilt uden flere faste omkostninger',
     'Keep the business debt-free': 'Holde virksomheden gældfri',
     'Line': 'Linje',
+    'Add your own': 'Tilføj dit eget',
+    'What — e.g. new oven': 'Hvad — fx ny ovn',
+    'Amount, e.g. −25000': 'Beløb, fx −25000',
 };

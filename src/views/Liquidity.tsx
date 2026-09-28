@@ -82,7 +82,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
     const base = useMemo(() => modelFor(company), [company]);
     const [on, setOn] = useState<Set<string>>(new Set());
     const [custom, setCustom] = useState<Flow[]>([]);
-    const [form, setForm] = useState({ label: '', week: '6', amount: '' });
+    const [form, setForm] = useState({ label: '', week: '46', amount: '' });
     const [how, setHow] = useState(false);
 
     const applied = useMemo(() => {
@@ -99,7 +99,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
     const firstNeg = series.findIndex((v) => v < 0);
 
     // chart geometry
-    const W = 760, H = 200, pad = 28;
+    const W = 760, H = 140, pad = 16; // wide and low, so it fills the modal without scrolling
     const all = [...series, ...baseSeries, 0];
     const max = Math.max(...all), min = Math.min(...all);
     const y = (v: number) => pad + ((max - v) / (max - min || 1)) * (H - pad * 2);
@@ -117,7 +117,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 880, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex items-start gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <ClientAvatar name={company} size={32} />
                     <div className="min-w-0 flex-1">
                         <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Cash forecast · next 13 weeks')}</p>
@@ -126,7 +126,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
                     <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
                 </div>
 
-                <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto">
+                <div className="px-5 py-4 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 min-h-0">
                     {/* the answer first */}
                     <div className="grid grid-cols-3 gap-2">
                         {[
@@ -149,7 +149,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
 
                     {/* weekly closing balance */}
                     <div className="rounded-xl p-3" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                        <svg viewBox={`0 0 ${W} ${H + 18}`} className="w-full" role="img" aria-label={t('Weekly closing balance')}>
+                        <svg viewBox={`0 0 ${W} ${H + 18}`} className="block w-full h-auto" role="img" aria-label={t('Weekly closing balance')}>
                             <line x1={30} x2={W} y1={y(0)} y2={y(0)} stroke="#a8a8b0" strokeWidth={1} />
                             <text x={0} y={y(0) + 4} fontSize={10} fill="#8a8a94">0</text>
                             {series.map((v, i) => {
@@ -173,7 +173,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
                         </div>
                     </div>
 
-                    <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                    <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
                         {/* what moves the cash */}
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('What moves the cash')}</p>
@@ -212,11 +212,16 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
                                         <button onClick={() => setCustom((x) => x.filter((y) => y.id !== c.id))} style={{ color: COLORS.textMuted }}>✕</button>
                                     </div>
                                 ))}
-                                <form onSubmit={(e) => { e.preventDefault(); addCustom(); }} className="flex items-center gap-1.5 mt-1">
-                                    <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder={t('Add your own — e.g. new oven')} className="flex-1 min-w-0 rounded-lg px-2.5 py-1.5 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
-                                    <input value={form.week} onChange={(e) => setForm({ ...form, week: e.target.value })} title={t('Week')} className="rounded-lg px-2 py-1.5 text-sm" style={{ width: 52, border: `1px solid ${COLORS.cardBorder}` }} />
-                                    <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="−25000" className="rounded-lg px-2 py-1.5 text-sm" style={{ width: 84, border: `1px solid ${COLORS.cardBorder}` }} />
-                                    <Button type="submit">{t('Add')}</Button>
+                                <form onSubmit={(e) => { e.preventDefault(); addCustom(); }} className="flex flex-col gap-1.5 mt-1 rounded-lg p-2.5" style={{ border: `1px dashed ${COLORS.cardBorder}` }}>
+                                    <p className="text-xs font-medium" style={{ color: COLORS.textMuted }}>{t('Add your own')}</p>
+                                    <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder={t('What — e.g. new oven')} className="w-full min-w-0 rounded-lg px-2.5 py-1.5 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <label className="flex items-center gap-1 text-xs shrink-0" style={{ color: COLORS.textMuted }}>{t('Week')}
+                                            <input value={form.week} onChange={(e) => setForm({ ...form, week: e.target.value })} inputMode="numeric" className="rounded-lg px-2 py-1.5 text-sm bg-white" style={{ width: 48, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                                        </label>
+                                        <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={t('Amount, e.g. −25000')} inputMode="numeric" className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}` }} />
+                                        <Button type="submit">{t('Add')}</Button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
@@ -227,7 +232,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
                             <Icon name="info" /> <span className="flex-1">{t('How EVA calculated this')}</span> <Icon name={how ? 'chevron-up' : 'chevron-down'} />
                         </button>
                         {how && (
-                            <ul className="px-4 pb-3 flex flex-col gap-1 text-sm" style={{ color: COLORS.text }}>
+                            <ul className="px-4 pb-3 flex flex-col gap-1 text-sm" style={{ marginBottom: 0, color: COLORS.text }}>
                                 {['Calculated by rules from the ledger — EVA explains the numbers, it doesn’t invent them.',
                                     'Sales and running costs: the last 12 months of booked transactions, adjusted for seasonality.',
                                     'Customer invoices: only issued, unpaid invoices — timed by each customer’s payment history.',
@@ -239,7 +244,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex items-center justify-between gap-2 px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Scenarios are only a what-if — nothing is booked or sent.')}</span>
                     <div className="flex gap-2">
                         <Button onClick={onClose}>{t('Close')}</Button>
