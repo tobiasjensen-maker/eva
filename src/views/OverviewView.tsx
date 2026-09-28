@@ -51,12 +51,13 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
     return da ? 'Spørg mig om din dag, en af dine kunder, eller hvem der er klar til rådgivning.' : 'Ask me about your day, one of your clients, or who’s ready for an advisory conversation.';
 }
 
-export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
+export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     onAddDecision: (d: DecisionItem) => void;
     decisions: DecisionItem[];
     threads: Thread[]; // client conversations — the ones waiting on you join the review queue
+    onOpenThread: (th: Thread) => void; // review a drafted reply (a modal)
     onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
     onAsk: (q: string) => void;
     onGo: (v: ViewId) => void;
@@ -99,7 +100,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 {/* the day at a glance */}
                 <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
                     <TasksWidget t={t} tasks={tasks} setTasks={setTasks} onAddDecision={onAddDecision} onGo={onGo} />
-                    <NeedsYouWidget t={t} decisions={decisions} threads={threads} onOpenThread={(th) => onMessage(th.client)} onResolve={onResolveDecision} onGo={onGo} />
+                    <NeedsYouWidget t={t} decisions={decisions} threads={threads} onOpenThread={onOpenThread} onResolve={onResolveDecision} onGo={onGo} />
                     <BooksWidget t={t} onGo={onGo} />
                 </div>
 

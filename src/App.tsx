@@ -38,11 +38,11 @@ import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsCh
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
-import { DecisionReview } from './views/Decisions';
+import { DecisionReview, ReplyReview } from './views/Decisions';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
 import PracticeView from './views/PracticeView';
-import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, rateOf, TARGET_RATE } from './practice';
+import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, rateOf, TARGET_RATE, type Thread } from './practice';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk, type Turn } from './ChatPanel';
@@ -172,8 +172,21 @@ export default function App() {
     // Clicking a task (or an EVA draft) in the activity log opens the same modal as on the Tasks tab.
     const [logTask, setLogTask] = useState<string | null>(null);
     const [logDecision, setLogDecision] = useState<string | null>(null);
+    // A client reply from the review queue opens in a modal (not the Inbox) and is sent from there.
+    const [replyOpen, setReplyOpen] = useState<string | null>(null);
+    const openReply = (th: Thread) => setReplyOpen(th.id);
+    function sendReply(id: string, text: string, withAction: boolean) {
+        setThreads((all) => all.map((x) => x.id !== id ? x : {
+            ...x,
+            status: withAction ? 'done' : 'waiting',
+            suggestion: withAction ? undefined : x.suggestion,
+            messages: [...x.messages, { from: 'firm', who: 'Tobias Holm Jensen', at: 'Now', text },
+                ...(withAction && x.suggestion ? [{ from: 'eva' as const, who: 'EVA', at: 'Now', text: t(x.suggestion.result) }] : [])],
+        }));
+        setReplyOpen(null);
+    }
     const openFromLog = (e: LogEntry) => {
-        if (e.threadId) { const th = threads.find((x) => x.id === e.threadId); if (th) { setInboxFocus(th.client); goView('inbox'); return true; } }
+        if (e.threadId) { const th = threads.find((x) => x.id === e.threadId && x.status === 'needs'); if (th) { openReply(th); return true; } }
         const openDecision = (id?: string) => { const d = id ? dayDecisions.find((x) => x.id === id && !x.done) : undefined; if (d) setLogDecision(d.id); return !!d; };
         if (openDecision(e.decisionId)) return true;
         if (e.taskId) {
@@ -804,6 +817,7 @@ export default function App() {
                         onAddDecision={addDecision}
                         decisions={dayDecisions}
                         threads={threads}
+                        onOpenThread={openReply}
                         onResolveDecision={resolveDecision}
                         onGo={goView}
                         // The question box hands off to the EVA panel, answer included.
@@ -832,7 +846,7 @@ export default function App() {
                         onAddDecision={addDecision}
                         activity={activityAll}
                         threads={threads}
-                        onOpenThread={(th) => { setInboxFocus(th.client); goView('inbox'); }}
+                        onOpenThread={openReply}
                         onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
                         activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activityAll} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                         routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
@@ -849,6 +863,7 @@ export default function App() {
                             onDone={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'done' } : x))); close(); }}
                             onReopen={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'todo' } : x))); close(); }} />}
                         {d && <DecisionReview d={d} t={t} onClose={close} onResolve={(taken, info) => { resolveDecision(d.id, taken, info); close(); }} />}
+                        {(() => { const th = replyOpen ? threads.find((x) => x.id === replyOpen) : undefined; return th ? <ReplyReview th={th} t={t} onClose={() => setReplyOpen(null)} onSend={(text, withAction) => sendReply(th.id, text, withAction)} /> : null; })()}
                     </>;
                 })()}
                 {view === 'connectors' && <SkillsView page="connectors" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}

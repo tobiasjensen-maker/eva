@@ -6,7 +6,7 @@ import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
 import { MonthEndCard } from './MonthEnd';
 import { clientName, type LogEntry } from './ActivityView';
-import type { Thread } from '../practice';
+import { MY_PORTFOLIO, TEAM, type Thread } from '../practice';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread, type Priority } from '../priority';
 import { PrioLine } from './Decisions';
 
@@ -183,6 +183,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
     const [review, setReview] = useState<DecisionItem | null>(null);
+    const [creating, setCreating] = useState(false);
     // Board order you set by dragging, per column; and tasks you just dragged to EVA.
     const [order, setOrder] = useState<Partial<Record<Col, string[]>>>({});
     const [handing, setHanding] = useState<Set<string>>(new Set());
@@ -308,7 +309,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     title={t('Work')}
                     showScope={false}
                     badge={<SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
-                    right={tab === 'tasks' ? <Button appearance="primary"><Icon name="circle-plus" /> {t('New task')}</Button>
+                    right={tab === 'tasks' ? <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>
                         : tab === 'routines' ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
             )}
@@ -415,6 +416,12 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </>)}
             </div>
 
+            {creating && <NewTaskModal onClose={() => setCreating(false)} onCreate={(task, eva) => {
+                setCreating(false);
+                setTasks((prev) => [task, ...prev]);
+                // EVA now: it starts drafting straight away and hands it back for your review.
+                if (eva === 'now') { setHanding((prev) => new Set(prev).add(task.id)); handTaskToEva(task, setTasks, onAddDecision); }
+            }} />}
             {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
             {trace && <TaskModal task={trace} onClose={() => setTrace(null)} onHandToEva={() => { handToEva(trace.id); setTrace(null); }} onDone={() => { setStatus(trace.id, 'done'); setTrace(null); }} />}
         </div>
@@ -521,6 +528,116 @@ function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: Work
             <div className="flex items-center gap-1.5 shrink-0">{tagsOf(it).map((s) => <WorkTag key={s} s={s} />)}</div>
         </div>
         </>
+    );
+}
+
+// ---- New task — say what needs doing, then choose who does it: EVA or a person ----------------
+const TASK_TYPES = ['VAT reconciliation', 'Bank reconciliation', 'Payroll run', 'Debtor follow-up', 'Missing receipts', 'Month-end close', 'Annual report draft', 'Supplier invoice approval'];
+const DUE: { key: Bucket; label: string }[] = [{ key: 'today', label: 'Today' }, { key: 'week', label: 'This week' }, { key: 'later', label: 'Later' }];
+let newId = 1;
+const MY_CLIENT_NAMES = MY_PORTFOLIO.map((c) => c.name);
+const TEAM_NAMES = TEAM.map((m) => m.name);
+
+function NewTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (task: Task, eva: 'now' | 'scheduled' | null) => void }) {
+    const { t } = useLang();
+    const [title, setTitle] = useState('');
+    const [company, setCompany] = useState(MY_CLIENT_NAMES[0]);
+    const [due, setDue] = useState<Bucket>('week');
+    const [priority, setPriority] = useState<TPriority>('medium');
+    const [who, setWho] = useState<'eva' | 'person'>('eva');
+    const [when, setWhen] = useState<'now' | 'tonight' | 'tomorrow'>('now');
+    const [person, setPerson] = useState(ME);
+    const steps = evaStepsFor(title || 'task');
+    const whenLabel = { now: 'Now', tonight: 'Tonight at 22:00', tomorrow: 'Tomorrow at 06:00' }[when];
+    const create = () => {
+        if (!title.trim()) return;
+        const dueLabel = due === 'today' ? 'Today' : due === 'week' ? 'This week' : 'Later';
+        const base = { id: `new-${newId++}`, title: title.trim(), company, dueLabel, bucket: due, priority };
+        if (who === 'person') onCreate({ ...base, accountant: person, status: 'todo' }, null);
+        else if (when === 'now') onCreate({ ...base, accountant: ME, status: 'todo' }, 'now');
+        else onCreate({ ...base, accountant: ME, status: 'eva-scheduled', evaWhen: whenLabel }, 'scheduled');
+    };
+    const card = (on: boolean) => ({ border: `1.5px solid ${on ? '#7c3aed' : COLORS.cardBorder}`, background: on ? '#f7f4fd' : '#fff' });
+    const inputStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text };
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 560, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <p className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('New task')}</p>
+                    <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); create(); }} className="px-5 py-4 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
+                    <div>
+                        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('What needs doing?')}</label>
+                        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('e.g. VAT reconciliation for Q3')} className="w-full mt-1.5 rounded-lg px-3 py-2 text-sm bg-white" style={inputStyle} />
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                            {TASK_TYPES.map((x) => (
+                                <button type="button" key={x} onClick={() => setTitle(x)} className="rounded-full px-2.5 py-1 text-xs" style={{ border: `1px solid ${title === x ? '#7c3aed' : COLORS.cardBorder}`, color: title === x ? '#6d28d9' : COLORS.textMuted, background: title === x ? '#f3f0fb' : '#fff' }}>{t(x)}</button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr)' }}>
+                        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Client')}
+                            <select value={company} onChange={(e) => setCompany(e.target.value)} className="w-full mt-1.5 rounded-lg px-2.5 py-2 text-sm bg-white normal-case font-normal tracking-normal" style={inputStyle}>
+                                {MY_CLIENT_NAMES.map((c) => <option key={c}>{c}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Due')}
+                            <select value={due} onChange={(e) => setDue(e.target.value as Bucket)} className="w-full mt-1.5 rounded-lg px-2.5 py-2 text-sm bg-white normal-case font-normal tracking-normal" style={inputStyle}>
+                                {DUE.map((d) => <option key={d.key} value={d.key}>{t(d.label)}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Priority')}
+                            <select value={priority} onChange={(e) => setPriority(e.target.value as TPriority)} className="w-full mt-1.5 rounded-lg px-2.5 py-2 text-sm bg-white normal-case font-normal tracking-normal" style={inputStyle}>
+                                {(['high', 'medium', 'low'] as TPriority[]).map((p) => <option key={p} value={p}>{t(TPRIO[p].label)}</option>)}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: COLORS.textMuted }}>{t('Who should do it?')}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => setWho('eva')} className="rounded-xl p-3 text-left flex items-start gap-2.5" style={card(who === 'eva')}>
+                                <span className="shrink-0 mt-0.5"><Orb size={20} /></span>
+                                <span><span className="block text-sm font-semibold" style={{ color: COLORS.text }}>{t('EVA does it')}</span><span className="block text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('EVA drafts it and hands it back for your review.')}</span></span>
+                            </button>
+                            <button type="button" onClick={() => setWho('person')} className="rounded-xl p-3 text-left flex items-start gap-2.5" style={card(who === 'person')}>
+                                <span className="shrink-0 mt-0.5 flex items-center justify-center rounded-full" style={{ width: 20, height: 20, background: '#f1f1f3', color: '#52525b' }}><Icon name="contacts" /></span>
+                                <span><span className="block text-sm font-semibold" style={{ color: COLORS.text }}>{t('A person does it')}</span><span className="block text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('You or someone on the team — EVA can still help later.')}</span></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {who === 'eva' ? (
+                        <div className="rounded-lg p-3.5 space-y-3" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-medium" style={{ color: COLORS.textMuted }}>{t('When')}</span>
+                                <SegmentedTabs value={when} onChange={(v) => setWhen(v as typeof when)} options={[{ value: 'now', label: t('Now') }, { value: 'tonight', label: t('Tonight at 22:00') }, { value: 'tomorrow', label: t('Tomorrow at 06:00') }]} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#6d28d9' }}>{t('How EVA usually does it')}</p>
+                                <ol className="flex flex-col gap-1" style={{ marginBottom: 0 }}>
+                                    {steps.map((st, i) => <li key={i} className="flex items-start gap-2 text-sm" style={{ color: COLORS.text }}><span className="text-xs font-semibold mt-0.5" style={{ color: '#6d28d9', width: 12 }}>{i + 1}</span>{t(st)}</li>)}
+                                </ol>
+                            </div>
+                            <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Nothing is filed or sent without your approval.')}</p>
+                        </div>
+                    ) : (
+                        <label className="block text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Assign to')}
+                            <select value={person} onChange={(e) => setPerson(e.target.value)} className="w-full mt-1.5 rounded-lg px-2.5 py-2 text-sm bg-white normal-case font-normal tracking-normal" style={inputStyle}>
+                                {TEAM_NAMES.map((n) => <option key={n} value={n}>{n === ME ? `${n} (${t('you')})` : n}</option>)}
+                            </select>
+                        </label>
+                    )}
+                </form>
+                <div className="flex items-center justify-end gap-2 px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                    <Button onClick={onClose}>{t('Cancel')}</Button>
+                    <Button appearance="primary" disabled={!title.trim()} onClick={create}>
+                        {who === 'person' ? t(person === ME ? 'Add to my tasks' : 'Assign task') : when === 'now' ? t('Hand to EVA') : t('Schedule for EVA')}
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }
 

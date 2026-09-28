@@ -180,7 +180,8 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - **One review queue.** Client conversations waiting on you (with EVA's drafted reply) are part of
   the same queue as EVA's drafts: Work → In progress (kind `reply`), the overview's "Ready for your
   review" and the Activity log (derived from `threads` in `App`, so they clear the moment you send).
-  Reviewing one opens the thread in the Inbox; sending is logged ("You replied to …"). Work's badge
+  Reviewing one opens a reply modal (`ReplyReview`: EVA suggests, the conversation, editable reply,
+  the action toggle) — sent from there, no jump to the Inbox; sending is logged ("You replied to …"). Work's badge
   = drafts + replies.
 - **EVA prioritises the queue** (`src/priority.ts`): each item gets High/Medium/Low and a one-line
   reason (deadlines and money first). The overview list and Work's In progress are sorted by it
@@ -197,4 +198,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   current conversation first. The full-window chat keeps its own History / New chat buttons.
 - Review modal: one purple "EVA suggests" box at the top (EVA's recommendation + why you're asked),
   replacing the separate "Needs your review" and "EVA's call" boxes.
+- **New task** opens a creation modal: what (with quick picks), client, due, priority, and *who does
+  it* — EVA (now → drafting, then In progress for review; or scheduled tonight/tomorrow → Routines'
+  Scheduled for EVA) or a person (you → To do, or someone on the team).
 

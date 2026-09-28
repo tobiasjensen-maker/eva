@@ -46,6 +46,81 @@ export function ReplyRow({ th, t, onReview, last, prio }: { th: Thread; t: (s: s
     );
 }
 
+// Review a client reply EVA drafted — the conversation, EVA's suggestion, the editable reply —
+// and send it from here. Same review treatment as a decision.
+export function ReplyReview({ th, t, onClose, onSend }: { th: Thread; t: (s: string) => string; onClose: () => void; onSend: (text: string, withAction: boolean) => void }) {
+    const [text, setText] = useState(() => (th.suggestion ? t(th.suggestion.reply) : ''));
+    const [withAction, setWithAction] = useState(true);
+    const first = th.contact.split(' ')[0];
+    const recent = th.messages.slice(-3);
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 580, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    <ClientAvatar name={th.client} size={32} />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t(th.subject)}</p>
+                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{th.client} · {th.contact}</p>
+                    </div>
+                    <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
+                </div>
+
+                <div className="px-5 py-4 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
+                    {th.suggestion && (
+                        <div className="rounded-lg p-3.5 flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
+                            <span className="shrink-0 mt-0.5"><Orb size={18} /></span>
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}>{t('EVA suggests')}</p>
+                                <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(th.suggestion.action)}{t(', and reply to {name}').replace('{name}', first)}.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {th.txn && (
+                        <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                            <Icon name="wallet" style={{ color: COLORS.textMuted }} />
+                            <span className="flex-1 min-w-0" style={{ color: COLORS.text }}>{th.txn.label}<span className="block text-xs" style={{ color: COLORS.textMuted }}>{th.txn.account} · {th.txn.date}</span></span>
+                            <span className="font-semibold" style={{ color: COLORS.text }}>{th.txn.amount}</span>
+                        </div>
+                    )}
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('The conversation')}</p>
+                        <div className="flex flex-col gap-2">
+                            {recent.map((m, i) => (
+                                <div key={i} className={`rounded-xl px-3 py-2 text-sm ${m.from === 'client' ? 'self-start' : 'self-end'}`} style={{ maxWidth: '88%', background: m.from === 'client' ? '#f4f4f6' : m.from === 'eva' ? '#f7f4fd' : '#eef2ff', color: COLORS.text }}>
+                                    <p className="text-[11px] mb-0.5" style={{ color: COLORS.textMuted }}>{m.who} · {t(m.at)}</p>
+                                    {t(m.text)}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Your reply to {name}').replace('{name}', first)}</p>
+                        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed resize-none outline-none"
+                            style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} placeholder={t('Write to {name}…').replace('{name}', first)} />
+                        {th.suggestion && (
+                            <label className="flex items-start gap-2 text-xs cursor-pointer mt-2" style={{ color: COLORS.textMuted }}>
+                                <input type="checkbox" className="mt-0.5" checked={withAction} onChange={(e) => setWithAction(e.target.checked)} style={{ accentColor: '#7c3aed' }} />
+                                <span><span style={{ color: '#6d28d9', fontWeight: 500 }}>{t('When you send, EVA will also')}</span> {t(th.suggestion.action).charAt(0).toLowerCase() + t(th.suggestion.action).slice(1)}</span>
+                            </label>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('You stand behind this — EVA logs what was sent.')}</span>
+                    <div className="flex gap-2 shrink-0">
+                        <Button onClick={onClose}>{t('Not now')}</Button>
+                        <Button appearance="primary" disabled={!text.trim()} onClick={() => onSend(text.trim(), !!th.suggestion && withAction)}><Icon name="circle-tick" /> {t(th.suggestion && withAction ? 'Approve & send' : 'Send')}</Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Review a decision: what EVA did, the facts, EVA's call — then decide.
 export function DecisionReview({ d, t, onClose, onResolve }: { d: DecisionItem; t: (s: string) => string; onClose: () => void; onResolve: (taken: 'confirm' | 'alt', info?: ResolveInfo) => void }) {
     const { notesFor } = useMemory();
