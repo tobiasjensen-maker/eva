@@ -192,5 +192,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - The conversation travels: expanding the EVA panel opens the full-window chat with the same
   conversation (`Turn[]` via `chatCarry`), and closing it brings everything back to the panel
   (`panelCarry`). Rich chat blocks (tables, plans) stay in the full chat; text turns travel.
-- Full-window chat: New chat and Conversation history live in a kebab (⋯) menu next to Close.
+- EVA side panel: a kebab (⋯) menu holds New chat and Conversation history. History is kept for
+  the session across pages (`PANEL_HISTORY`, seeded); switching or starting a new chat files the
+  current conversation first. The full-window chat keeps its own History / New chat buttons.
 

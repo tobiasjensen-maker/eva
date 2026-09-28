@@ -1816,4 +1816,9 @@ const DA: Record<string, string> = {
     'Sent by you': 'Sendt af dig',
     'More options': 'Flere muligheder',
     'Conversation history': 'Samtalehistorik',
+    'question': 'spørgsmål',
+    'questions': 'spørgsmål',
+    'Back': 'Tilbage',
+    'Just now': 'Lige nu',
+    'What’s due this week?': 'Hvad forfalder i denne uge?',
 };

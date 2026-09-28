@@ -102,6 +102,23 @@ export interface PendingAsk { user: string; answer: string }
 // A conversation as plain turns — how it travels between the panel and the full-window chat.
 export type Turn = { role: 'user' | 'assistant'; text: string };
 
+// Past panel conversations — kept for the session, across pages (seeded with a few examples).
+type Past = { id: number; title: string; when: string; turns: Turn[] };
+const PANEL_HISTORY: Past[] = [
+    { id: -1, title: 'Which of my clients need attention?', when: 'Yesterday', turns: [
+        { role: 'user', text: 'Which of my clients need attention?' },
+        { role: 'assistant', text: 'Across your clients, Nordic Build ApS, Café Solsikke and Digital Marketing Pro need attention — Café Solsikke (cash runway) and Digital Marketing Pro (customer concentration) first.' },
+    ] },
+    { id: -2, title: 'Summarise today’s client replies', when: 'Mon', turns: [
+        { role: 'user', text: 'Summarise today’s client replies' },
+        { role: 'assistant', text: 'Three replies came in: Mads confirmed the restaurant bill was a business dinner, Louise sent the six year-end documents, and Ida hasn’t answered the cash-position note yet.' },
+    ] },
+    { id: -3, title: 'What’s due this week?', when: 'Last week', turns: [
+        { role: 'user', text: 'What’s due this week?' },
+        { role: 'assistant', text: 'A VAT deadline on Friday, a payroll run and month-end close on Friday, and a quarterly review with Nordic Build on Monday.' },
+    ] },
+];
+
 export function ChatPanel({
     subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed,
 }: {
@@ -132,6 +149,34 @@ export function ChatPanel({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     const [input, setInput] = useState('');
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [history, setHistory] = useState<Past[]>(() => [...PANEL_HISTORY]);
+    const started = msgs.some((m) => m.role === 'user');
+    const turnsOf = (list: Msg[]): Turn[] => list.filter((m) => !m.thinking && m.text).map((m) => ({ role: m.role, text: m.text }));
+    const [loadedId, setLoadedId] = useState<number | null>(null); // the history entry currently open, if any
+    // File the current conversation (if you asked anything) — updating its entry if it came from history.
+    function fileCurrent() {
+        if (!started) return;
+        const item: Past = { id: loadedId ?? nid(), title: msgs.find((m) => m.role === 'user')!.text.slice(0, 60), when: 'Just now', turns: turnsOf(msgs) };
+        const at = PANEL_HISTORY.findIndex((h) => h.id === item.id);
+        if (at >= 0) PANEL_HISTORY.splice(at, 1);
+        PANEL_HISTORY.unshift(item);
+        setHistory([...PANEL_HISTORY]);
+    }
+    // New chat: file the current conversation, start fresh.
+    function newChat() {
+        fileCurrent();
+        setLoadedId(null);
+        setMsgs([{ id: nid(), role: 'assistant', text: t(intro), instant: true }]);
+        setHistoryOpen(false);
+    }
+    function openPast(p: Past) {
+        if (p.id !== loadedId) fileCurrent();
+        setLoadedId(p.id);
+        setMsgs(p.turns.map((x) => ({ id: nid(), role: x.role, text: x.text, instant: true })));
+        setHistoryOpen(false);
+    }
     const scrollRef = useRef<HTMLDivElement>(null);
     const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -224,9 +269,42 @@ export function ChatPanel({
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>EVA</span>
                 <span className="text-xs" style={{ color: COLORS.textMuted }}>· {t(subtitle)}</span>
                 <div className="ml-auto flex items-center gap-0.5">
+                    {/* conversation options: new chat, history */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setMenuOpen((v) => !v)}
+                            title={t('More options')}
+                            aria-haspopup="menu"
+                            aria-expanded={menuOpen}
+                            className="rounded-md p-1"
+                            style={{ color: COLORS.textMuted, background: menuOpen ? '#f4f4f5' : 'transparent' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = menuOpen ? '#f4f4f5' : 'transparent')}
+                        >
+                            <Icon name="more" />
+                        </button>
+                        {menuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                                <div role="menu" className="absolute right-0 z-50 mt-1 rounded-xl bg-white py-1" style={{ minWidth: 210, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                                    {[
+                                        { icon: 'circle-plus', label: 'New chat', run: newChat, disabled: !started },
+                                        { icon: 'time', label: 'Conversation history', run: () => setHistoryOpen(true), disabled: false },
+                                    ].map((it) => (
+                                        <button key={it.label} role="menuitem" disabled={it.disabled} onClick={() => { setMenuOpen(false); it.run(); }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm"
+                                            style={{ color: it.disabled ? '#b0b0b8' : COLORS.text, cursor: it.disabled ? 'default' : 'pointer' }}
+                                            onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = '#fafafa'; }} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                            <Icon name={it.icon as never} /> {t(it.label)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
                     {onExpand && (
                         <button
-                            onClick={() => onExpand(msgs.filter((m) => !m.thinking && m.text).map((m) => ({ role: m.role, text: m.text })))}
+                            onClick={() => onExpand(turnsOf(msgs))}
                             title={t('Open in full window')}
                             className="rounded-md p-1"
                             style={{ color: COLORS.textMuted }}
@@ -253,6 +331,24 @@ export function ChatPanel({
                 <EvaIframe src={evaSrc} config={evaConfig} />
             ) : (
             <>
+            {historyOpen ? (
+                <div className="flex-1 overflow-y-auto px-3 py-3">
+                    <div className="flex items-center gap-2 px-1 pb-2">
+                        <button onClick={() => setHistoryOpen(false)} className="rounded-md p-1" style={{ color: COLORS.textMuted }} title={t('Back')}><Icon name="arrow-left" /></button>
+                        <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t('Conversation history')}</p>
+                    </div>
+                    {history.map((h) => (
+                        <button key={h.id} onClick={() => openPast(h)} className="w-full text-left rounded-lg px-3 py-2.5 flex items-start gap-2.5"
+                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                            <span className="shrink-0 mt-0.5" style={{ color: COLORS.textMuted }}><Icon name="chat" /></span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-sm truncate" style={{ color: COLORS.text }}>{t(h.title)}</span>
+                                <span className="block text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t(h.when)} · {h.turns.filter((x) => x.role === 'user').length} {t(h.turns.filter((x) => x.role === 'user').length === 1 ? 'question' : 'questions')}</span>
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            ) : (
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
                 {msgs.map((m) =>
                     m.role === 'user' ? (
@@ -270,6 +366,7 @@ export function ChatPanel({
                     )
                 )}
             </div>
+            )}
 
             <div className="px-3 pb-3">
                 {/* suggestions are a way in — gone once the conversation has started */}

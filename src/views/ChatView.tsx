@@ -506,7 +506,6 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
     const [input, setInput] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>(SEED_HISTORY);
     const [historyOpen, setHistoryOpen] = useState(false);
-    const [menuOpen, setMenuOpen] = useState(false);
     const [instantIds, setInstantIds] = useState<Set<number>>(() => (seedWelcome ? new Set([0]) : new Set(seeded.map((m) => m.id))));
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -784,39 +783,22 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
             <div className="flex items-center justify-between gap-2 px-6 py-3">
                 <ScopeSwitcher />
                 <div className="flex items-center gap-2">
-                    {/* conversation options live in one kebab menu */}
-                    <div className="relative">
+                    <button
+                        onClick={() => setHistoryOpen(true)}
+                        className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5"
+                        style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
+                    >
+                        <Icon name="time" /> {t('History')}
+                    </button>
+                    {!empty && (
                         <button
-                            onClick={() => setMenuOpen((v) => !v)}
-                            title={t('More options')}
-                            aria-haspopup="menu"
-                            aria-expanded={menuOpen}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: menuOpen ? '#f4f4f5' : 'transparent' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = menuOpen ? '#f4f4f5' : 'transparent')}
+                            onClick={newChat}
+                            className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5"
+                            style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
                         >
-                            <Icon name="more" />
+                            <Icon name="circle-plus" /> {t('New chat')}
                         </button>
-                        {menuOpen && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                                <div role="menu" className="absolute right-0 z-50 mt-1 rounded-xl bg-white py-1" style={{ minWidth: 210, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
-                                    {[
-                                        { icon: 'circle-plus', label: 'New chat', run: newChat, disabled: empty },
-                                        { icon: 'time', label: 'Conversation history', run: () => setHistoryOpen(true), disabled: false },
-                                    ].map((it) => (
-                                        <button key={it.label} role="menuitem" disabled={it.disabled} onClick={() => { setMenuOpen(false); it.run(); }}
-                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm"
-                                            style={{ color: it.disabled ? '#b0b0b8' : COLORS.text, cursor: it.disabled ? 'default' : 'pointer' }}
-                                            onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = '#fafafa'; }} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                            <Icon name={it.icon as never} /> {t(it.label)}
-                                        </button>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    )}
                     {onClose && (
                         <button
                             onClick={() => onClose(messages.flatMap((m): Turn[] => (m.role === 'user' ? [{ role: 'user', text: m.text }] : m.kind === 'text' ? [{ role: 'assistant', text: m.text }] : [])))}
