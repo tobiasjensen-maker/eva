@@ -338,7 +338,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                         <SectionCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{groupTitle(g.key)}</span>} count={g.reviews.length + g.items.length} right={od > 0 ? <span className="text-xs font-medium shrink-0" style={{ color: '#dc2626' }}>{od} {t('overdue')}</span> : undefined}>
                                             {g.reviews.map((d, i) => <ReviewRow key={d.id} d={d} groupBy={effGroup} last={i === g.reviews.length - 1 && g.items.length === 0} onReview={() => setReview(d)} />)}
                                             {g.items.map((x, i) => (
-                                                <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onHandToEva={() => handToEva(x.id)} onOpen={() => setTrace(x)} />
+                                                <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onOpen={() => setTrace(x)} />
                                             ))}
                                         </SectionCard>
                                     );
@@ -384,7 +384,7 @@ function ReviewRow({ d, groupBy, last, onReview }: { d: DecisionItem; groupBy: G
     );
 }
 
-function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, onHandToEva, onOpen }: { task: Task; groupBy: GroupBy; showAccountant: boolean; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onHandToEva: () => void; onOpen: () => void }) {
+function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, onOpen }: { task: Task; groupBy: GroupBy; showAccountant: boolean; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onOpen: () => void }) {
     const { t } = useLang();
     const st = TSTATUS[task.status];
     const prio = TPRIO[task.priority];
@@ -404,11 +404,6 @@ function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, on
                 </div>
             </button>
 
-            {/* hand this task to EVA */}
-            <button onClick={onHandToEva} title={t('Hand this task to EVA')} className="inline-flex items-center gap-1.5 rounded-full font-semibold shrink-0" style={{ padding: '4px 10px 4px 6px', fontSize: 12, background: '#f3f0fb', color: '#6d28d9', border: '1px solid #e6dcfb' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#ece5fb')} onMouseLeave={(e) => (e.currentTarget.style.background = '#f3f0fb')}>
-                <Orb size={14} /> {t('Hand to EVA')}
-            </button>
 
             {showAccountant && (
                 <PopMenu
