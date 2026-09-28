@@ -4,6 +4,7 @@ import { Card, ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS 
 import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem } from '../day';
 import { DecisionReview } from './Decisions';
+import { clientName, type LogEntry } from './ActivityView';
 
 // ---- Praksis / AO-house task management ------------------------------------
 // The firm's overview across every client company: what needs doing, when, and
@@ -117,20 +118,8 @@ function evaFlagFor(title: string): string {
     return 'Review my work and approve, or take it over.';
 }
 
-// The three work statuses shown everywhere tasks appear: To do (sub-status Overdue),
-// In progress (EVA drafts ready for your review) and Done.
-export type WorkStatus = 'todo' | 'overdue' | 'inprogress' | 'done';
-export const WORK_STATUS: Record<WorkStatus, { label: string; bg: string; fg: string; dot: string }> = {
-    todo: { label: 'To do', bg: '#f1f1f3', fg: '#52525b', dot: '#a8a8b0' },
-    overdue: { label: 'Overdue', bg: '#fdecec', fg: '#c0392b', dot: '#dc2626' },
-    inprogress: { label: 'In progress', bg: '#f3f0fb', fg: '#6d28d9', dot: '#7c3aed' },
-    done: { label: 'Done', bg: '#e9f7ef', fg: '#15803d', dot: '#16a34a' },
-};
-export function WorkTag({ s }: { s: WorkStatus }) {
-    const { t } = useLang();
-    const m = WORK_STATUS[s];
-    return <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ background: m.bg, color: m.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: m.dot }} />{t(m.label)}</span>;
-}
+export { WORK_STATUS, WorkTag, type WorkStatus } from './workStatus';
+import { WORK_STATUS, WorkTag, SectionCard, type WorkStatus } from './workStatus';
 // A human task's tags: To do (+ Overdue) or Done.
 export const workTagsFor = (task: Task): WorkStatus[] => (task.status === 'done' || task.status === 'eva-done' ? ['done'] : task.bucket === 'overdue' ? ['todo', 'overdue'] : ['todo']);
 
@@ -138,9 +127,9 @@ type GroupBy = 'status' | 'deadline' | 'company';
 type Layout = 'board' | 'list';
 // One item of work, whatever its source: a task with you, an EVA draft to review, or something done.
 type WorkItem =
-    | { kind: 'task'; id: string; ws: 'todo' | 'inprogress' | 'done'; overdue: boolean; company: string; title: string; task: Task; doneBy?: 'you' | 'EVA' }
+    | { kind: 'task'; id: string; ws: 'todo' | 'inprogress' | 'done'; overdue: boolean; company: string; title: string; task: Task; }
     | { kind: 'review'; id: string; ws: 'inprogress'; overdue: false; company: string; title: string; d: DecisionItem }
-    | { kind: 'decided'; id: string; ws: 'done'; overdue: false; company: string; title: string; d: DecisionItem };
+    | { kind: 'logged'; id: string; ws: 'done'; overdue: false; company: string; title: string; entry: LogEntry; task?: Task };
 const DONE_SHOWN = 5; // Done shows the latest few; the full history is the Activity tab
 type Col = 'todo' | 'inprogress' | 'done';
 // Drag-and-drop wiring shared by board cards and list rows.
@@ -154,18 +143,6 @@ type Dnd = {
     drop: (col: Col) => void;
 };
 const DropLine = () => <div className="rounded-full" style={{ height: 3, background: '#7c3aed', margin: '-1px 2px' }} />;
-
-function SectionCard({ title, count, right, accent, children }: { title: ReactNode; count?: number; right?: ReactNode; accent?: string; children: ReactNode }) {
-    return (
-        <Card className="overflow-hidden" style={accent ? { borderColor: accent } : undefined}>
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: accent ? `${accent}0d` : undefined }}>
-                <div className="flex items-center gap-2 flex-1 min-w-0">{title}{count !== undefined && <CountBadge n={count} showZero />}</div>
-                {right}
-            </div>
-            {children}
-        </Card>
-    );
-}
 
 const PURPLE = '#7c3aed';
 
@@ -186,7 +163,7 @@ const whenRank = (w: string) => {
     return day * 10000 + Number((w.match(/(\d{2}):(\d{2})/) ?? ['', '0', '0']).slice(1).join(''));
 };
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, tab, onTab, activityLog, routines, bare, onNewRoutine }: {
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, tab, onTab, activityLog, routines, bare, onNewRoutine }: {
     tab: WorkTab;
     onTab: (t: WorkTab) => void;
     activityLog: ReactNode;   // the Activity tab (the embedded activity log)
@@ -196,7 +173,9 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
-    onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
+    onResolveDecision: (id: string, taken: 'confirm' | 'alt', backToYou?: boolean) => void;
+    activity: LogEntry[]; // the activity log — Done is today's completed work from it
+    onOpenActivity: (entryId: string) => void;
     onAddDecision: (d: DecisionItem) => void;
 }) {
     const { t } = useLang();
@@ -231,19 +210,20 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     // Ready for your review — the shared decisions, scoped like everything else here.
     const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
     const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
-    const evaDone = all.filter((x) => x.status === 'eva-done');
 
     // --- the work, as one set of items: To do · In progress · Done ---
-    // (a draft you took back is a task with you again, so it isn't also listed as done)
-    const decidedMine = decisions.filter((d) => d.done && d.accountant === ME && !tasks.some((x) => x.id === `back-${d.id}`));
+    // Done is read from the activity log — the one record of what happened today, by you
+    // (on this board) and by EVA. Reopening or handing off isn't "done", so those stay out.
+    const doneLog = activity
+        .filter((e) => e.status === 'completed' && e.daysAgo === 0 && !['reopened', 'handed', 'taken-back'].includes(e.event ?? ''))
+        .filter((e) => !e.taskId || tasks.find((x) => x.id === e.taskId)?.status === 'done')
+        .filter((e) => !ql || t(e.title ?? e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql))
+        .sort((a, b) => (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
     const items: WorkItem[] = [
         ...all.filter((x) => x.status === 'eva-running' && handing.has(x.id)).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'inprogress', overdue: false, company: x.company, title: t(x.title), task: x })),
         ...all.filter((x) => !isEva(x.status) && x.status !== 'done').map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'todo', overdue: x.bucket === 'overdue', company: x.company, title: t(x.title), task: x })),
         ...evaReview.map((d): WorkItem => ({ kind: 'review', id: d.id, ws: 'inprogress', overdue: false, company: d.company, title: t(d.label), d })),
-        // latest first: what you just finished, then what EVA completed
-        ...decidedMine.filter((d) => !ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)).map((d): WorkItem => ({ kind: 'decided', id: d.id, ws: 'done', overdue: false, company: d.company, title: t(d.label), d })),
-        ...all.filter((x) => x.status === 'done').map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'done', overdue: false, company: x.company, title: t(x.title), task: x, doneBy: 'you' })),
-        ...evaDone.map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'done', overdue: false, company: x.company, title: t(x.title), task: x, doneBy: 'EVA' })),
+        ...doneLog.map((e): WorkItem => ({ kind: 'logged', id: e.id, ws: 'done', overdue: false, company: clientName(e.client), title: t(e.title ?? e.desc), entry: e, task: e.taskId ? tasks.find((x) => x.id === e.taskId) : undefined })),
     ];
     const passes = (it: WorkItem) => statusF.size === 0 || statusF.has(it.ws) || (it.overdue && statusF.has('overdue'));
     const visible = items.filter(passes);
@@ -262,7 +242,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     // to EVA to draft; an EVA draft goes to Done only through review, or back to you.
     function move(id: string, to: Col, beforeId: string | null) {
         const it = items.find((x) => x.id === id);
-        if (!it || it.kind === 'decided') return;
+        if (!it || (it.kind === 'logged' && !it.task)) return;
         const ids = colItems[to].map((x) => x.id).filter((x) => x !== id);
         const at = beforeId ? ids.indexOf(beforeId) : -1;
         ids.splice(at < 0 ? ids.length : at, 0, id);
@@ -271,20 +251,23 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         if (it.kind === 'review') {
             if (to === 'done') setReview(it.d);
             else {
-                onResolveDecision(it.d.id, 'alt');
+                onResolveDecision(it.d.id, 'alt', true);
                 const backId = `back-${it.d.id}`;
                 setTasks((prev) => [{ id: backId, title: it.d.label, company: it.d.company, accountant: ME, status: 'todo', bucket: 'today', dueLabel: 'Today', priority: 'high' }, ...prev]);
                 setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? backId : x)) }));
             }
             return;
         }
-        if (to === 'done') patch(id, { status: 'done' });
-        else if (to === 'todo') patch(id, { status: 'todo' });
+        const task = it.task!;
+        const tid = task.id;
+        if (to === 'done') patch(tid, { status: 'done' });
+        else if (to === 'todo') { patch(tid, { status: 'todo' }); setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? tid : x)) })); }
         else {
-            setHanding((prev) => new Set(prev).add(id));
-            handTaskToEva(it.task, setTasks, (d) => {
+            setHanding((prev) => new Set(prev).add(tid));
+            if (id !== tid) setOrder((prev) => ({ ...prev, inprogress: (prev.inprogress ?? ids).map((x) => (x === id ? tid : x)) }));
+            handTaskToEva(task, setTasks, (d) => {
                 onAddDecision(d);
-                setOrder((prev) => ({ ...prev, inprogress: (prev.inprogress ?? []).map((x) => (x === id ? d.id : x)) }));
+                setOrder((prev) => ({ ...prev, inprogress: (prev.inprogress ?? []).map((x) => (x === tid ? d.id : x)) }));
             });
         }
     }
@@ -300,14 +283,13 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const counts = { todo: items.filter((i) => i.ws === 'todo').length, overdue: items.filter((i) => i.overdue).length, inprogress: items.filter((i) => i.ws === 'inprogress').length, done: items.filter((i) => i.ws === 'done').length };
 
     const evaAll = scoped.filter((x) => isEva(x.status));
-    const automatedPct = scoped.length ? Math.round((evaAll.length / scoped.length) * 100) : 0;
     const kpis = [
-        { label: t('To do'), value: String(counts.todo), sub: t('of which {n} overdue').replace('{n}', String(counts.overdue)), color: COLORS.text, accent: '' },
-        { label: t('Overdue'), value: String(counts.overdue), sub: t('need attention'), color: '#dc2626', accent: '#dc2626' },
-        { label: t('In progress'), value: String(counts.inprogress), sub: t('EVA drafts ready for your review'), color: PURPLE, accent: PURPLE },
-        { label: t('Handled by EVA'), value: String(evaAll.length), sub: t('{n}% of the workload').replace('{n}', String(automatedPct)), color: '#16a34a', accent: '' },
+        { label: t('To do'), value: String(counts.todo), color: COLORS.text, accent: '' },
+        { label: t('Overdue'), value: String(counts.overdue), color: '#dc2626', accent: '#dc2626' },
+        { label: t('In progress'), value: String(counts.inprogress), color: PURPLE, accent: PURPLE },
+        { label: t('Handled by EVA'), value: String(evaAll.length), color: '#16a34a', accent: '' },
     ];
-    const openItem = (it: WorkItem) => { if (it.kind === 'task') setTrace(it.task); else if (it.kind === 'review') setReview(it.d); };
+    const openItem = (it: WorkItem) => { if (it.kind === 'task') setTrace(it.task); else if (it.kind === 'review') setReview(it.d); else onOpenActivity(it.entry.id); };
 
     // List grouping — by status (the board's columns), by deadline or by client.
     const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] =
@@ -338,9 +320,10 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
             <div className={bare ? 'h-full' : 'mx-auto px-8 pt-5 pb-10'} style={bare ? undefined : { maxWidth: 1240 }}>
                 {tab === 'activity' && activityLog}
                 {tab === 'routines' && (
-                    <div className="flex flex-col gap-6">
-                        {/* What's planned and scheduled for EVA — specific tasks and the routines' next runs */}
-                        <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
+                    <div className={bare ? 'h-full' : 'flex flex-col gap-6'}>
+                        {/* What's planned and scheduled for EVA — specific tasks and the routines' next runs.
+                            Hidden while a routine is open: its detail takes over the page. */}
+                        {!bare && <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
                             {[
                                 ...evaScheduled.map((x) => ({ key: x.id, when: x.evaWhen ?? '', title: t(x.title), sub: x.company, via: t('Scheduled task'), task: x as Task | undefined })),
                                 ...PLANNED_RUNS.map((r) => ({ key: r.title, when: r.when, title: t(r.title), sub: t(r.scope), via: t('Routine'), task: undefined as Task | undefined })),
@@ -355,7 +338,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                     {r.task && <span className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See plan')}</span>}
                                 </div>
                             ))}
-                        </SectionCard>
+                        </SectionCard>}
                         {routines}
                     </div>
                 )}
@@ -369,31 +352,30 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             <div key={k.label} className="rounded-xl p-4" style={{ background: on ? `${k.accent}0d` : '#fff', border: `1px solid ${on ? `${k.accent}55` : COLORS.cardBorder}` }}>
                                 <p className="text-xs" style={{ color: COLORS.textMuted }}>{k.label}</p>
                                 <p className="text-2xl font-semibold leading-tight mt-1" style={{ color: k.color }}>{k.value}</p>
-                                <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{k.sub}</p>
                             </div>
                         );
                     })}
                 </div>
 
-                {/* toolbar: Board / List, grouping (list), search and status filters */}
-                <div className="flex flex-wrap items-center gap-2 mb-3">
+                {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
                     <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />
                     {layout === 'list' && <SegmentedTabs value={groupBy} onChange={(v) => setGroupBy(v as GroupBy)} options={[{ value: 'status', label: t('By status') }, { value: 'deadline', label: t('By deadline') }, { value: 'company', label: t('By client') }]} />}
-                    <div className="relative flex-1" style={{ minWidth: 200 }}>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {(['todo', 'overdue', 'inprogress', 'done'] as WorkStatus[]).map((k) => {
+                            const on = statusF.has(k); const m = WORK_STATUS[k];
+                            return (
+                                <button key={k} onClick={() => toggleStatusF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
+                                    <span className="rounded-full" style={{ width: 6, height: 6, background: m.dot }} /> {t(m.label)} <CountBadge n={counts[k]} showZero />
+                                </button>
+                            );
+                        })}
+                        {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                    </div>
+                    <div className="relative ml-auto" style={{ width: 240 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search tasks…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
                     </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 mb-4">
-                    {(['todo', 'overdue', 'inprogress', 'done'] as WorkStatus[]).map((k) => {
-                        const on = statusF.has(k); const m = WORK_STATUS[k];
-                        return (
-                            <button key={k} onClick={() => toggleStatusF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
-                                <span className="rounded-full" style={{ width: 6, height: 6, background: m.dot }} /> {t(m.label)} <CountBadge n={counts[k]} showZero />
-                            </button>
-                        );
-                    })}
-                    {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                 </div>
 
                 {layout === 'board' ? (
@@ -467,7 +449,7 @@ function BoardColumn({ s, count, children, footer, dnd }: { s: Col; count: numbe
 // drag handlers for one card/row: which half you hover decides whether it drops before or after
 const dragProps = (it: WorkItem, col: Col | null, nextId: string | null, dnd: Dnd) => {
     if (!col) return {};
-    const movable = it.kind !== 'decided';
+    const movable = it.kind !== 'logged' || !!it.task; // EVA's own log entries are history
     return {
         draggable: movable,
         onDragStart: movable ? (e: DragEvent<HTMLElement>) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', it.id); dnd.start(it); } : undefined,
@@ -484,16 +466,15 @@ const dragProps = (it: WorkItem, col: Col | null, nextId: string | null, dnd: Dn
 
 const itemSub = (it: WorkItem, t: (s: string) => string): ReactNode =>
     it.kind === 'review' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span> · {t(it.d.question)}</>
-    : it.kind === 'decided' ? <>{t(it.d.taken === 'alt' ? 'Taken back by you' : 'Approved by you')} · {t('just now')}</>
+    : it.kind === 'logged' ? <>{it.entry.origin === 'tasks' && it.entry.resolution ? t(it.entry.resolution) : t(it.entry.actor === 'you' ? 'Done by you' : 'Done by EVA')} · {it.entry.time}</>
     : it.ws === 'inprogress' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA is drafting this…')}</span></>
-    : it.ws === 'done' ? <>{it.doneBy === 'EVA' ? t('Done by EVA') : t('Done by you')} · {t(it.doneBy === 'EVA' ? it.task.dueLabel.replace(/^Done /, '') : 'just now')}</>
     : <><span style={{ color: dueColor(it.task.bucket), fontWeight: 500 }}>{t(it.task.dueLabel)}</span>{it.task.status === 'waiting' ? <> · {t('Waiting on client')}</> : null}</>;
 
 const tagsOf = (it: WorkItem): WorkStatus[] => (it.overdue ? ['todo', 'overdue'] : [it.ws]);
 
 function WorkCard({ it, col, nextId, dnd, onOpen }: { it: WorkItem; col: Col; nextId: string | null; dnd: Dnd; onOpen: () => void }) {
     const { t } = useLang();
-    const clickable = it.kind !== 'decided';
+    const clickable = true;
     const dragging = dnd.dragId === it.id;
     return (
         <>
@@ -519,12 +500,12 @@ function WorkCard({ it, col, nextId, dnd, onOpen }: { it: WorkItem; col: Col; ne
 
 function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: WorkItem; col: Col | null; nextId: string | null; dnd: Dnd; showCompany: boolean; last: boolean; onOpen: () => void }) {
     const { t } = useLang();
-    const clickable = it.kind !== 'decided';
+    const clickable = true;
     return (
         <>
         {col && dnd.dragId && dnd.over?.col === col && dnd.over.beforeId === it.id && <DropLine />}
         <div {...dragProps(it, col, nextId, dnd)} className="flex items-center gap-3 p-4 bg-white" style={{ ...(last ? {} : { borderBottom: `1px solid ${COLORS.cardBorder}` }), opacity: dnd.dragId === it.id ? 0.4 : it.ws === 'done' ? 0.85 : 1, cursor: col && clickable ? 'grab' : undefined }}>
-            {col && <span className="shrink-0 -ml-1" style={{ color: clickable ? '#c4c4cc' : 'transparent' }} aria-hidden><Icon name="drag" /></span>}
+            {col && <span className="shrink-0 -ml-1" style={{ color: it.kind !== 'logged' || it.task ? '#c4c4cc' : 'transparent' }} aria-hidden><Icon name="drag" /></span>}
             <button onClick={clickable ? onOpen : undefined} className="flex-1 min-w-0 flex items-center gap-3 text-left" style={{ cursor: clickable ? 'pointer' : 'default' }} title={clickable ? t('Open task') : undefined}>
                 <ClientAvatar name={it.company} size={30} />
                 <div className="flex-1 min-w-0">

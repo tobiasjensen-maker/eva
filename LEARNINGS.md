@@ -32,6 +32,7 @@ the day starts; every other page is "further in".**
   "Walk me through my day" in the question box carries its spirit.
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
   follows up and drafts the next step.
+- Menu order: Portfolio overview · Work · Inbox · Connectors · Practice.
 - **Work** (`TaskManagementView.tsx`, `#/work`) — the one place for work, three tabs:
   - **Tasks** — **Board | List** toggle over one set of work with three statuses, used as
     tags everywhere tasks appear (`WORK_STATUS` / `WorkTag`, also on the overview and in the task
@@ -42,6 +43,15 @@ the day starts; every other page is "further in".**
     done/reopens it, onto In progress hands it to EVA (shows "EVA is drafting…", then becomes a
     review card), an EVA draft dropped on Done opens the review (never auto-approves), and one
     dropped on To do takes it back as your task. Drag order is session state only.
+    **Done is read from the activity log** (today's completed entries), so the two can't drift.
+  - **Tasks ⇄ Activity are one record.** `App` writes every board move to the log (an effect
+    diffs `tasks`: marked done / reopened / handed to EVA, from any surface), every EVA draft
+    (`addDecision` → a "ready for your review" entry) and every review outcome (`resolveDecision`
+    updates the same entry). Accepting/dismissing a draft in the log resolves the decision.
+    Entries carry `origin: 'tasks'`, `actor`, `event`, `taskId`/`decisionId`. A Done card opens
+    the Activity tab with that entry expanded (`focusId`).
+  - The Activity log uses the Tasks list's pattern: grouped section cards (by day / status /
+    client), rows with client avatar and the same status tags (`src/views/workStatus.tsx`).
   - **Activity** (`#/activity`) — everything EVA has done: `ActivityFeedView` rendered `embedded`.
   - **Routines** (`#/routines`) — what's planned and automated: **Scheduled for EVA** (EVA's
     scheduled tasks + the active routines' next runs, in time order) above the routines

@@ -1634,4 +1634,8 @@ const DA: Record<string, string> = {
     'Drop here': 'Slip her',
     'EVA is drafting this…': 'EVA laver et udkast…',
     'Drag cards to reorder or move them': 'Træk kort for at ændre rækkefølge eller flytte dem',
+    'By day': 'Efter dag',
+    'from Tasks': 'fra Opgaver',
+    'Reopened': 'Genåbnet',
+    'Handed to EVA': 'Givet til EVA',
 };

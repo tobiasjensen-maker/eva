@@ -1,6 +1,7 @@
 import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { CountBadge, Card, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
+import { CountBadge, Card, ClientAvatar, Orb, PageHeader, PeriodPicker, SegmentedTabs, COLORS, CANVAS } from '../ui';
+import { WorkTag, SectionCard as ListCard, type WorkStatus } from './workStatus';
 import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
 
@@ -38,7 +39,26 @@ export interface LogEntry {
     trace?: TraceInfo; // the deep "what did you do and why" audit trail (opened on demand)
     proactive?: boolean; // EVA surfaced this before being asked (the vision's 11:00 hour)
     provenance?: Provenance; // override — e.g. a genuine e-conomic system flag
+    // Work done in Work → Tasks lands here too, so the log is the one record of what happened.
+    title?: string; // short name for the Tasks board's Done column
+    origin?: 'tasks';
+    actor?: 'you' | 'EVA';
+    event?: 'done' | 'reopened' | 'handed' | 'drafted' | 'approved' | 'alternative' | 'taken-back';
+    taskId?: string;
+    decisionId?: string; // an EVA draft awaiting (or past) your review — see src/day.ts
+    at?: number; // when it happened (live entries sort above the seeded day)
 }
+
+const nowTime = () => new Date().toTimeString().slice(0, 5);
+// A log entry for something that just happened on the Tasks board.
+export function workEntry(p: { id: string; title: string; desc: string; client: string; actor: 'you' | 'EVA'; event?: LogEntry['event']; status?: ActivityStatus; reasoning?: string[]; taskId?: string; decisionId?: string; suggestions?: string[]; resolution?: string; source?: string }): LogEntry {
+    return {
+        daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: nowTime(), at: Date.now(), skill: 'tasks', confidence: 'high',
+        status: 'completed', origin: 'tasks', reasoning: [], ...p, client: clientId(p.client),
+    };
+}
+// Task companies are names; the log keys clients by agreement id.
+export const clientId = (name: string) => AGREEMENTS.find((a) => a.name === name)?.id ?? name;
 
 // The trace pulled on demand (Mette's 14:20 moment): routine → version → action →
 // data read → conclusion → approval → authority. The load-bearing trust artefact.
@@ -58,6 +78,7 @@ const ADVISORY_SKILLS = new Set(['monitor', 'advisory', 'regulations']);
 export const isAdvisory = (e: { skill: string }) => ADVISORY_SKILLS.has(e.skill);
 
 const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
+    tasks: { emoji: '✅', label: 'Tasks' },
     reconciliation: { emoji: '🏦', label: 'Bank reconciliation' },
     reminders: { emoji: '🔔', label: 'Payment reminders' },
     documents: { emoji: '📎', label: 'Document collection' },
@@ -90,17 +111,17 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         trace: { routine: 'Portfolio liquidity watch', version: 'v3', action: 'Detect runway risk across the book', dataRead: 'Trailing cash flow and commitments for all 40 clients', concluded: '4 clients projected below 60 days runway in Q2', approvedBy: 'Pending your approval', authority: 'Mette Sørensen · client manager' } },
 
     // ---- Today ----
-    { id: 'a1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:12', skill: 'reconciliation', client: 'nordic',
+    { id: 'a1', daysAgo: 0, title: 'Booked transaction #4521', bucket: 'today', dateLabel: 'Today', time: '09:12', skill: 'reconciliation', client: 'nordic',
         desc: 'Booked transaction #4521 to Account 2100 — Creditors', confidence: 'high', status: 'completed',
         reasoning: ['Bank import line matched a single open supplier bill by amount and reference.', 'Amount 34.200 DKK matched exactly with no rounding difference.', 'Posting rule for Account 2100 applied automatically.'],
         source: 'Matched against invoice #NB-228 for 34.200 DKK',
         doc: { kind: 'Transaction', ref: '#4521', detail: 'Bank payment · 34.200 DKK · booked to Account 2100 — Creditors' } },
-    { id: 'a2', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '09:48', skill: 'reminders', client: 'dmp',
+    { id: 'a2', daysAgo: 0, title: 'Payment reminder #DMK-014', bucket: 'today', dateLabel: 'Today', time: '09:48', skill: 'reminders', client: 'dmp',
         desc: 'Sent payment reminder for invoice #DMK-014 (12.500 DKK, 42 days overdue)', confidence: 'high', status: 'completed',
         reasoning: ['Invoice passed the 30-day overdue threshold for first reminders.', 'No payment or dispute note found on the invoice.', 'Used the client’s preferred reminder template and language (Danish).'],
         source: 'Invoice #DMK-014 · due 28 Apr',
         doc: { kind: 'Invoice', ref: '#DMK-014', detail: 'Digital Marketing Pro · 12.500 DKK · due 28 Apr · 42 days overdue' } },
-    { id: 'a3', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '10:21', skill: 'reconciliation', client: 'cafe',
+    { id: 'a3', daysAgo: 0, title: 'MobilePay batch matched', bucket: 'today', dateLabel: 'Today', time: '10:21', skill: 'reconciliation', client: 'cafe',
         desc: 'Matched a MobilePay batch (42 transactions) to open invoices', confidence: 'high', status: 'completed',
         reasoning: ['Batch total reconciled to the sum of 42 open invoices.', 'Each line matched a unique invoice by reference.', 'No leftover or unmatched amounts.'],
         source: 'MobilePay settlement · 18.430 DKK',
@@ -111,7 +132,7 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         source: 'Bill from Office Supplies Co · 26 Jan',
         doc: { kind: 'Invoice', ref: '#OS-2291', detail: 'Office Supplies Co · 14.900 DKK · no matching purchase order' },
         suggestions: ['Confirm it’s legitimate', 'Ask the client to confirm'] },
-    { id: 'a5', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '11:40', skill: 'documents', client: 'tech',
+    { id: 'a5', daysAgo: 0, title: 'Requested 5 missing receipts', bucket: 'today', dateLabel: 'Today', time: '11:40', skill: 'documents', client: 'tech',
         desc: 'Requested 5 missing receipts from the client', confidence: 'medium', status: 'completed',
         reasoning: ['5 booked entries had no attached documentation.', 'Grouped them into a single request to avoid spamming the client.', 'Set a 3-day follow-up reminder.'],
         source: 'Entries #8801–#8805',
@@ -218,6 +239,15 @@ const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: stri
     waiting: { bg: '#eef2ff', fg: '#4456c7', label: 'Waiting', icon: 'time' },
 };
 
+// The log uses the Tasks board's tags: done work is Done, EVA work awaiting you is In progress.
+const LOG_TAG: Record<ActivityStatus, { s: WorkStatus; label: string }> = {
+    completed: { s: 'done', label: 'Done' },
+    'needs-review': { s: 'inprogress', label: 'In progress' },
+    waiting: { s: 'todo', label: 'Waiting' },
+    failed: { s: 'overdue', label: 'Failed' },
+};
+const actorOf = (e: LogEntry) => (e.origin === 'tasks' && e.actor === 'you' ? 'You' : 'EVA');
+
 const DATE_RANGES = [
     { value: 'today', label: 'Today' },
     { value: '7', label: 'Last 7 days' },
@@ -238,7 +268,7 @@ const LANES: { key: string; label: string; match: (e: LogEntry) => boolean; proa
     { key: 'completed', label: 'What happened', match: (e) => e.status === 'completed' },
 ];
 
-const clientName = (id: string) => (id === 'portfolio' ? 'Portfolio-wide' : AGREEMENTS.find((a) => a.id === id)?.name ?? id);
+export const clientName = (id: string) => (id === 'portfolio' ? 'Portfolio-wide' : AGREEMENTS.find((a) => a.id === id)?.name ?? id);
 
 // Answers for the shell chat panel's typed questions / chips on the Review screen.
 export function reviewAnswer(entries: LogEntry[], q: string, lang: 'en' | 'da' = 'en'): string {
@@ -524,7 +554,7 @@ function traceOf(e: LogEntry): TraceInfo {
     };
 }
 
-function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse, variant = 'card', last = false }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void; variant?: 'card' | 'row'; last?: boolean }) {
+function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse, variant = 'card', last = false, showClient = true }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void; variant?: 'card' | 'row' | 'list'; last?: boolean; showClient?: boolean }) {
     const { t, lang } = useLang();
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
@@ -532,8 +562,23 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
     // Low-confidence flags are things EVA can't act on alone — the AO considers them and checks them off.
     // Higher-confidence flags are actions EVA can carry out once accepted.
     const consider = needsReview && entry.confidence === 'low';
+    const tag = LOG_TAG[entry.status];
     const body = (
         <>
+            {variant === 'list' ? (
+                // Same row as the Tasks list: client, what happened, who and when — and the status tag.
+                <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: '#fff' }}>
+                    <ClientAvatar name={t(clientName(entry.client))} size={30} />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(entry.desc)}</p>
+                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
+                            {showClient ? <>{t(clientName(entry.client))} · </> : null}{t(actorOf(entry))} · {t(SKILL_INFO[entry.skill]?.label ?? '')} · {entry.daysAgo === 0 ? entry.time : `${t(entry.dateLabel)} ${entry.time}`}
+                        </p>
+                    </div>
+                    <WorkTag s={tag.s} label={tag.label} />
+                    <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
+                </button>
+            ) : (
             <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left" style={{ background: '#fff' }}>
                 {/* Left icon: the skill-area emoji, tinted with the status colour. */}
                 <span
@@ -548,30 +593,33 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                         {t(entry.desc)}
                     </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
-                        {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}
+                        {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}{entry.origin === 'tasks' ? <> · {t(entry.actor === 'you' ? 'You' : 'EVA')} · {t('from Tasks')}</> : null}
                     </p>
                 </div>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
+            )}
 
             {open && (
                 <div className="px-4 pb-4 anim-in">
                     <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
-                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{consider ? t('What EVA wants you to check') : needsReview ? t('Why EVA suggests this') : t('Why did EVA do this?')}</span>
+                            <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{actorOf(entry) === 'You' ? t('What happened') : consider ? t('What EVA wants you to check') : needsReview ? t('Why EVA suggests this') : t('Why did EVA do this?')}</span>
                         </div>
 
                         <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{entry.reasoning.map((r) => t(r)).join(' ')}</p>
 
                         {/* metrics: confidence · time saved · source */}
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
+                            {actorOf(entry) === 'EVA' && <>
                             <span className="flex items-center gap-1.5" title={t(conf.explain)}>
                                 <Icon name="circle-tick" /> {CONF_PCT[entry.confidence]} {t('confidence')}
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <Icon name="time" /> {SKILL_TIME[entry.skill] ?? '~2 min'} {t('saved')}
                             </span>
+                            </>}
                             {entry.doc && (
                                 <button onClick={onOpenDoc} className="flex items-center gap-1.5 font-medium" style={{ color: '#4456c7' }}>
                                     <Icon name={DOC_ICON[entry.doc.kind] as never} /> {t(`View ${entry.doc.kind.toLowerCase()}`)} {entry.doc.ref}
@@ -601,6 +649,9 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                                     <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
                                     {t('Working…')}
                                 </span>
+                            ) : entry.status === 'completed' && entry.origin === 'tasks' ? (
+                                // Work from the Tasks board — a record, changed from the board rather than undone here.
+                                <span className="flex items-center gap-1.5 text-sm" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t(entry.resolution ?? (entry.actor === 'you' ? 'Done by you' : 'Done by EVA'))}</span>
                             ) : entry.status === 'completed' ? (
                                 // Resolved action — no longer a suggestion; reversible instead.
                                 <div className="flex items-center gap-3">
@@ -628,7 +679,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
             )}
         </>
     );
-    if (variant === 'row') {
+    if (variant === 'row' || variant === 'list') {
         return <div style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>{body}</div>;
     }
     return (
@@ -638,9 +689,21 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
 
 // Compact row for "waiting on someone else" items — the CTAs nudge or close the
 // loop (never "Accept", since the ball is in someone else's court).
-function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace, variant = 'card', last = false }: { entry: LogEntry; reminded: boolean; onRemind: () => void; onReceived: () => void; onTrace: () => void; variant?: 'card' | 'row'; last?: boolean }) {
+function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace, variant = 'card', last = false, showClient = true }: { entry: LogEntry; reminded: boolean; onRemind: () => void; onReceived: () => void; onTrace: () => void; variant?: 'card' | 'row' | 'list'; last?: boolean; showClient?: boolean }) {
     const { t } = useLang();
-    const inner = (
+    const inner = variant === 'list' ? (
+        <>
+            <ClientAvatar name={t(clientName(entry.client))} size={30} />
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(entry.desc)}</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{showClient ? <>{t(clientName(entry.client))} · </> : null}{entry.waitingOn ? `${t('waiting on')} ${entry.waitingOn}` : t('EVA')}</p>
+            </div>
+            <button onClick={onTrace} className="flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: '#4456c7' }}><Icon name="search" /> {t('Trace')}</button>
+            {reminded ? <span className="flex items-center gap-1.5 text-sm shrink-0" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Reminder sent')}</span> : <Button onClick={onRemind}><Icon name="envelope" /> {t('Remind')}</Button>}
+            <Button onClick={onReceived}><Icon name="circle-tick" /> {t('Mark resolved')}</Button>
+            <WorkTag s="todo" label="Waiting" />
+        </>
+    ) : (
         <>
             <span title={`${SKILL_INFO[entry.skill]?.label ?? ''} · ${t('Waiting')}`} className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 34, height: 34, background: `${STATUS_STYLE.waiting.fg}1a`, fontSize: 17 }}>
                 {SKILL_INFO[entry.skill]?.emoji ?? '•'}
@@ -662,7 +725,7 @@ function WaitingRow({ entry, reminded, onRemind, onReceived, onTrace, variant = 
             <Button appearance="primary" onClick={onReceived}><Icon name="circle-tick" /> {t('Mark resolved')}</Button>
         </>
     );
-    if (variant === 'row') {
+    if (variant === 'row' || variant === 'list') {
         return <div className="flex items-center gap-3 p-4" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>{inner}</div>;
     }
     return <Card className="flex items-center gap-3 p-3.5">{inner}</Card>;
@@ -910,8 +973,8 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
 }
 
 const FEED_STATUSES: { key: ActivityStatus; label: string }[] = [
-    { key: 'completed', label: 'Completed' },
     { key: 'needs-review', label: 'Needs review' },
+    { key: 'completed', label: 'Completed' },
     { key: 'waiting', label: 'Waiting' },
     { key: 'failed', label: 'Failed' },
 ];
@@ -924,7 +987,8 @@ const FEED_BUCKETS: { key: Bucket; label: string }[] = [
 
 // The Activity log: everything EVA has done, with advanced filtering (search, status,
 // area, client, date range). `embedded` renders it as the Routines page's Activity tab.
-export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false }: {
+export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false, focusId }: {
+    focusId?: string | null;
     entries: LogEntry[];
     setEntries: Dispatch<SetStateAction<LogEntry[]>>;
     scope?: string;
@@ -939,8 +1003,15 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
     const [statusF, setStatusF] = useState<Set<ActivityStatus>>(new Set());
     const [skillF, setSkillF] = useState('all');
     const [clientF, setClientF] = useState(scope === 'portfolio' ? 'all' : scope);
+    const [groupBy, setGroupBy] = useState<'day' | 'status' | 'client'>('day');
 
     useEffect(() => { setClientF(scope === 'portfolio' ? 'all' : scope); }, [scope]);
+    // Opened from the Tasks board → expand that entry and bring it into view.
+    useEffect(() => {
+        if (!focusId) return;
+        A.setExpanded(focusId);
+        setTimeout(() => document.getElementById(`log-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
+    }, [focusId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggleStatus = (s: ActivityStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
     const ql = q.trim().toLowerCase();
@@ -950,8 +1021,15 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
         && (skillF === 'all' || e.skill === skillF)
         && (clientF === 'all' || e.client === clientF)
         && (!ql || t(e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql) || (e.source ?? '').toLowerCase().includes(ql)),
-    ).sort((a, b) => a.daysAgo - b.daysAgo || b.time.localeCompare(a.time));
-    const groups = FEED_BUCKETS.map((b) => ({ b, items: filtered.filter((e) => e.bucket === b.key) })).filter((g) => g.items.length > 0);
+    ).sort((a, b) => a.daysAgo - b.daysAgo || (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
+    const groups: { key: string; title: ReactNode; items: LogEntry[] }[] = (
+        groupBy === 'status'
+            ? (['needs-review', 'waiting', 'failed', 'completed'] as ActivityStatus[]).map((k) => ({ key: k, title: <WorkTag s={LOG_TAG[k].s} label={LOG_TAG[k].label} />, items: filtered.filter((e) => e.status === k) }))
+            : groupBy === 'client'
+            ? [...new Set(filtered.map((e) => e.client))].map((c) => ({ key: c, title: <span className="flex items-center gap-2"><ClientAvatar name={t(clientName(c))} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(clientName(c))}</span></span>, items: filtered.filter((e) => e.client === c) }))
+            : FEED_BUCKETS.map((b) => ({ key: b.key, title: <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(b.label)}</span>, items: filtered.filter((e) => e.bucket === b.key) }))
+    ).filter((g) => g.items.length > 0);
+    const statusCount = (k: ActivityStatus) => entries.filter((e) => inRangeOf(e, range) && e.status === k).length;
     const anyFilter = statusF.size > 0 || skillF !== 'all' || clientF !== 'all' || !!q;
 
     const selectStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text };
@@ -973,7 +1051,8 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                 {/* filter bar */}
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     {embedded && <PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />}
-                    <div className="relative flex-1" style={{ minWidth: 220 }}>
+                    <SegmentedTabs value={groupBy} onChange={(v) => setGroupBy(v as typeof groupBy)} options={[{ value: 'day', label: t('By day') }, { value: 'status', label: t('By status') }, { value: 'client', label: t('By client') }]} />
+                    <div className="relative flex-1" style={{ minWidth: 200 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search activity…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={selectStyle} />
                     </div>
@@ -987,38 +1066,41 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                         {AGREEMENTS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                 </div>
-                {/* status chips + result count */}
-                <div className="flex flex-wrap items-center gap-1.5 mb-5">
+                {/* status chips — the same tags and chip style as the Tasks list */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-4">
                     {FEED_STATUSES.map((s) => {
                         const on = statusF.has(s.key);
-                        const st = STATUS_STYLE[s.key];
+                        const tg = LOG_TAG[s.key];
+                        const m = { todo: ['#f1f1f3', '#52525b', '#a8a8b0'], overdue: ['#fdecec', '#c0392b', '#dc2626'], inprogress: ['#f3f0fb', '#6d28d9', '#7c3aed'], done: ['#e9f7ef', '#15803d', '#16a34a'] }[tg.s];
                         return (
                             <button key={s.key} onClick={() => toggleStatus(s.key)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-                                style={{ border: `1px solid ${on ? st.fg : COLORS.cardBorder}`, background: on ? st.bg : '#fff', color: on ? st.fg : COLORS.textMuted }}>
-                                <Icon name={st.icon as never} /> {t(s.label)}
+                                style={{ border: `1px solid ${on ? m[1] : COLORS.cardBorder}`, background: on ? m[0] : '#fff', color: on ? m[1] : COLORS.textMuted }}>
+                                <span className="rounded-full" style={{ width: 6, height: 6, background: m[2] }} /> {t(tg.label)} <CountBadge n={statusCount(s.key)} showZero />
                             </button>
                         );
                     })}
                     {anyFilter && (
                         <button onClick={() => { setStatusF(new Set()); setSkillF('all'); setClientF('all'); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>
                     )}
-                    <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{filtered.length} {t('of')} {entries.length}</span>
                 </div>
 
-                {/* results */}
+                {/* results — grouped section cards of rows, like the Tasks list */}
                 {groups.length === 0 ? (
                     <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t('No activity matches these filters.')}</p></Card>
                 ) : (
-                    groups.map((g) => (
-                        <div key={g.b.key} className="mb-5">
-                            <div className="text-xs font-semibold uppercase tracking-wide py-2" style={{ color: COLORS.textMuted }}>{t(g.b.label)} · {g.items.length}</div>
-                            <div className="flex flex-col gap-2">
-                                {g.items.map((e) => e.status === 'waiting'
-                                    ? <WaitingRow key={e.id} entry={e} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
-                                    : <LogRow key={e.id} entry={e} {...rowProps(e)} />)}
-                            </div>
-                        </div>
-                    ))
+                    <div className="flex flex-col gap-4">
+                        {groups.map((g) => (
+                            <ListCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
+                                {g.items.map((e, i) => (
+                                    <div key={e.id} id={`log-${e.id}`}>
+                                        {e.status === 'waiting'
+                                            ? <WaitingRow entry={e} variant="list" showClient={groupBy !== 'client'} last={i === g.items.length - 1} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
+                                            : <LogRow entry={e} variant="list" showClient={groupBy !== 'client'} last={i === g.items.length - 1} {...rowProps(e)} />}
+                                    </div>
+                                ))}
+                            </ListCard>
+                        ))}
+                    </div>
                 )}
             </div>
             <ActivityModals doc={A.doc} trace={A.trace} onCloseDoc={() => A.setDoc(null)} onCloseTrace={() => A.setTrace(null)} />

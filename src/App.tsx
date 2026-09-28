@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button, Icon, useToast } from '@economic/taco';
 import {
     COLORS,
@@ -18,13 +18,20 @@ import {
     ScopeContext,
 } from './ui';
 
+// An EVA draft waiting for review, as it appears in the activity log.
+function decisionEntry(d: DecisionItem, live: boolean): LogEntry {
+    const e = workEntry({ id: `log-${d.id}`, title: d.label, client: d.company, actor: 'EVA', decisionId: d.id, status: 'needs-review',
+        desc: `EVA drafted “${d.label}” — ready for your review`, reasoning: [d.question, ...d.steps], suggestions: [d.confirm, d.alt] });
+    return live ? { ...e, event: undefined } : { ...e, event: undefined, time: '07:40', at: undefined };
+}
+
 const SIDEBAR_BG = 'rgb(41, 40, 62)';
 const SIDEBAR_BORDER = 'rgba(255,255,255,0.10)';
 import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
-import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView } from './views/ActivityView';
+import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, type WorkTab } from './views/TaskManagementView';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
@@ -60,11 +67,11 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     // Where the day starts: ask EVA, the day at a glance, and the whole client portfolio.
     // (Home and Clients merged; a client's deep analysis — the old Advisory page — opens from here.)
     { id: 'home', label: 'Portfolio overview', Icon: HomeIcon },
-    // Every client conversation in one place.
-    { id: 'inbox', label: 'Inbox', Icon: InboxIcon },
     // Work — one place: your plate + what EVA is handling (Tasks), what EVA has done
     // (Activity), and what's automated (Routines).
     { id: 'activity', label: 'Work', Icon: TasksIcon },
+    // Every client conversation in one place.
+    { id: 'inbox', label: 'Inbox', Icon: InboxIcon },
     // Live e-conomic data — only reachable when the dev proxy is available.
     ...(import.meta.env.DEV && SHOW_CONNECTION ? [{ id: 'customers' as ViewId, label: 'Customers', Icon: CustomersIcon }] : []),
     // The systems EVA works through (and the skills each exposes).
@@ -111,11 +118,27 @@ export default function App() {
     // Shared "your day" — decisions + advisory moments, so acting in Home ("My day")
     // is reflected in the Cockpit's Focus view and vice-versa.
     const [dayDecisions, setDayDecisions] = useState(SEED_DECISIONS);
-    const resolveDecision = (id: string, taken: 'confirm' | 'alt') => setDayDecisions((d) => d.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
+    // Resolving a decision — from the overview, the Tasks board or the Activity log — is
+    // one act, recorded on the decision and on its entry in the activity log.
+    const resolveDecision = (id: string, taken: 'confirm' | 'alt', backToYou = false) => {
+        const d = dayDecisions.find((x) => x.id === id);
+        setDayDecisions((all) => all.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
+        if (!d) return;
+        const choice = taken === 'alt' ? d.alt : d.confirm;
+        setActivity((prev) => prev.map((e) => (e.decisionId === id ? {
+            ...workEntry({ id: e.id, title: d.label, client: d.company, actor: 'you', decisionId: id, reasoning: e.reasoning, source: e.source, suggestions: e.suggestions,
+                event: backToYou ? 'taken-back' : taken === 'alt' ? 'alternative' : 'approved',
+                desc: backToYou ? `You took “${d.label}” back from EVA` : `You reviewed EVA’s draft of “${d.label}” — ${choice}`,
+                resolution: backToYou ? 'Taken back by you' : taken === 'alt' ? `You chose “${choice}”` : 'Approved by you' }),
+        } : e)));
+    };
     // The logged-in accountant's open decisions — the Work badge and the overview count.
     const openDecisions = dayDecisions.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen').length;
     // A task handed to EVA in Work comes back as a decision in the same shared list.
-    const addDecision = (d: DecisionItem) => setDayDecisions((all) => [d, ...all]);
+    const addDecision = (d: DecisionItem) => {
+        setDayDecisions((all) => [d, ...all]);
+        setActivity((prev) => [decisionEntry(d, true), ...prev]);
+    };
     const [routineOpen, setRoutineOpen] = useState(false);
     const [newRoutineTick, setNewRoutineTick] = useState(0);
     // Connector status — shared by Routines (template gating) and the Connectors page.
@@ -132,7 +155,35 @@ export default function App() {
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
-    const [activity, setActivity] = useState(ACTIVITY_ENTRIES);
+    // The activity log — EVA's own work plus everything done on the Tasks board.
+    const [activity, setActivity] = useState<LogEntry[]>(() => [...SEED_DECISIONS.map((d) => decisionEntry(d, false)), ...ACTIVITY_ENTRIES]);
+    const [activityFocus, setActivityFocus] = useState<string | null>(null);
+    // Board moves (mark done, reopen, hand to EVA) are written to the log as they happen —
+    // whichever surface made them (Work, the overview's My tasks, the task modal).
+    const prevTasks = useRef(tasks);
+    useEffect(() => {
+        const before = new Map(prevTasks.current.map((x) => [x.id, x]));
+        prevTasks.current = tasks;
+        const logged: LogEntry[] = [];
+        tasks.forEach((x) => {
+            const was = before.get(x.id);
+            if (!was || was.status === x.status || x.accountant !== 'Tobias Holm Jensen') return;
+            const base = { title: x.title, client: x.company, actor: 'you' as const, taskId: x.id };
+            const id = `w-${x.id}-${Date.now()}`;
+            if (x.status === 'done') logged.push(workEntry({ ...base, id, event: 'done', desc: `You marked “${x.title}” done`, resolution: 'Done by you', reasoning: [`Moved to Done on the Tasks board (was due ${x.dueLabel.toLowerCase()}).`] }));
+            else if (was.status === 'done') logged.push(workEntry({ ...base, id, event: 'reopened', desc: `You reopened “${x.title}”`, resolution: 'Reopened', reasoning: ['Moved back to To do on the Tasks board.'] }));
+            else if (x.status === 'eva-running') logged.push(workEntry({ ...base, id, event: 'handed', desc: `You handed “${x.title}” to EVA`, resolution: 'Handed to EVA', reasoning: ['EVA drafts it and brings it back to you for review.'] }));
+        });
+        if (logged.length) setActivity((prev) => [...logged, ...prev]);
+    }, [tasks]);
+    // Accepting or dismissing an EVA draft in the Activity log resolves the same decision.
+    useEffect(() => {
+        activity.forEach((e) => {
+            if (!e.decisionId || e.status !== 'completed' || e.event) return;
+            const d = dayDecisions.find((x) => x.id === e.decisionId);
+            if (d && !d.done) resolveDecision(d.id, e.resolution === 'Dismissed' || e.resolution === d.alt ? 'alt' : 'confirm');
+        });
+    }, [activity]); // eslint-disable-line react-hooks/exhaustive-deps
     const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
     useEffect(() => {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
@@ -723,7 +774,9 @@ export default function App() {
                         decisions={dayDecisions}
                         onResolveDecision={resolveDecision}
                         onAddDecision={addDecision}
-                        activityLog={<ActivityFeedView embedded entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                        activity={activity}
+                        onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
+                        activityLog={<ActivityFeedView embedded focusId={activityFocus} entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                         routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}
