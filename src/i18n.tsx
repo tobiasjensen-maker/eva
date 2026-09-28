@@ -1814,4 +1814,6 @@ const DA: Record<string, string> = {
     'Client is waiting for your reply': 'Kunden venter på dit svar',
     'Approved and sent by you': 'Godkendt og sendt af dig',
     'Sent by you': 'Sendt af dig',
+    'More options': 'Flere muligheder',
+    'Conversation history': 'Samtalehistorik',
 };
