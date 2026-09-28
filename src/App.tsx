@@ -25,6 +25,10 @@ function decisionEntry(d: DecisionItem, live: boolean): LogEntry {
     return live ? { ...e, event: undefined } : { ...e, event: undefined, time: '07:40', at: undefined };
 }
 
+// Portfolio overview: the hero's soft blue → lilac wash is the screen's own background —
+// shell and main alike (behind the sidebar too), fading into the canvas below the hero.
+const HOME_BG = `linear-gradient(180deg, #edf3fb 0px, #f4f0fb 260px, ${CANVAS} 380px)`;
+
 const SIDEBAR_BG = 'rgb(41, 40, 62)';
 const SIDEBAR_BORDER = 'rgba(255,255,255,0.10)';
 import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
@@ -488,7 +492,7 @@ export default function App() {
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className="flex" style={{ zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: CANVAS, padding: 10, gap: 10 }}>
+        <div className="flex" style={{ zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating */}
             <aside
                 className="flex flex-col shrink-0 rounded-2xl"
@@ -731,7 +735,7 @@ export default function App() {
             {/* Main content — floating */}
             <main
                 className="flex-grow overflow-hidden rounded-2xl"
-                style={{ background: view === 'chat' ? '#fff' : CANVAS }}
+                style={{ background: view === 'chat' ? '#fff' : view === 'home' ? 'transparent' : CANVAS }}
             >
                 {view === 'chat' && (
                     <ChatView

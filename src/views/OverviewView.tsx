@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
-import { Card, CountBadge, Orb, MicIcon, COLORS, CANVAS } from '../ui';
+import { Card, CountBadge, Orb, MicIcon, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem } from '../day';
 import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client } from '../practice';
@@ -71,7 +71,8 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     return (
         <div className="h-full overflow-y-auto">
             {/* hero — the greeting and the question box */}
-            <div className="px-8 pt-10 pb-9" style={{ background: `linear-gradient(180deg, #edf3fb 0%, #f4f0fb 70%, ${CANVAS} 100%)` }}>
+            {/* no background of its own — the gradient is the screen's (see HOME_BG in App) */}
+            <div className="px-8 pt-10 pb-9">
                 <div className="mx-auto text-center" style={{ maxWidth: 840 }}>
                     <h1 className="text-3xl font-semibold" style={{ color: COLORS.text }}>{t('Good morning, {name}').replace('{name}', 'Tobias')}</h1>
                     <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px]" style={{ maxWidth: 760, background: 'linear-gradient(90deg,#7c3aed,#ed9b2c)' /* EVA purple → e-conomic orange */ }}>
