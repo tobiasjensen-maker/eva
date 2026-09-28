@@ -68,11 +68,13 @@ export function DecisionReview({ d, t, onClose, onResolve }: { d: DecisionItem; 
                 </div>
 
                 <div className="px-5 py-4 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
-                    <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: '#fbf3e0', border: '1px solid #efdcb0' }}>
-                        <span className="shrink-0" style={{ color: '#b9842b' }}><Icon name="circle-warning" /></span>
+                    {/* EVA suggests — what EVA thinks you should do, and why it's asking */}
+                    <div className="rounded-lg p-3.5 flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
+                        <span className="shrink-0 mt-0.5"><Orb size={18} /></span>
                         <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#92710f' }}>{t('Needs your review')}</p>
-                            <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}>{t('EVA suggests')}</p>
+                            <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{t(d.recommend)}</p>
+                            <p className="text-xs mt-1 leading-relaxed" style={{ color: COLORS.textMuted }}>{t('Why you’re asked')}: {t(d.question)}</p>
                         </div>
                     </div>
 
@@ -141,14 +143,6 @@ export function DecisionReview({ d, t, onClose, onResolve }: { d: DecisionItem; 
                             <NotesList company={d.company} />
                         </div>
                     )}
-
-                    <div className="rounded-lg p-3 flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
-                        <span className="shrink-0 mt-0.5"><Orb size={16} /></span>
-                        <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}>{t('EVA’s call')}</p>
-                            <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.recommend)}</p>
-                        </div>
-                    </div>
                 </div>
 
                 {asking ? (

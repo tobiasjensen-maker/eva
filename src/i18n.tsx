@@ -1821,4 +1821,5 @@ const DA: Record<string, string> = {
     'Back': 'Tilbage',
     'Just now': 'Lige nu',
     'What’s due this week?': 'Hvad forfalder i denne uge?',
+    'Why you’re asked': 'Hvorfor du bliver spurgt',
 };

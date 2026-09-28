@@ -195,4 +195,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - EVA side panel: a kebab (⋯) menu holds New chat and Conversation history. History is kept for
   the session across pages (`PANEL_HISTORY`, seeded); switching or starting a new chat files the
   current conversation first. The full-window chat keeps its own History / New chat buttons.
+- Review modal: one purple "EVA suggests" box at the top (EVA's recommendation + why you're asked),
+  replacing the separate "Needs your review" and "EVA's call" boxes.
 
