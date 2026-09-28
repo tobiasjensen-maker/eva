@@ -2766,6 +2766,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .inset-0 {
   inset: 0px;
 }
+.inset-x-0 {
+  left: 0px;
+  right: 0px;
+}
 .\!left-auto {
   left: auto !important;
 }
@@ -3927,6 +3931,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .whitespace-nowrap {
   white-space: nowrap;
+}
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
 }
 .break-words {
   overflow-wrap: break-word;
