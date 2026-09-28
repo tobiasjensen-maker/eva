@@ -33,7 +33,8 @@ import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
-import TaskManagementView, { tasksAnswer, TASKS, type WorkTab } from './views/TaskManagementView';
+import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
+import { DecisionReview } from './views/Decisions';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
 import PracticeView from './views/PracticeView';
@@ -158,6 +159,18 @@ export default function App() {
     // The activity log — EVA's own work plus everything done on the Tasks board.
     const [activity, setActivity] = useState<LogEntry[]>(() => [...SEED_DECISIONS.map((d) => decisionEntry(d, false)), ...ACTIVITY_ENTRIES]);
     const [activityFocus, setActivityFocus] = useState<string | null>(null);
+    // Clicking a task (or an EVA draft) in the activity log opens the same modal as on the Tasks tab.
+    const [logTask, setLogTask] = useState<string | null>(null);
+    const [logDecision, setLogDecision] = useState<string | null>(null);
+    const openFromLog = (e: LogEntry) => {
+        const openDecision = (id?: string) => { const d = id ? dayDecisions.find((x) => x.id === id && !x.done) : undefined; if (d) setLogDecision(d.id); return !!d; };
+        if (openDecision(e.decisionId)) return true;
+        if (e.taskId) {
+            if (tasks.some((x) => x.id === e.taskId && x.status !== 'eva-running')) { setLogTask(e.taskId); return true; }
+            if (openDecision(`d-${e.taskId}`)) return true; // handed to EVA — its draft is what's open now
+        }
+        return false; // EVA's own work (or a settled review): expand the entry in place
+    };
     // Board moves (mark done, reopen, hand to EVA) are written to the log as they happen —
     // whichever surface made them (Work, the overview's My tasks, the task modal).
     const prevTasks = useRef(tasks);
@@ -776,11 +789,23 @@ export default function App() {
                         onAddDecision={addDecision}
                         activity={activity}
                         onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
-                        activityLog={<ActivityFeedView embedded focusId={activityFocus} entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                        activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                         routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}
                 {view === 'customers' && <CustomersView />}
+                {(() => {
+                    const tk = logTask ? tasks.find((x) => x.id === logTask) : undefined;
+                    const d = logDecision ? dayDecisions.find((x) => x.id === logDecision) : undefined;
+                    const close = () => { setLogTask(null); setLogDecision(null); };
+                    return <>
+                        {tk && <TaskModal task={tk} onClose={close}
+                            onHandToEva={() => { handTaskToEva(tk, setTasks, addDecision); close(); }}
+                            onDone={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'done' } : x))); close(); }}
+                            onReopen={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'todo' } : x))); close(); }} />}
+                        {d && <DecisionReview d={d} t={t} onClose={close} onResolve={(taken) => { resolveDecision(d.id, taken); close(); }} />}
+                    </>;
+                })()}
                 {view === 'connectors' && <SkillsView page="connectors" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>

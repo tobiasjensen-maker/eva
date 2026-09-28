@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
 import { ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
@@ -32,6 +32,13 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
 
     const list = threads.filter((x) => tab === 'all' || x.status === tab);
     const sel = threads.find((x) => x.id === selId) ?? list[0];
+    // The conversation opens at, and follows, the latest message.
+    const msgsRef = useRef<HTMLDivElement>(null);
+    const lastCount = sel?.messages.length ?? 0;
+    useEffect(() => {
+        const el = msgsRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }, [sel?.id, lastCount]);
     const count = (k: ThreadStatus) => threads.filter((x) => x.status === k).length;
 
     function send(text: string, extra?: { result?: string; status?: ThreadStatus }) {
@@ -105,7 +112,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                                 </div>
                             )}
 
-                            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+                            <div ref={msgsRef} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
                                 {sel.messages.map((m, i) => {
                                     const mine = m.from !== 'client';
                                     return (
@@ -125,16 +132,26 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                             </div>
 
                             {sel.suggestion && sel.status === 'needs' && (
-                                <div className="mx-5 mb-3 rounded-xl p-3.5 flex items-start gap-3" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
-                                    <span className="mt-0.5"><Orb size={18} /></span>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}>{t('EVA suggests')}</p>
-                                        <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(sel.suggestion.action)}</p>
-                                        <p className="text-xs mt-1 italic" style={{ color: COLORS.textMuted }}>“{t(sel.suggestion.reply)}”</p>
+                                <div className="mx-5 mb-3 rounded-xl p-3.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
+                                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}><Orb size={16} /> {t('EVA suggests')}</p>
+                                    {/* Two parts, kept visibly apart: what EVA does in the books, and the message to the client */}
+                                    <div className="mt-2.5 flex items-start gap-2.5">
+                                        <span className="shrink-0 flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#7c3aed14', color: '#6d28d9' }}><Icon name="settings" /></span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[11px] font-medium" style={{ color: COLORS.textMuted }}>{t('EVA does')}</p>
+                                            <p className="text-sm" style={{ color: COLORS.text }}>{t(sel.suggestion.action)}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col gap-1.5 shrink-0">
+                                    <div className="mt-2.5 flex items-start gap-2.5">
+                                        <span className="shrink-0 flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#7c3aed14', color: '#6d28d9' }}><Icon name="envelope" /></span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[11px] font-medium" style={{ color: COLORS.textMuted }}>{t('Reply to {name}').replace('{name}', sel.contact.split(' ')[0])}</p>
+                                            <p className="text-sm mt-1 rounded-lg px-3 py-2 bg-white" style={{ color: COLORS.text, border: `1px solid ${COLORS.cardBorder}` }}>{t(sel.suggestion.reply)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-3">
+                                        <Button onClick={() => setDraft(t(sel.suggestion!.reply))}>{t('Edit reply')}</Button>
                                         <Button appearance="primary" onClick={() => send(t(sel.suggestion!.reply), { result: t(sel.suggestion!.result), status: 'done' })}>{t('Approve & send')}</Button>
-                                        <Button onClick={() => setDraft(t(sel.suggestion!.reply))}>{t('Edit first')}</Button>
                                     </div>
                                 </div>
                             )}

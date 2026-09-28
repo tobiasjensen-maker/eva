@@ -49,9 +49,9 @@ the day starts; every other page is "further in".**
     (`addDecision` → a "ready for your review" entry) and every review outcome (`resolveDecision`
     updates the same entry). Accepting/dismissing a draft in the log resolves the decision.
     Entries carry `origin: 'tasks'`, `actor`, `event`, `taskId`/`decisionId`. A Done card opens
-    the Activity tab with that entry expanded (`focusId`).
-  - The Activity log uses the Tasks list's pattern: grouped section cards (by day / status /
-    client), rows with client avatar and the same status tags (`src/views/workStatus.tsx`).
+    the Activity tab with that entry expanded (`focusId`); clicking a task or open EVA draft in the
+    log opens the same TaskModal / DecisionReview as the Tasks tab (`onOpenEntry`, rendered in `App`).
+  - The Activity log uses the Tasks list's pattern: section cards grouped by day, rows with client avatar and the same status tags (`src/views/workStatus.tsx`).
   - **Activity** (`#/activity`) — everything EVA has done: `ActivityFeedView` rendered `embedded`.
   - **Routines** (`#/routines`) — what's planned and automated: **Scheduled for EVA** (EVA's
     scheduled tasks + the active routines' next runs, in time order) above the routines
@@ -148,3 +148,5 @@ separate GitHub Pages deploy — don't remove it.
   "Scheduled by EVA" upcoming lane, a "Completed by EVA" trail, and a "Hand to EVA" action on
   human tasks. `#/review`, `#/cockpit`, `#/tasks`, `#/praksis` all route here. The old
   `CockpitView` dashboard code remains in `ActivityView.tsx` but is unused.
+- Inbox: EVA's suggestion is split into **EVA does** (the bookkeeping action) and **Reply to …**
+  (the message, shown as a draft bubble); the conversation scrolls to the latest message.

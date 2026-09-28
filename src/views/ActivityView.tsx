@@ -1,6 +1,6 @@
 import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { CountBadge, Card, ClientAvatar, Orb, PageHeader, PeriodPicker, SegmentedTabs, COLORS, CANVAS } from '../ui';
+import { CountBadge, Card, ClientAvatar, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
 import { WorkTag, SectionCard as ListCard, type WorkStatus } from './workStatus';
 import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
@@ -987,8 +987,9 @@ const FEED_BUCKETS: { key: Bucket; label: string }[] = [
 
 // The Activity log: everything EVA has done, with advanced filtering (search, status,
 // area, client, date range). `embedded` renders it as the Routines page's Activity tab.
-export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false, focusId }: {
+export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false, focusId, onOpenEntry }: {
     focusId?: string | null;
+    onOpenEntry?: (e: LogEntry) => boolean; // a task or EVA draft opens its own modal, like on the Tasks tab
     entries: LogEntry[];
     setEntries: Dispatch<SetStateAction<LogEntry[]>>;
     scope?: string;
@@ -1003,7 +1004,6 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
     const [statusF, setStatusF] = useState<Set<ActivityStatus>>(new Set());
     const [skillF, setSkillF] = useState('all');
     const [clientF, setClientF] = useState(scope === 'portfolio' ? 'all' : scope);
-    const [groupBy, setGroupBy] = useState<'day' | 'status' | 'client'>('day');
 
     useEffect(() => { setClientF(scope === 'portfolio' ? 'all' : scope); }, [scope]);
     // Opened from the Tasks board → expand that entry and bring it into view.
@@ -1022,13 +1022,9 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
         && (clientF === 'all' || e.client === clientF)
         && (!ql || t(e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql) || (e.source ?? '').toLowerCase().includes(ql)),
     ).sort((a, b) => a.daysAgo - b.daysAgo || (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
-    const groups: { key: string; title: ReactNode; items: LogEntry[] }[] = (
-        groupBy === 'status'
-            ? (['needs-review', 'waiting', 'failed', 'completed'] as ActivityStatus[]).map((k) => ({ key: k, title: <WorkTag s={LOG_TAG[k].s} label={LOG_TAG[k].label} />, items: filtered.filter((e) => e.status === k) }))
-            : groupBy === 'client'
-            ? [...new Set(filtered.map((e) => e.client))].map((c) => ({ key: c, title: <span className="flex items-center gap-2"><ClientAvatar name={t(clientName(c))} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(clientName(c))}</span></span>, items: filtered.filter((e) => e.client === c) }))
-            : FEED_BUCKETS.map((b) => ({ key: b.key, title: <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(b.label)}</span>, items: filtered.filter((e) => e.bucket === b.key) }))
-    ).filter((g) => g.items.length > 0);
+    const groups: { key: string; title: ReactNode; items: LogEntry[] }[] = FEED_BUCKETS
+        .map((b) => ({ key: b.key, title: <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(b.label)}</span>, items: filtered.filter((e) => e.bucket === b.key) }))
+        .filter((g) => g.items.length > 0);
     const statusCount = (k: ActivityStatus) => entries.filter((e) => inRangeOf(e, range) && e.status === k).length;
     const anyFilter = statusF.size > 0 || skillF !== 'all' || clientF !== 'all' || !!q;
 
@@ -1037,7 +1033,7 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
 
     const rowProps = (e: LogEntry) => ({
         open: A.expanded === e.id, acting: A.acting === e.id,
-        onToggle: () => A.setExpanded(A.expanded === e.id ? null : e.id),
+        onToggle: () => { if (onOpenEntry?.(e)) return; A.setExpanded(A.expanded === e.id ? null : e.id); },
         onResolve: (action: string) => A.resolve(e.id, action),
         onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
         onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
@@ -1051,7 +1047,6 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                 {/* filter bar */}
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     {embedded && <PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />}
-                    <SegmentedTabs value={groupBy} onChange={(v) => setGroupBy(v as typeof groupBy)} options={[{ value: 'day', label: t('By day') }, { value: 'status', label: t('By status') }, { value: 'client', label: t('By client') }]} />
                     <div className="relative flex-1" style={{ minWidth: 200 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search activity…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={selectStyle} />
@@ -1094,8 +1089,8 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                                 {g.items.map((e, i) => (
                                     <div key={e.id} id={`log-${e.id}`}>
                                         {e.status === 'waiting'
-                                            ? <WaitingRow entry={e} variant="list" showClient={groupBy !== 'client'} last={i === g.items.length - 1} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
-                                            : <LogRow entry={e} variant="list" showClient={groupBy !== 'client'} last={i === g.items.length - 1} {...rowProps(e)} />}
+                                            ? <WaitingRow entry={e} variant="list" last={i === g.items.length - 1} reminded={A.reminded.has(e.id)} onRemind={() => A.setReminded((p) => new Set(p).add(e.id))} onReceived={() => A.resolve(e.id, 'Resolved')} onTrace={() => A.setTrace(e)} />
+                                            : <LogRow entry={e} variant="list" last={i === g.items.length - 1} {...rowProps(e)} />}
                                     </div>
                                 ))}
                             </ListCard>

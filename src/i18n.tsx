@@ -1638,4 +1638,10 @@ const DA: Record<string, string> = {
     'from Tasks': 'fra Opgaver',
     'Reopened': 'Genåbnet',
     'Handed to EVA': 'Givet til EVA',
+    'Reopen': 'Genåbn',
+    'Reply to {name}': 'Svar til {name}',
+    'Book the receipt as business entertainment (25% VAT deductible)': 'Bogfør kvitteringen som repræsentation (25 % moms fradrag)',
+    'Book the lease liability from the six documents': 'Bogfør leasingforpligtelsen ud fra de seks dokumenter',
+    'Hold Thursday 14:00 in your calendar': 'Reservér torsdag kl. 14:00 i din kalender',
+    'Edit reply': 'Rediger svar',
 };

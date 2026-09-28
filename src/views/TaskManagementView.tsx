@@ -553,7 +553,7 @@ export function handTaskToEva(task: Task, setTasks: Dispatch<SetStateAction<Task
 }
 
 // A task, opened — the same modal from Work and from the Portfolio overview.
-export function TaskModal({ task, onClose, onHandToEva, onDone }: { task: Task; onClose: () => void; onHandToEva?: () => void; onDone?: () => void }) {
+export function TaskModal({ task, onClose, onHandToEva, onDone, onReopen }: { task: Task; onClose: () => void; onHandToEva?: () => void; onDone?: () => void; onReopen?: () => void }) {
     const { t } = useLang();
     const st = TSTATUS[task.status];
     const prio = TPRIO[task.priority];
@@ -609,8 +609,13 @@ export function TaskModal({ task, onClose, onHandToEva, onDone }: { task: Task; 
                 <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     <span className="text-xs" style={{ color: COLORS.textMuted }}>{eva ? t('Full trace · you can always see what EVA did') : t('EVA can take this on and hand you a draft to approve.')}</span>
                     <div className="flex gap-2 shrink-0">
+                        {task.status === 'done' ? <>
+                            {onReopen && <Button onClick={onReopen}>{t('Reopen')}</Button>}
+                            <Button onClick={onClose}>{t('Close')}</Button>
+                        </> : <>
                         {!eva && onDone && <Button onClick={onDone}><Icon name="circle-tick" /> {t('Mark done')}</Button>}
                         {!eva && onHandToEva ? <Button appearance="primary" onClick={onHandToEva}>{t('Hand to EVA')}</Button> : <Button onClick={onClose}>{t('Close')}</Button>}
+                        </>}
                     </div>
                 </div>
             </div>

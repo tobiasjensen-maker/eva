@@ -104,7 +104,7 @@ export const THREADS: Thread[] = [
             { from: 'eva', who: 'EVA for Tobias', at: 'Yesterday 16:02', text: 'Hi Mads — what was the purpose of the dinner at Restaurant Kødbyen on 11 Sep (2.860 kr)? I need it to book the VAT correctly.' },
             { from: 'client', who: 'Mads Bryg', at: '09:14', text: 'That was dinner with our new distributor from Hamburg.' },
         ],
-        suggestion: { action: 'Book it as business entertainment (25% VAT deductible) and reply', reply: 'Thanks Mads — booked as business entertainment. Nothing else needed from you.', result: 'Booked as business entertainment · VAT 25% deductible' },
+        suggestion: { action: 'Book the receipt as business entertainment (25% VAT deductible)', reply: 'Thanks Mads — booked as business entertainment. Nothing else needed from you.', result: 'Booked as business entertainment · VAT 25% deductible' },
     },
     {
         id: 't2', client: 'Digital Marketing Pro', contact: 'Louise Holm', subject: 'Year-end documents', status: 'needs', at: '08:31',
@@ -113,14 +113,14 @@ export const THREADS: Thread[] = [
             { from: 'client', who: 'Louise Holm', at: '08:31', text: 'Uploaded 6 files — the lease, the loan statement and 4 contracts.' },
             { from: 'eva', who: 'EVA', at: '08:33', text: 'I read the 6 files. The loan statement matches the books. One contract (the new office lease) should be recognised as a lease liability — I drafted the entry.' },
         ],
-        suggestion: { action: 'Approve EVA’s lease entry and thank Louise', reply: 'Thanks Louise — all six received and booked. You’re all set for year-end.', result: 'Lease liability booked · year-end file complete' },
+        suggestion: { action: 'Book the lease liability from the six documents', reply: 'Thanks Louise — all six received and booked. You’re all set for year-end.', result: 'Lease liability booked · year-end file complete' },
     },
     {
         id: 't3', client: 'Café Solsikke', contact: 'Ida Solsikke', subject: 'Your cash position for the next weeks', status: 'needs', at: 'Yesterday',
         messages: [
             { from: 'eva', who: 'EVA · draft for Tobias', at: 'Yesterday 07:10', text: 'Draft: Hi Ida — looking at your bank and upcoming bills, you have about six weeks of cash at the current pace. I’d like to walk you through three options. Do you have 30 minutes on Thursday?' },
         ],
-        suggestion: { action: 'Send EVA’s draft and book Thursday 14:00', reply: 'Hi Ida — looking at your bank and upcoming bills, you have about six weeks of cash at the current pace. I’d like to walk you through three options. Does Thursday 14:00 work?', result: 'Sent · Thursday 14:00 held in your calendar' },
+        suggestion: { action: 'Hold Thursday 14:00 in your calendar', reply: 'Hi Ida — looking at your bank and upcoming bills, you have about six weeks of cash at the current pace. I’d like to walk you through three options. Does Thursday 14:00 work?', result: 'Sent · Thursday 14:00 held in your calendar' },
     },
     {
         id: 't4', client: 'Nordic Build ApS', contact: 'Henrik Nord', subject: 'Missing receipt — Bauhaus 14.900 kr', status: 'waiting', at: 'Mon',
