@@ -201,4 +201,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - **New task** opens a creation modal: what (with quick picks), client, due, priority, and *who does
   it* — EVA (now → drafting, then In progress for review; or scheduled tonight/tomorrow → Routines'
   Scheduled for EVA) or a person (you → To do, or someone on the team).
+- Native selects share one style (`index.css`): no browser chrome, a custom chevron with room,
+  focus ring. `ul`/`ol` margins are reset globally (taco's base CSS adds them).
 
