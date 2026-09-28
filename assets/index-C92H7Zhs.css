@@ -4530,6 +4530,12 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .pr-8 {
   padding-right: 2rem;
 }
+.pt-0\.5 {
+  padding-top: 0.125rem;
+}
+.pt-1 {
+  padding-top: 0.25rem;
+}
 .pt-10 {
   padding-top: 2.5rem;
 }
@@ -5861,10 +5867,6 @@ h1, h2, h3, h4, h5, h6, p {
   }
 }
 @media (min-width: 1024px) {
-
-  .lg\:inline {
-    display: inline;
-  }
 
   .lg\:flex {
     display: flex;
