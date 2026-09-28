@@ -2,19 +2,44 @@ import { useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { ClientAvatar, Orb, COLORS } from '../ui';
 import type { DecisionItem, ResolveInfo } from '../day';
+import type { Thread } from '../practice';
+import { PRIO_STYLE, type Priority } from '../priority';
+
+// EVA's priority, as one quiet line: level · why.
+export function PrioLine({ p, t }: { p: Priority; t: (s: string) => string }) {
+    const st = PRIO_STYLE[p.level];
+    return <p className="text-[11px] mt-0.5 truncate" style={{ color: COLORS.textMuted }}><span style={{ color: st.fg, fontWeight: 600 }}>● {t(st.label)}</span> · {t(p.why)}</p>;
+}
 import { NotesList, ReasonPicker, useMemory } from '../memory';
 
 // ---- Decisions that need the accountant — one row, one review, everywhere ----------
 // The same decision objects (src/day.ts) back the Portfolio overview's box and Work's
 // "Ready for your review", so the wording is identical and resolving one resolves both.
 
-export function DecisionRow({ d, t, onReview, showOwner, last }: { d: DecisionItem; t: (s: string) => string; onReview: () => void; showOwner?: boolean; last?: boolean }) {
+export function DecisionRow({ d, t, onReview, showOwner, last, prio }: { d: DecisionItem; t: (s: string) => string; onReview: () => void; showOwner?: boolean; last?: boolean; prio?: Priority }) {
     return (
         <div className="flex items-center gap-3 px-4 py-3" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
             <ClientAvatar name={d.company} size={26} />
             <div className="min-w-0 flex-1">
                 <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{d.company} · {t(d.label)}{showOwner ? ` · ${d.accountant.split(' ')[0]}` : ''}</p>
                 <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                {prio && <PrioLine p={prio} t={t} />}
+            </div>
+            <Button onClick={onReview}>{t('Review')}</Button>
+        </div>
+    );
+}
+
+// A client conversation waiting on you, with EVA's drafted reply — part of the same review
+// queue as decisions. Reviewing it opens the thread in the Inbox.
+export function ReplyRow({ th, t, onReview, last, prio }: { th: Thread; t: (s: string) => string; onReview: () => void; last?: boolean; prio?: Priority }) {
+    return (
+        <div className="flex items-center gap-3 px-4 py-3" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+            <ClientAvatar name={th.client} size={26} />
+            <div className="min-w-0 flex-1">
+                <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{th.client} · {t('Reply to {name}').replace('{name}', th.contact.split(' ')[0])}</p>
+                <p className="text-sm mt-0.5" style={{ color: COLORS.text }}>{t(th.subject)}</p>
+                {prio ? <PrioLine p={prio} t={t} /> : th.suggestion && <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}><span style={{ color: '#6d28d9', fontWeight: 500 }}>{t('EVA drafted a reply')}</span> · {t(th.suggestion.action)}</p>}
             </div>
             <Button onClick={onReview}>{t('Review')}</Button>
         </div>

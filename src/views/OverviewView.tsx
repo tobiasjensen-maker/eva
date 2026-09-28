@@ -3,10 +3,11 @@ import { Icon } from '@economic/taco';
 import { Card, CountBadge, Orb, MicIcon, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem, ResolveInfo } from '../day';
-import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client } from '../practice';
+import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client, type Thread } from '../practice';
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
-import { DecisionRow, DecisionReview } from './Decisions';
+import { DecisionRow, DecisionReview, ReplyRow } from './Decisions';
+import { PRIO_RANK, priorityOfDecision, priorityOfThread } from '../priority';
 import { TaskModal, WorkTag, dueColor, handTaskToEva, isEva, workTagsFor, type Task } from './TaskManagementView';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -50,12 +51,12 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
     return da ? 'Spørg mig om din dag, en af dine kunder, eller hvem der er klar til rådgivning.' : 'Ask me about your day, one of your clients, or who’s ready for an advisory conversation.';
 }
 
-export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, replies, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
+export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     onAddDecision: (d: DecisionItem) => void;
     decisions: DecisionItem[];
-    replies: number;
+    threads: Thread[]; // client conversations — the ones waiting on you join the review queue
     onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
     onAsk: (q: string) => void;
     onGo: (v: ViewId) => void;
@@ -98,7 +99,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 {/* the day at a glance */}
                 <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
                     <TasksWidget t={t} tasks={tasks} setTasks={setTasks} onAddDecision={onAddDecision} onGo={onGo} />
-                    <NeedsYouWidget t={t} decisions={decisions} replies={replies} onResolve={onResolveDecision} onGo={onGo} />
+                    <NeedsYouWidget t={t} decisions={decisions} threads={threads} onOpenThread={(th) => onMessage(th.client)} onResolve={onResolveDecision} onGo={onGo} />
                     <BooksWidget t={t} onGo={onGo} />
                 </div>
 
@@ -117,7 +118,8 @@ function Widget({ title, right, children, footer }: { title: string; right?: Rea
                 <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{title}</p>
                 {right}
             </div>
-            <div className="flex-1">{children}</div>
+            {/* capped: long content scrolls inside the box instead of stretching the row */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ maxHeight: 300 }}>{children}</div>
             {footer && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>{footer}</div>}
         </Card>
     );
@@ -163,19 +165,27 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
 
 // Ready for your review — the same decisions as Work's review lane (shared rows and
 // modal, from src/day.ts), filtered to the logged-in accountant.
-function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; replies: number; onResolve: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onGo: (v: ViewId) => void }) {
+function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; threads: Thread[]; onOpenThread: (th: Thread) => void; onResolve: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onGo: (v: ViewId) => void }) {
     const open = decisions.filter((d) => !d.done && d.accountant === ME);
+    const replies = threads.filter((x) => x.status === 'needs'); // client conversations with EVA's drafted reply
+    // one queue, ranked by EVA — most urgent first
+    const queue = [
+        ...open.map((d) => ({ d, th: undefined as Thread | undefined, p: priorityOfDecision(d) })),
+        ...replies.map((th) => ({ d: undefined as DecisionItem | undefined, th, p: priorityOfThread(th) })),
+    ].sort((a, b) => PRIO_RANK[a.p.level] - PRIO_RANK[b.p.level]);
     const [review, setReview] = useState<DecisionItem | null>(null);
     return (
         <>
-            <Widget title={t('Ready for your review')} right={<CountBadge n={open.length} />}
-                footer={<button onClick={() => onGo('inbox')} className="text-xs font-medium flex items-center gap-1.5" style={{ color: '#4456c7' }}><Icon name="chat" /> {replies > 0 ? t('{n} client replies drafted in your Inbox').replace('{n}', String(replies)) : t('No client replies waiting')} →</button>}>
-                {open.length === 0 ? (
+            <Widget title={t('Ready for your review')} right={<><span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span><CountBadge n={open.length + replies.length} /></>}
+                footer={<button onClick={() => onGo('activity')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>}>
+                {open.length + replies.length === 0 ? (
                     <div className="px-4 py-6 flex items-center gap-2.5">
                         <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
                         <p className="text-sm" style={{ color: COLORS.text }}>{t('Nothing in the books needs you.')}</p>
                     </div>
-                ) : open.map((d, i) => <DecisionRow key={d.id} d={d} t={t} last={i === open.length - 1} onReview={() => setReview(d)} />)}
+                ) : queue.map((q, i) => q.d
+                    ? <DecisionRow key={q.d.id} d={q.d} t={t} prio={q.p} last={i === queue.length - 1} onReview={() => setReview(q.d!)} />
+                    : <ReplyRow key={q.th!.id} th={q.th!} t={t} prio={q.p} last={i === queue.length - 1} onReview={() => onOpenThread(q.th!)} />)}
             </Widget>
             {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolve(review.id, taken, info); setReview(null); }} />}
         </>

@@ -160,7 +160,8 @@ export default function App() {
     const [inboxFocus, setInboxFocus] = useState<string | null>(null);
     const needsReply = threads.filter((x) => x.status === 'needs').length;
     // Menu counts — one subtle badge style for every item.
-    const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions };
+    // Work's badge is its In progress queue: EVA's drafts to review + client replies drafted in the Inbox.
+    const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions + needsReply };
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -172,6 +173,7 @@ export default function App() {
     const [logTask, setLogTask] = useState<string | null>(null);
     const [logDecision, setLogDecision] = useState<string | null>(null);
     const openFromLog = (e: LogEntry) => {
+        if (e.threadId) { const th = threads.find((x) => x.id === e.threadId); if (th) { setInboxFocus(th.client); goView('inbox'); return true; } }
         const openDecision = (id?: string) => { const d = id ? dayDecisions.find((x) => x.id === id && !x.done) : undefined; if (d) setLogDecision(d.id); return !!d; };
         if (openDecision(e.decisionId)) return true;
         if (e.taskId) {
@@ -198,6 +200,34 @@ export default function App() {
         });
         if (logged.length) setActivity((prev) => [...logged, ...prev]);
     }, [tasks]);
+    // Client replies waiting on you are in the log as "ready for your review" (derived from the
+    // threads, so they clear the moment you send); sending one is logged as done.
+    const prevThreads = useRef(threads);
+    useEffect(() => {
+        const before = new Map(prevThreads.current.map((x) => [x.id, x]));
+        prevThreads.current = threads;
+        const logged: LogEntry[] = [];
+        threads.forEach((x) => {
+            const was = before.get(x.id);
+            if (!was || was.status !== 'needs' || x.status === 'needs') return;
+            const usedEva = !!was.suggestion && !x.suggestion;
+            logged.push(workEntry({ id: `w-${x.id}-${Date.now()}`, title: `Reply to ${x.contact.split(' ')[0]}`, client: x.client, actor: 'you', origin: 'inbox', skill: 'inbox', threadId: x.id, event: 'done',
+                desc: x.status === 'done' && !usedEva && x.messages.length === was.messages.length ? `You closed “${x.subject}”` : `You replied to ${x.contact} — ${x.subject}`,
+                resolution: usedEva ? 'Approved and sent by you' : 'Sent by you',
+                reasoning: [...(usedEva && was.suggestion ? [`EVA also: ${was.suggestion.result}.`] : []), `Conversation with ${x.contact} in the Inbox.`] }));
+        });
+        if (logged.length) setActivity((prev) => [...logged, ...prev]);
+    }, [threads]);
+    const activityAll = useMemo<LogEntry[]>(() => [
+        ...threads.filter((x) => x.status === 'needs').map((x) => ({
+            ...workEntry({ id: `inbox-${x.id}`, title: `Reply to ${x.contact.split(' ')[0]}`, client: x.client, actor: 'EVA', origin: 'inbox', skill: 'inbox', threadId: x.id, status: 'needs-review',
+                desc: x.suggestion ? `EVA drafted a reply to ${x.contact} — ${x.subject}` : `${x.contact} is waiting for your reply — ${x.subject}`,
+                reasoning: x.suggestion ? [`Draft: “${x.suggestion.reply}”`, `When you send, EVA will also: ${x.suggestion.action.toLowerCase()}.`] : [] }),
+            time: x.at.includes(':') ? x.at : '08:00', dateLabel: x.at.includes(':') ? 'Today' : x.at, daysAgo: x.at.includes(':') ? 0 : 1, bucket: (x.at.includes(':') ? 'today' : 'yesterday') as LogEntry['bucket'], at: undefined,
+        })),
+        ...activity,
+    ], [threads, activity]);
+
     // Accepting or dismissing an EVA draft in the Activity log resolves the same decision.
     useEffect(() => {
         activity.forEach((e) => {
@@ -769,7 +799,7 @@ export default function App() {
                         setTasks={setTasks}
                         onAddDecision={addDecision}
                         decisions={dayDecisions}
-                        replies={needsReply}
+                        threads={threads}
                         onResolveDecision={resolveDecision}
                         onGo={goView}
                         // The question box hands off to the EVA panel, answer included.
@@ -796,9 +826,11 @@ export default function App() {
                         decisions={dayDecisions}
                         onResolveDecision={resolveDecision}
                         onAddDecision={addDecision}
-                        activity={activity}
+                        activity={activityAll}
+                        threads={threads}
+                        onOpenThread={(th) => { setInboxFocus(th.client); goView('inbox'); }}
                         onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
-                        activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activity} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                        activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activityAll} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                         routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}

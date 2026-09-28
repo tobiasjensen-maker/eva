@@ -42,7 +42,8 @@ export interface LogEntry {
     provenance?: Provenance; // override — e.g. a genuine e-conomic system flag
     // Work done in Work → Tasks lands here too, so the log is the one record of what happened.
     title?: string; // short name for the Tasks board's Done column
-    origin?: 'tasks';
+    origin?: 'tasks' | 'inbox';
+    threadId?: string; // a client conversation in the Inbox
     actor?: 'you' | 'EVA';
     event?: 'done' | 'reopened' | 'handed' | 'drafted' | 'approved' | 'alternative' | 'taken-back';
     taskId?: string;
@@ -53,7 +54,7 @@ export interface LogEntry {
 
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 // A log entry for something that just happened on the Tasks board.
-export function workEntry(p: { id: string; title: string; desc: string; client: string; actor: 'you' | 'EVA'; event?: LogEntry['event']; status?: ActivityStatus; reasoning?: string[]; taskId?: string; decisionId?: string; suggestions?: string[]; resolution?: string; source?: string }): LogEntry {
+export function workEntry(p: { id: string; title: string; desc: string; client: string; actor: 'you' | 'EVA'; event?: LogEntry['event']; status?: ActivityStatus; reasoning?: string[]; taskId?: string; decisionId?: string; threadId?: string; origin?: LogEntry['origin']; suggestions?: string[]; resolution?: string; source?: string; skill?: string }): LogEntry {
     return {
         daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: nowTime(), at: Date.now(), skill: 'tasks', confidence: 'high',
         status: 'completed', origin: 'tasks', reasoning: [], ...p, client: clientId(p.client),
@@ -81,6 +82,7 @@ export const isAdvisory = (e: { skill: string }) => ADVISORY_SKILLS.has(e.skill)
 
 const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
     tasks: { emoji: '✅', label: 'Tasks' },
+    inbox: { emoji: '💬', label: 'Client messages' },
     reconciliation: { emoji: '🏦', label: 'Bank reconciliation' },
     reminders: { emoji: '🔔', label: 'Payment reminders' },
     documents: { emoji: '📎', label: 'Document collection' },
@@ -248,7 +250,7 @@ const LOG_TAG: Record<ActivityStatus, { s: WorkStatus; label: string }> = {
     waiting: { s: 'todo', label: 'Waiting' },
     failed: { s: 'overdue', label: 'Failed' },
 };
-const actorOf = (e: LogEntry) => (e.origin === 'tasks' && e.actor === 'you' ? 'You' : 'EVA');
+const actorOf = (e: LogEntry) => (e.origin && e.actor === 'you' ? 'You' : 'EVA');
 
 const DATE_RANGES = [
     { value: 'today', label: 'Today' },
@@ -596,7 +598,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                         {t(entry.desc)}
                     </p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
-                        {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}{entry.origin === 'tasks' ? <> · {t(entry.actor === 'you' ? 'You' : 'EVA')} · {t('from Tasks')}</> : null}
+                        {t(clientName(entry.client))} · {t(entry.dateLabel)} · {entry.time}{entry.origin ? <> · {t(entry.actor === 'you' ? 'You' : 'EVA')} · {t(entry.origin === 'inbox' ? 'from Inbox' : 'from Tasks')}</> : null}
                     </p>
                 </div>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
@@ -652,7 +654,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                                     <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
                                     {t('Working…')}
                                 </span>
-                            ) : entry.status === 'completed' && entry.origin === 'tasks' ? (
+                            ) : entry.status === 'completed' && entry.origin ? (
                                 // Work from the Tasks board — a record, changed from the board rather than undone here.
                                 <span className="flex items-center gap-1.5 text-sm" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t(entry.resolution ?? (entry.actor === 'you' ? 'Done by you' : 'Done by EVA'))}</span>
                             ) : entry.status === 'completed' ? (

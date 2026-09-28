@@ -177,3 +177,13 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - Inbox: EVA's suggestion lives in the composer — the reply as ghost text (Tab or "Use" to take it,
   "Dismiss" to hide) and one line "When you send, EVA will also …" (untick to skip the action).
   Drafts are kept per conversation. Thread list resizes between 320 and 560px.
+- **One review queue.** Client conversations waiting on you (with EVA's drafted reply) are part of
+  the same queue as EVA's drafts: Work → In progress (kind `reply`), the overview's "Ready for your
+  review" and the Activity log (derived from `threads` in `App`, so they clear the moment you send).
+  Reviewing one opens the thread in the Inbox; sending is logged ("You replied to …"). Work's badge
+  = drafts + replies.
+- **EVA prioritises the queue** (`src/priority.ts`): each item gets High/Medium/Low and a one-line
+  reason (deadlines and money first). The overview list and Work's In progress are sorted by it
+  (your own drag order in Work wins once you reorder).
+- Overview boxes cap their content at 300px and scroll inside.
+
