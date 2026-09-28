@@ -5068,8 +5068,27 @@ html, body, button, input, textarea, select, h1, h2, h3, h4, h5, h6 {
 }
 /* taco's base stylesheet adds large default margins to text elements; reset them
    (element-level specificity so Tailwind margin utilities still take precedence) */
-h1, h2, h3, h4, h5, h6, p {
+h1, h2, h3, h4, h5, h6, p, ul, ol {
     margin: 0;
+}
+/* One look for every native select: no browser chrome, a quiet chevron with room around it,
+   and the same focus ring as the rest of the app. */
+select:not([multiple]) {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%236b6b76' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 16px;
+    padding-right: 34px !important;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+select:not([multiple]):hover {
+    border-color: #d4d4da !important;
+}
+select:focus-visible {
+    outline: 2px solid #7c3aed40;
+    outline-offset: 1px;
 }
 @keyframes animIn {
     from { opacity: 0; transform: translateY(4px); }
