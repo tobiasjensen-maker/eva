@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
+import type { Turn } from '../ChatPanel';
 import { Button, Icon } from '@economic/taco';
 import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
@@ -50,7 +51,8 @@ interface Props {
     onActiveChange?: (active: boolean) => void;
     analyticsUnlocked?: boolean;
     onSelectClient?: (id: string) => void;
-    onClose?: () => void; // close the full-window chat and return
+    onClose?: (turns: Turn[]) => void; // close the full-window chat and return, taking the conversation back
+    seedTurns?: Turn[] | null; // the conversation so far, when opened from the EVA panel
 }
 
 const MONTHS = [
@@ -495,14 +497,16 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns }: Props) {
     const { t, lang } = useLang();
     // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
-    const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : []));
+    // Opened from the EVA panel: continue that conversation (shown as it was, not re-typed).
+    const [seeded] = useState<ChatMsg[]>(() => (seedTurns ?? []).map((x): ChatMsg => (x.role === 'user' ? { id: nextId(), role: 'user', text: x.text } : { id: nextId(), role: 'assistant', kind: 'text', text: x.text })));
+    const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : seeded));
     const [input, setInput] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>(SEED_HISTORY);
     const [historyOpen, setHistoryOpen] = useState(false);
-    const [instantIds, setInstantIds] = useState<Set<number>>(() => (seedWelcome ? new Set([0]) : new Set()));
+    const [instantIds, setInstantIds] = useState<Set<number>>(() => (seedWelcome ? new Set([0]) : new Set(seeded.map((m) => m.id))));
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -797,7 +801,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                     )}
                     {onClose && (
                         <button
-                            onClick={onClose}
+                            onClick={() => onClose(messages.flatMap((m): Turn[] => (m.role === 'user' ? [{ role: 'user', text: m.text }] : m.kind === 'text' ? [{ role: 'assistant', text: m.text }] : [])))}
                             title={t('Close')}
                             className="flex items-center justify-center rounded-lg"
                             style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}

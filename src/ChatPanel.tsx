@@ -99,9 +99,11 @@ function Thinking() {
 }
 
 export interface PendingAsk { user: string; answer: string }
+// A conversation as plain turns — how it travels between the panel and the full-window chat.
+export type Turn = { role: 'user' | 'assistant'; text: string };
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed,
 }: {
     subtitle: string;
     intro: string;
@@ -112,7 +114,8 @@ export function ChatPanel({
     evaSrc?: string;
     collapsed: boolean;
     onToggleCollapsed: () => void;
-    onExpand?: () => void; // open the full-window chat
+    onExpand?: (turns: Turn[]) => void; // open the full-window chat, taking the conversation along
+    seed?: Turn[] | null; // a conversation to continue (e.g. coming back from the full-window chat)
     // A one-off welcome brief seeded as the first message (e.g. right after onboarding).
     welcome?: string | null;
     onWelcomeConsumed?: () => void;
@@ -120,7 +123,9 @@ export function ChatPanel({
     onPendingConsumed: () => void;
 }) {
     const { t } = useLang();
-    const [msgs, setMsgs] = useState<Msg[]>(() => [{ id: 0, role: 'assistant', text: welcome ? welcome : t(intro), instant: true }]);
+    const [msgs, setMsgs] = useState<Msg[]>(() => seed?.length
+        ? seed.map((x) => ({ id: nid(), role: x.role, text: x.text, instant: true }))
+        : [{ id: 0, role: 'assistant', text: welcome ? welcome : t(intro), instant: true }]);
     // Consume the welcome once so it doesn't reappear on later remounts.
     useEffect(() => {
         if (welcome) onWelcomeConsumed?.();
@@ -221,7 +226,7 @@ export function ChatPanel({
                 <div className="ml-auto flex items-center gap-0.5">
                     {onExpand && (
                         <button
-                            onClick={onExpand}
+                            onClick={() => onExpand(msgs.filter((m) => !m.thinking && m.text).map((m) => ({ role: m.role, text: m.text })))}
                             title={t('Open in full window')}
                             className="rounded-md p-1"
                             style={{ color: COLORS.textMuted }}

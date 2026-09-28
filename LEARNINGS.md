@@ -189,4 +189,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - EVA chat panel: a message types out once; after that (or if you collapse mid-answer) it shows in
   full — reopening the panel no longer re-types everything. Suggestion pills show only before your
   first question. "Show as table" / "Excel" appear only on data overviews (answers listing 2+ clients).
+- The conversation travels: expanding the EVA panel opens the full-window chat with the same
+  conversation (`Turn[]` via `chatCarry`), and closing it brings everything back to the panel
+  (`panelCarry`). Rich chat blocks (tables, plans) stay in the full chat; text turns travel.
 

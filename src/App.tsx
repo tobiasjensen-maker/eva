@@ -45,7 +45,7 @@ import PracticeView from './views/PracticeView';
 import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, rateOf, TARGET_RATE } from './practice';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
-import { ChatPanel, type PendingAsk } from './ChatPanel';
+import { ChatPanel, type PendingAsk, type Turn } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
 import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from './day';
@@ -304,6 +304,9 @@ export default function App() {
     const [welcome, setWelcome] = useState(false);
     const [chatKey, setChatKey] = useState(0);
     const [panelSeed, setPanelSeed] = useState(0); // bump to remount the EVA panel (e.g. to seed the welcome)
+    // The conversation travels: panel → full-window chat on expand, and back again on close.
+    const [chatCarry, setChatCarry] = useState<Turn[] | null>(null);
+    const [panelCarry, setPanelCarry] = useState<{ view: ViewId; turns: Turn[] } | null>(null);
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('va-collapsed') === '1');
     useEffect(() => {
         localStorage.setItem('va-collapsed', collapsed ? '1' : '0');
@@ -788,7 +791,8 @@ export default function App() {
                         onActiveChange={setChatActive}
                         analyticsUnlocked={insightsPro}
                         onSelectClient={applyScope}
-                        onClose={() => goView(chatReturn)}
+                        seedTurns={chatCarry}
+                        onClose={(turns) => { setPanelCarry(turns.length ? { view: chatReturn, turns } : null); setChatCarry(null); setChatCollapsed(false); goView(chatReturn); }}
                     />
                 )}
                 {view === 'inbox' && <InboxView threads={threads} setThreads={setThreads} focusClient={inboxFocus} />}
@@ -862,7 +866,8 @@ export default function App() {
                     evaSrc={evaIslandSrc()}
                     collapsed={chatCollapsed}
                     onToggleCollapsed={() => setChatCollapsed((c) => !c)}
-                    onExpand={() => { setChatReturn(view); goView('chat'); }}
+                    onExpand={(turns) => { setChatCarry(turns); setPanelCarry(null); setChatReturn(view); goView('chat'); }}
+                    seed={panelCarry && panelCarry.view === view ? panelCarry.turns : null}
                     welcome={welcome && view === 'activity' ? t(WELCOME_MSG) : null}
                     onWelcomeConsumed={() => setWelcome(false)}
                     pendingAsk={pendingAsk}
