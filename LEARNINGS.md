@@ -174,3 +174,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - Modals (review, cash forecast, budget, month-end): fixed header and footer, one vertical scroller in
   between (`flex-1 min-h-0 space-y-*`, no horizontal overflow). Lists inside set `marginBottom: 0` —
   a global `ul` margin otherwise adds 40px of empty space.
+- Inbox: EVA's suggestion lives in the composer — the reply as ghost text (Tab or "Use" to take it,
+  "Dismiss" to hide) and one line "When you send, EVA will also …" (untick to skip the action).
+  Drafts are kept per conversation. Thread list resizes between 320 and 560px.

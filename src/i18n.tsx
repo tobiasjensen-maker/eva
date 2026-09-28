@@ -1794,4 +1794,8 @@ const DA: Record<string, string> = {
     'Add your own': 'Tilføj dit eget',
     'What — e.g. new oven': 'Hvad — fx ny ovn',
     'Amount, e.g. −25000': 'Beløb, fx −25000',
+    'When you send, EVA will also': 'Når du sender, vil EVA også',
+    'EVA’s suggested reply': 'EVAs forslag til svar',
+    'Use': 'Brug',
+    'Suggested reply': 'Foreslået svar',
 };

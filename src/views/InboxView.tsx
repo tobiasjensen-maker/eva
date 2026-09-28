@@ -20,7 +20,10 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
     const { t } = useLang();
     const [tab, setTab] = useState<ThreadStatus | 'all'>('needs');
     const [selId, setSelId] = useState<string>(() => threads.find((x) => x.status === 'needs')?.id ?? threads[0].id);
-    const [draft, setDraft] = useState('');
+    // One draft per conversation — switching threads keeps what you were writing where it belongs.
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const draft = drafts[selId] ?? '';
+    const setDraft = (v: string) => setDrafts((d) => ({ ...d, [selId]: v }));
     const [settings, setSettings] = useState(false);
 
     // Arriving from a client profile: open that client's thread.
@@ -60,24 +63,40 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
     const [cashFor, setCashFor] = useState<string | null>(null);
     const cashRisk = (client: string) => CLIENTS.find((c) => c.name === client)?.signal?.kind === 'Cash flow';
 
-    // The composer grows with the message (up to a cap, then scrolls).
+    // EVA's suggestion lives in the composer: the reply as ghost text (Tab to use) and the
+    // bookkeeping action as one quiet line that happens when you send (untick to skip it).
+    const [skipped, setSkipped] = useState<Set<string>>(new Set()); // threads where you dismissed the suggestion
+    const [withAction, setWithAction] = useState(true);
+    useEffect(() => { setWithAction(true); }, [selId]);
+    const sugg = sel && sel.status === 'needs' && !skipped.has(sel.id) ? sel.suggestion : undefined;
+    const ghost = sugg && !draft ? t(sugg.reply) : '';
+
+    // The composer grows with the message (up to a cap, then scrolls) — and fits the ghost reply.
     const taRef = useRef<HTMLTextAreaElement>(null);
+    const ghostRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const el = taRef.current; if (!el) return;
         el.style.height = 'auto';
-        el.style.height = `${Math.min(Math.max(el.scrollHeight, 88), 320)}px`;
+        const want = Math.max(el.scrollHeight, 72, ghostRef.current?.offsetHeight ?? 0);
+        el.style.height = `${Math.min(want, 320)}px`;
         el.style.overflowY = el.scrollHeight > 320 ? 'auto' : 'hidden';
-    }, [draft, selId]);
+    }, [draft, selId, ghost]);
+    const sendNow = () => {
+        if (!sel || !draft.trim()) return;
+        send(draft, sugg && withAction ? { result: t(sugg.result), status: 'done' } : undefined);
+        setSkipped((p) => new Set(p).add(sel.id));
+    };
 
     // Resizable thread list — drag the divider (double-click resets). Width is a per-viewer convenience.
-    const [listW, setListW] = useState(() => { try { return Number(localStorage.getItem('va-inbox-list-w')) || 340; } catch { return 340; } });
+    const LIST_MIN = 320, LIST_MAX = 560; // below 320 the tabs no longer fit
+    const [listW, setListW] = useState(() => { try { return Math.min(LIST_MAX, Math.max(LIST_MIN, Number(localStorage.getItem('va-inbox-list-w')) || 340)); } catch { return 340; } });
     useEffect(() => { try { localStorage.setItem('va-inbox-list-w', String(listW)); } catch { /* storage unavailable */ } }, [listW]);
     const startResize = (e: ReactMouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         const col = e.currentTarget.parentElement!;
         const scale = col.getBoundingClientRect().width / col.offsetWidth || 1; // the app shell is zoomed
         const x0 = e.clientX, w0 = listW;
-        const move = (ev: MouseEvent) => setListW(Math.min(560, Math.max(240, w0 + (ev.clientX - x0) / scale)));
+        const move = (ev: MouseEvent) => setListW(Math.min(LIST_MAX, Math.max(LIST_MIN, w0 + (ev.clientX - x0) / scale)));
         const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.style.cursor = ''; document.body.style.userSelect = ''; };
         document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
         window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
@@ -162,46 +181,45 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                                 )}
                             </div>
 
-                            {sel.suggestion && sel.status === 'needs' && (
-                                <div className="mx-5 mb-3 rounded-xl p-3.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
-                                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: '#6d28d9' }}><Orb size={16} /> {t('EVA suggests')}</p>
-                                    {/* Two parts, kept visibly apart: what EVA does in the books, and the message to the client */}
-                                    <div className="mt-2.5 flex items-start gap-2.5">
-                                        <span className="shrink-0 flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#7c3aed14', color: '#6d28d9' }}><Icon name="settings" /></span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] font-medium" style={{ color: COLORS.textMuted }}>{t('EVA does')}</p>
-                                            <p className="text-sm" style={{ color: COLORS.text }}>{t(sel.suggestion.action)}</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-2.5 flex items-start gap-2.5">
-                                        <span className="shrink-0 flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#7c3aed14', color: '#6d28d9' }}><Icon name="envelope" /></span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] font-medium" style={{ color: COLORS.textMuted }}>{t('Reply to {name}').replace('{name}', sel.contact.split(' ')[0])}</p>
-                                            <p className="text-sm mt-1 rounded-lg px-3 py-2 bg-white" style={{ color: COLORS.text, border: `1px solid ${COLORS.cardBorder}` }}>{t(sel.suggestion.reply)}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end gap-2 mt-3">
-                                        <Button onClick={() => setDraft(t(sel.suggestion!.reply))}>{t('Edit reply')}</Button>
-                                        <Button appearance="primary" onClick={() => send(t(sel.suggestion!.reply), { result: t(sel.suggestion!.result), status: 'done' })}>{t('Approve & send')}</Button>
-                                    </div>
+                            <form onSubmit={(e) => { e.preventDefault(); sendNow(); }} className="mx-5 mb-5 flex flex-col gap-2 rounded-xl px-3.5 pt-3 pb-2.5" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                {/* Enter sends, Shift+Enter adds a new line, Tab takes EVA's suggested reply */}
+                                <div className="relative">
+                                    {ghost && (
+                                        <div ref={ghostRef} aria-hidden className="absolute inset-x-0 top-0 text-sm leading-relaxed whitespace-pre-wrap pointer-events-none" style={{ color: '#a1a1aa' }}>{ghost}</div>
+                                    )}
+                                    <textarea
+                                        ref={taRef}
+                                        value={draft}
+                                        onChange={(e) => setDraft(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Tab' && ghost) { e.preventDefault(); setDraft(ghost); }
+                                            else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendNow(); }
+                                        }}
+                                        rows={3}
+                                        placeholder={ghost ? '' : t('Write to {name}…').replace('{name}', sel.contact.split(' ')[0])}
+                                        aria-label={ghost ? `${t('Suggested reply')}: ${ghost}` : undefined}
+                                        className="relative w-full bg-transparent outline-none text-sm leading-relaxed resize-none block"
+                                        style={{ color: COLORS.text, minHeight: 72 }}
+                                    />
                                 </div>
-                            )}
-
-                            <form onSubmit={(e) => { e.preventDefault(); send(draft); }} className="mx-5 mb-5 flex flex-col gap-2 rounded-xl px-3.5 pt-3 pb-2.5" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                                {/* Enter sends, Shift+Enter adds a new line */}
-                                <textarea
-                                    ref={taRef}
-                                    value={draft}
-                                    onChange={(e) => setDraft(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(draft); } }}
-                                    rows={3}
-                                    placeholder={t('Write to {name}…').replace('{name}', sel.contact.split(' ')[0])}
-                                    className="w-full bg-transparent outline-none text-sm leading-relaxed resize-none"
-                                    style={{ color: COLORS.text, minHeight: 88 }}
-                                />
+                                {sugg && (
+                                    <label className="flex items-start gap-2 text-xs cursor-pointer" style={{ color: COLORS.textMuted }}>
+                                        <input type="checkbox" className="mt-0.5" checked={withAction} onChange={(e) => setWithAction(e.target.checked)} style={{ accentColor: '#7c3aed' }} />
+                                        <span><span style={{ color: '#6d28d9', fontWeight: 500 }}>{t('When you send, EVA will also')}</span> {t(sugg.action).charAt(0).toLowerCase() + t(sugg.action).slice(1)}</span>
+                                    </label>
+                                )}
                                 <div className="flex items-center justify-between gap-2">
-                                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Shift + Enter for a new line')}</span>
-                                    <button type="submit" disabled={!draft.trim()} className="rounded-lg px-3.5 py-1.5 text-sm font-medium" style={{ background: draft.trim() ? '#1c1b3a' : '#ececf0', color: draft.trim() ? '#fff' : '#b0b0b8' }}>{t('Send')}</button>
+                                    {ghost ? (
+                                        <span className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                            <Orb size={12} /> {t('EVA’s suggested reply')} ·
+                                            <button type="button" onClick={() => { setDraft(ghost); taRef.current?.focus(); }} className="font-medium" style={{ color: '#4456c7' }}>{t('Use')}</button>
+                                            <kbd className="rounded px-1 text-[10px]" style={{ border: `1px solid ${COLORS.cardBorder}` }}>Tab</kbd>
+                                            <button type="button" onClick={() => setSkipped((p) => new Set(p).add(sel.id))} className="ml-1" style={{ color: COLORS.textMuted }}>{t('Dismiss')}</button>
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Shift + Enter for a new line')}</span>
+                                    )}
+                                    <button type="submit" disabled={!draft.trim()} className="rounded-lg px-3.5 py-1.5 text-sm font-medium shrink-0" style={{ background: draft.trim() ? '#1c1b3a' : '#ececf0', color: draft.trim() ? '#fff' : '#b0b0b8' }}>{t(sugg && withAction ? 'Approve & send' : 'Send')}</button>
                                 </div>
                             </form>
                         </div>
