@@ -6,13 +6,15 @@ import { type EvaConfig } from './eva';
 import { CLIENTS } from './practice';
 import { downloadCsv } from './exportCsv';
 
-// An answer that names clients can be turned into a table or an Excel file — people often
+// An answer that lists clients can be turned into a table or an Excel file — people often
 // only know they want a table once they've seen the text (a Komma learning).
 function AnswerFormats({ text }: { text: string }) {
     const { t } = useLang();
     const [table, setTable] = useState(false);
     const hits = CLIENTS.filter((c) => text.includes(c.name));
-    if (hits.length === 0) return null;
+    // Only data overviews — an answer that lists several clients. A passing mention of one
+    // client (e.g. in "walk me through my day") isn't something you'd want as a table.
+    if (hits.length < 2) return null;
     const books = { closed: 'Closed', todo: 'To do', blocked: 'Blocked' } as const;
     const head = [t('Client'), t('Industry'), t('Revenue'), t('Books'), t('Why it matters')];
     const rows = hits.map((c) => [c.name, t(c.industry), `${c.trend > 0 ? '+' : ''}${c.trend}%`, t(books[c.books]), c.signal ? t(c.signal.text) : '—']);
@@ -57,7 +59,9 @@ let pid = 1;
 const nid = () => pid++;
 
 // Word-by-word reveal, matching the main Chat page.
-function Stream({ text, onTick }: { text: string; onTick: () => void }) {
+// Calls onDone once fully shown, so the message never types itself out again (e.g. when the
+// panel is collapsed and reopened).
+function Stream({ text, onTick, onDone }: { text: string; onTick: () => void; onDone?: () => void }) {
     const words = useMemo(() => text.split(/(\s+)/), [text]);
     const [n, setN] = useState(0);
     useEffect(() => {
@@ -66,6 +70,7 @@ function Stream({ text, onTick }: { text: string; onTick: () => void }) {
         if (document.visibilityState === 'hidden') {
             setN(words.length);
             onTick();
+            onDone?.();
             return;
         }
         let i = 0;
@@ -73,7 +78,7 @@ function Stream({ text, onTick }: { text: string; onTick: () => void }) {
             i++;
             setN(i);
             onTick();
-            if (i >= words.length) clearInterval(id);
+            if (i >= words.length) { clearInterval(id); onDone?.(); }
         }, 28);
         return () => clearInterval(id);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,6 +174,12 @@ export function ChatPanel({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingAsk]);
 
+    // Collapsing mid-answer: show it in full next time rather than typing it out again.
+    useEffect(() => {
+        if (collapsed) setMsgs((m) => m.map((x) => (x.thinking || x.instant ? x : { ...x, instant: true })));
+    }, [collapsed]);
+    const settle = (id: number) => setMsgs((m) => m.map((x) => (x.id === id ? { ...x, instant: true } : x)));
+
     // Collapsed: a slim floating rail with the EVA mark, like the collapsed sidebar.
     if (collapsed) {
         return (
@@ -247,7 +258,7 @@ export function ChatPanel({
                         <div key={m.id} className="flex gap-2.5">
                             <div className="shrink-0 mt-0.5"><Orb size={22} thinking={m.thinking} /></div>
                             <div className="flex-1 min-w-0 text-sm leading-relaxed" style={{ color: COLORS.text }}>
-                                {m.thinking ? <Thinking /> : m.instant ? m.text : <Stream text={m.text} onTick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })} />}
+                                {m.thinking ? <Thinking /> : m.instant ? m.text : <Stream text={m.text} onTick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })} onDone={() => settle(m.id)} />}
                                 {!m.thinking && <AnswerFormats text={m.text} />}
                             </div>
                         </div>
@@ -256,7 +267,8 @@ export function ChatPanel({
             </div>
 
             <div className="px-3 pb-3">
-                {chips.length > 0 && (
+                {/* suggestions are a way in — gone once the conversation has started */}
+                {chips.length > 0 && !msgs.some((m) => m.role === 'user') && (
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {chips.map((c) => (
                             // Display the translated chip, but match the canned answer on the English key.
