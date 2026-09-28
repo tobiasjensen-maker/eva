@@ -3,6 +3,37 @@ import { Icon } from '@economic/taco';
 import { Orb, MicIcon, EvaChip, COLORS } from './ui';
 import { useLang } from './i18n';
 import { type EvaConfig } from './eva';
+import { CLIENTS } from './practice';
+import { downloadCsv } from './exportCsv';
+
+// An answer that names clients can be turned into a table or an Excel file — people often
+// only know they want a table once they've seen the text (a Komma learning).
+function AnswerFormats({ text }: { text: string }) {
+    const { t } = useLang();
+    const [table, setTable] = useState(false);
+    const hits = CLIENTS.filter((c) => text.includes(c.name));
+    if (hits.length === 0) return null;
+    const books = { closed: 'Closed', todo: 'To do', blocked: 'Blocked' } as const;
+    const head = [t('Client'), t('Industry'), t('Revenue'), t('Books'), t('Why it matters')];
+    const rows = hits.map((c) => [c.name, t(c.industry), `${c.trend > 0 ? '+' : ''}${c.trend}%`, t(books[c.books]), c.signal ? t(c.signal.text) : '—']);
+    return (
+        <div className="mt-2">
+            <div className="flex gap-1.5">
+                <button onClick={() => setTable((v) => !v)} className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ border: `1px solid ${COLORS.cardBorder}`, color: table ? '#6d28d9' : COLORS.textMuted, background: table ? '#f3f0fb' : '#fff' }}>{t(table ? 'Hide table' : 'Show as table')}</button>
+                <button onClick={() => downloadCsv('EVA answer.csv', [head, ...rows])} className="rounded-full px-2.5 py-1 text-xs font-medium flex items-center gap-1" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.textMuted, background: '#fff' }}><Icon name="download" /> {t('Excel')}</button>
+            </div>
+            {table && (
+                <div className="mt-2 rounded-lg overflow-x-auto" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                    <table className="w-full text-xs">
+                        {/* the panel is narrow: Industry is left to the Excel file */}
+                        <thead><tr style={{ background: '#fafafa', color: COLORS.textMuted }}>{head.filter((_, i) => i !== 1).map((h) => <th key={h} className="text-left font-medium px-2 py-1.5 whitespace-nowrap">{h}</th>)}</tr></thead>
+                        <tbody>{rows.map((r) => <tr key={r[0]} style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>{r.filter((_, i) => i !== 1).map((v, i) => <td key={i} className="px-2 py-1.5 align-top" style={{ color: COLORS.text, whiteSpace: i < 3 ? 'nowrap' : undefined }}>{v}</td>)}</tr>)}</tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
 
 // The live EVA chat runs in an isolated React-19 iframe (eva-island). We post the
 // config (token + agreement context) once the island signals it's ready.
@@ -217,6 +248,7 @@ export function ChatPanel({
                             <div className="shrink-0 mt-0.5"><Orb size={22} thinking={m.thinking} /></div>
                             <div className="flex-1 min-w-0 text-sm leading-relaxed" style={{ color: COLORS.text }}>
                                 {m.thinking ? <Thinking /> : m.instant ? m.text : <Stream text={m.text} onTick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })} />}
+                                {!m.thinking && <AnswerFormats text={m.text} />}
                             </div>
                         </div>
                     )

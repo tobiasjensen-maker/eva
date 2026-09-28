@@ -27,6 +27,12 @@ export interface Client {
     signal?: { kind: 'Cash flow' | 'Risk' | 'Growth' | 'Compliance'; text: string };
 }
 
+// The owner EVA talks to at each client (first name), for "Discuss with …" and shared plans.
+export const OWNER: Record<string, string> = {
+    'Café Solsikke': 'Ida', 'Bryg & Co ApS': 'Mads', 'Digital Marketing Pro': 'Louise', 'Nordic Build ApS': 'Jonas',
+    'Tech Equipment AS': 'Henrik', 'Office Supplies Co': 'Maria', 'Fjord Fitness': 'Sara', 'Grøn Energi': 'Peter',
+};
+
 export const CLIENTS: Client[] = [
     { id: 'nordic', no: 'C-1001', name: 'Nordic Build ApS', industry: 'Construction', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll', 'Annual report'], fee: 14500, hours: 9, eva: 88, books: 'closed', open: 2, trend: 12, playbook: 'construction', signal: { kind: 'Compliance', text: 'Affected by the new SKAT reporting rule' } },
     { id: 'cafe', no: 'C-1002', name: 'Café Solsikke', industry: 'Hospitality', accountant: ME, services: ['Bookkeeping', 'VAT', 'Payroll'], fee: 4200, hours: 11, eva: 71, books: 'blocked', open: 4, trend: -8, playbook: 'hospitality', signal: { kind: 'Cash flow', text: 'About six weeks of cash runway left' } },

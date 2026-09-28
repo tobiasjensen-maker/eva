@@ -48,7 +48,7 @@ import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk } from './ChatPanel';
 import { Onboarding } from './Onboarding';
 import { LangContext, translate, type Lang } from './i18n';
-import { SEED_DECISIONS, type DecisionItem } from './day';
+import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from './day';
 import { useEcoConnection } from './eco';
 import { evaConfigured, evaToken, setEvaToken, evaConfig, evaIslandSrc } from './eva';
 
@@ -125,16 +125,21 @@ export default function App() {
     const [dayDecisions, setDayDecisions] = useState(SEED_DECISIONS);
     // Resolving a decision — from the overview, the Tasks board or the Activity log — is
     // one act, recorded on the decision and on its entry in the activity log.
-    const resolveDecision = (id: string, taken: 'confirm' | 'alt', backToYou = false) => {
+    const resolveDecision = (id: string, taken: 'confirm' | 'alt', info: ResolveInfo = {}) => {
+        const { backToYou = false, reason, fixed, overridden } = info;
         const d = dayDecisions.find((x) => x.id === id);
         setDayDecisions((all) => all.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
         if (!d) return;
         const choice = taken === 'alt' ? d.alt : d.confirm;
         setActivity((prev) => prev.map((e) => (e.decisionId === id ? {
-            ...workEntry({ id: e.id, title: d.label, client: d.company, actor: 'you', decisionId: id, reasoning: e.reasoning, source: e.source, suggestions: e.suggestions,
+            ...workEntry({ id: e.id, title: d.label, client: d.company, actor: 'you', decisionId: id, source: e.source, suggestions: e.suggestions,
                 event: backToYou ? 'taken-back' : taken === 'alt' ? 'alternative' : 'approved',
-                desc: backToYou ? `You took “${d.label}” back from EVA` : `You reviewed EVA’s draft of “${d.label}” — ${choice}`,
-                resolution: backToYou ? 'Taken back by you' : taken === 'alt' ? `You chose “${choice}”` : 'Approved by you' }),
+                desc: backToYou ? `You took “${d.label}” back from EVA`
+                    : fixed ? `You applied EVA’s correction to “${d.label}”${overridden ? ' (with your changes)' : ''}`
+                    : reason ? `You dismissed EVA’s flag on “${d.label}”`
+                    : `You reviewed EVA’s draft of “${d.label}” — ${choice}`,
+                reasoning: [...(fixed ? [`Changed — ${fixed}.`, d.correction?.effect ?? ''] : []), ...(reason ? [`Your reason: ${reason}. EVA uses this to flag better next time.`] : []), ...e.reasoning].filter(Boolean),
+                resolution: backToYou ? 'Taken back by you' : fixed ? 'Fixed by you' : reason ? 'Dismissed by you' : taken === 'alt' ? `You chose “${choice}”` : 'Approved by you' }),
         } : e)));
     };
     // The logged-in accountant's open decisions — the Work badge and the overview count.
@@ -198,7 +203,7 @@ export default function App() {
         activity.forEach((e) => {
             if (!e.decisionId || e.status !== 'completed' || e.event) return;
             const d = dayDecisions.find((x) => x.id === e.decisionId);
-            if (d && !d.done) resolveDecision(d.id, e.resolution === 'Dismissed' || e.resolution === d.alt ? 'alt' : 'confirm');
+            if (d && !d.done) resolveDecision(d.id, e.resolution === 'Dismissed' || e.resolution === d.alt ? 'alt' : 'confirm', { reason: e.feedback });
         });
     }, [activity]); // eslint-disable-line react-hooks/exhaustive-deps
     const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
@@ -807,7 +812,7 @@ export default function App() {
                             onHandToEva={() => { handTaskToEva(tk, setTasks, addDecision); close(); }}
                             onDone={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'done' } : x))); close(); }}
                             onReopen={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'todo' } : x))); close(); }} />}
-                        {d && <DecisionReview d={d} t={t} onClose={close} onResolve={(taken) => { resolveDecision(d.id, taken); close(); }} />}
+                        {d && <DecisionReview d={d} t={t} onClose={close} onResolve={(taken, info) => { resolveDecision(d.id, taken, info); close(); }} />}
                     </>;
                 })()}
                 {view === 'connectors' && <SkillsView page="connectors" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}

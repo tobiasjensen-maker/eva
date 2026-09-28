@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
 import { ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { ME, type Thread, type ThreadStatus } from '../practice';
+import { CLIENTS, ME, OWNER, type Thread, type ThreadStatus } from '../practice';
+import { LiquidityModal } from './Liquidity';
 
 // ---- Inbox — every client conversation in one place --------------------------------
 // Questions, documents and follow-ups with clients, tied to the transaction they're
@@ -56,6 +57,32 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
         setDraft('');
     }
 
+    const [cashFor, setCashFor] = useState<string | null>(null);
+    const cashRisk = (client: string) => CLIENTS.find((c) => c.name === client)?.signal?.kind === 'Cash flow';
+
+    // The composer grows with the message (up to a cap, then scrolls).
+    const taRef = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+        const el = taRef.current; if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(Math.max(el.scrollHeight, 88), 320)}px`;
+        el.style.overflowY = el.scrollHeight > 320 ? 'auto' : 'hidden';
+    }, [draft, selId]);
+
+    // Resizable thread list — drag the divider (double-click resets). Width is a per-viewer convenience.
+    const [listW, setListW] = useState(() => { try { return Number(localStorage.getItem('va-inbox-list-w')) || 340; } catch { return 340; } });
+    useEffect(() => { try { localStorage.setItem('va-inbox-list-w', String(listW)); } catch { /* storage unavailable */ } }, [listW]);
+    const startResize = (e: ReactMouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const col = e.currentTarget.parentElement!;
+        const scale = col.getBoundingClientRect().width / col.offsetWidth || 1; // the app shell is zoomed
+        const x0 = e.clientX, w0 = listW;
+        const move = (ev: MouseEvent) => setListW(Math.min(560, Math.max(240, w0 + (ev.clientX - x0) / scale)));
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+        document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+    };
+
     return (
         <div className="h-full flex flex-col">
             <PageHeader title={t('Inbox')} showScope={false} maxWidth={1240}
@@ -63,7 +90,10 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
             <div className="flex-1 min-h-0 mx-auto w-full px-8 pb-6" style={{ maxWidth: 1240 }}>
                 <div className="h-full flex rounded-xl bg-white overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
                     {/* thread list */}
-                    <div className="flex flex-col shrink-0" style={{ width: 340, borderRight: `1px solid ${COLORS.cardBorder}` }}>
+                    <div className="relative flex flex-col shrink-0" style={{ width: listW, borderRight: `1px solid ${COLORS.cardBorder}` }}>
+                        <div onMouseDown={startResize} onDoubleClick={() => setListW(340)} title={t('Drag to resize')} className="absolute top-0 bottom-0 z-10 group" style={{ right: -4, width: 8, cursor: 'col-resize' }}>
+                            <div className="mx-auto h-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: 2, background: '#7c3aed' }} />
+                        </div>
                         <div className="p-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                             <SegmentedTabs value={tab} onChange={(v) => setTab(v as ThreadStatus | 'all')} options={TAB.map((x) => ({ value: x.key, label: x.key === 'all' ? t(x.label) : <>{t(x.label)} <CountBadge n={count(x.key as ThreadStatus)} showZero /></> }))} />
                         </div>
@@ -98,6 +128,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                                     <p className="text-base font-semibold truncate" style={{ color: COLORS.text }}>{t(sel.subject)}</p>
                                     <p className="text-xs" style={{ color: COLORS.textMuted }}>{sel.client} · {sel.contact}</p>
                                 </div>
+                                {cashRisk(sel.client) && <Button onClick={() => setCashFor(sel.client)}><Icon name="chart-line" /> {t('Cash forecast')}</Button>}
                                 {sel.status !== 'done' && <Button onClick={() => setThreads((all) => all.map((x) => x.id === sel.id ? { ...x, status: 'done' } : x))}><Icon name="circle-tick" /> {t('Mark done')}</Button>}
                             </div>
 
@@ -159,10 +190,11 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                             <form onSubmit={(e) => { e.preventDefault(); send(draft); }} className="mx-5 mb-5 flex flex-col gap-2 rounded-xl px-3.5 pt-3 pb-2.5" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
                                 {/* Enter sends, Shift+Enter adds a new line */}
                                 <textarea
+                                    ref={taRef}
                                     value={draft}
                                     onChange={(e) => setDraft(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(draft); } }}
-                                    rows={4}
+                                    rows={3}
                                     placeholder={t('Write to {name}…').replace('{name}', sel.contact.split(' ')[0])}
                                     className="w-full bg-transparent outline-none text-sm leading-relaxed resize-none"
                                     style={{ color: COLORS.text, minHeight: 88 }}
@@ -178,6 +210,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
             </div>
 
             {settings && <InboxSettings onClose={() => setSettings(false)} />}
+            {cashFor && <LiquidityModal company={cashFor} owner={OWNER[cashFor]} onClose={() => setCashFor(null)} />}
         </div>
     );
 }

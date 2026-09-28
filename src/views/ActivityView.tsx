@@ -2,6 +2,7 @@ import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode
 import { Button, Icon } from '@economic/taco';
 import { CountBadge, Card, ClientAvatar, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
 import { WorkTag, SectionCard as ListCard, type WorkStatus } from './workStatus';
+import { ReasonPicker } from '../memory';
 import { AGREEMENTS } from '../data';
 import { useLang, translate } from '../i18n';
 
@@ -47,6 +48,7 @@ export interface LogEntry {
     taskId?: string;
     decisionId?: string; // an EVA draft awaiting (or past) your review — see src/day.ts
     at?: number; // when it happened (live entries sort above the seeded day)
+    feedback?: string; // why you dismissed it — EVA learns from this
 }
 
 const nowTime = () => new Date().toTimeString().slice(0, 5);
@@ -342,15 +344,15 @@ function useActivityActions(setEntries: Dispatch<SetStateAction<LogEntry[]>>, on
     const [doc, setDoc] = useState<{ entry: LogEntry; doc: SourceDoc } | null>(null);
     const [trace, setTrace] = useState<LogEntry | null>(null);
     const [reminded, setReminded] = useState<Set<string>>(new Set());
-    function resolve(id: string, action: string) {
+    function resolve(id: string, action: string, feedback?: string) {
         setActing(id);
         setTimeout(() => {
-            setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'completed', confidence: 'high', resolution: action } : e)));
+            setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'completed', confidence: 'high', resolution: action, feedback } : e)));
             setActing(null);
         }, 900);
     }
     function reverse(id: string) {
-        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'needs-review', resolution: undefined } : e)));
+        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'needs-review', resolution: undefined, feedback: undefined } : e)));
     }
     const askAbout = (e: LogEntry) => { const { user, answer } = buildAsk(e, t, lang); onAskEva(user, answer); };
     return { expanded, setExpanded, acting, doc, setDoc, trace, setTrace, reminded, setReminded, resolve, reverse, askAbout };
@@ -408,16 +410,16 @@ export default function ActivityView({
     // Period set (date + skill + client) drives the stat counts; status is an additional filter on top.
     const periodSet = entries.filter((e) => inRange(e) && (client === 'all' || e.client === client) && (kind === 'advisory' ? isAdvisory(e) : !isAdvisory(e)));
 
-    function resolve(id: string, action: string) {
+    function resolve(id: string, action: string, feedback?: string) {
         setActing(id);
         setTimeout(() => {
-            setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'completed', confidence: 'high', resolution: action } : e)));
+            setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'completed', confidence: 'high', resolution: action, feedback } : e)));
             setActing(null);
         }, 900);
     }
     // Reverse a resolved action — re-open it as a pending suggestion.
     function reverse(id: string) {
-        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'needs-review', resolution: undefined } : e)));
+        setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status: 'needs-review', resolution: undefined, feedback: undefined } : e)));
     }
 
     const completed = periodSet.filter((e) => e.status === 'completed');
@@ -554,7 +556,7 @@ function traceOf(e: LogEntry): TraceInfo {
     };
 }
 
-function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse, variant = 'card', last = false, showClient = true }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void; variant?: 'card' | 'row' | 'list'; last?: boolean; showClient?: boolean }) {
+function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, onAsk, onReverse, variant = 'card', last = false, showClient = true }: { entry: LogEntry; open: boolean; acting: boolean; onToggle: () => void; onResolve: (action: string, feedback?: string) => void; onOpenDoc: () => void; onTrace: () => void; onAsk: () => void; onReverse: () => void; variant?: 'card' | 'row' | 'list'; last?: boolean; showClient?: boolean }) {
     const { t, lang } = useLang();
     const conf = CONF_STYLE[entry.confidence];
     const st = STATUS_STYLE[entry.status];
@@ -563,6 +565,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
     // Higher-confidence flags are actions EVA can carry out once accepted.
     const consider = needsReview && entry.confidence === 'low';
     const tag = LOG_TAG[entry.status];
+    const [asking, setAsking] = useState(false); // "Why isn't this right?" before dismissing
     const body = (
         <>
             {variant === 'list' ? (
@@ -657,23 +660,28 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                                 <div className="flex items-center gap-3">
                                     <span className="flex items-center gap-1.5 text-sm" style={{ color: entry.resolution === 'Dismissed' ? COLORS.textMuted : '#15803d' }}>
                                         <Icon name={entry.resolution === 'Dismissed' ? 'circle-warning' : 'circle-tick'} />
-                                        {!entry.resolution ? t('Done automatically') : entry.resolution === 'Dismissed' ? t('Dismissed') : entry.resolution === 'Reviewed' ? t('Reviewed') : entry.resolution === 'Confirmed' ? t('Accepted') : `${t('Accepted')} — “${lang === 'da' ? t(entry.resolution) : entry.resolution}”`}
+                                        {!entry.resolution ? t('Done automatically') : entry.resolution === 'Dismissed' ? <>{t('Dismissed')}{entry.feedback ? <span style={{ color: COLORS.textMuted }}> — {t(entry.feedback)}</span> : null}</> : entry.resolution === 'Reviewed' ? t('Reviewed') : entry.resolution === 'Confirmed' ? t('Accepted') : `${t('Accepted')} — “${lang === 'da' ? t(entry.resolution) : entry.resolution}”`}
                                     </span>
                                     <Button onClick={onReverse}><Icon name="arrow-left" /> {t('Undo')}</Button>
                                 </div>
                             ) : consider ? (
                                 // AO-judgement item — EVA can't action it; the accountant checks it off.
                                 <div className="flex items-center gap-2">
-                                    <Button onClick={() => onResolve('Dismissed')}>{t('Not relevant')}</Button>
+                                    <Button onClick={() => setAsking(true)}>{t('Not relevant')}</Button>
                                     <Button appearance="primary" onClick={() => onResolve('Reviewed')}><Icon name="circle-tick" /> {t('Mark as reviewed')}</Button>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <Button onClick={() => onResolve('Dismissed')}>{t('Dismiss')}</Button>
+                                    <Button onClick={() => setAsking(true)}>{t('Dismiss')}</Button>
                                     <Button appearance="primary" onClick={() => onResolve(entry.suggestions?.[0] ?? 'Confirmed')}>{t('Accept')}</Button>
                                 </div>
                             )}
                         </div>
+                        {asking && entry.status === 'needs-review' && (
+                            <div className="mt-3">
+                                <ReasonPicker company={t(clientName(entry.client))} topic={entry.desc} onCancel={() => setAsking(false)} onSubmit={(reason) => { setAsking(false); onResolve('Dismissed', reason); }} />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -895,7 +903,7 @@ export function CockpitView({ entries, setEntries, scope = 'portfolio', onAskEva
     const rowProps = (e: LogEntry) => ({
         open: A.expanded === e.id, acting: A.acting === e.id,
         onToggle: () => A.setExpanded(A.expanded === e.id ? null : e.id),
-        onResolve: (action: string) => A.resolve(e.id, action),
+        onResolve: (action: string, feedback?: string) => A.resolve(e.id, action, feedback),
         onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
         onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
     });
@@ -1034,7 +1042,7 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
     const rowProps = (e: LogEntry) => ({
         open: A.expanded === e.id, acting: A.acting === e.id,
         onToggle: () => { if (onOpenEntry?.(e)) return; A.setExpanded(A.expanded === e.id ? null : e.id); },
-        onResolve: (action: string) => A.resolve(e.id, action),
+        onResolve: (action: string, feedback?: string) => A.resolve(e.id, action, feedback),
         onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
         onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
     });
@@ -1123,7 +1131,7 @@ export function AdvisoryList({ entries, setEntries, scope = 'portfolio', onAskEv
     const rowProps = (e: LogEntry) => ({
         open: A.expanded === e.id, acting: A.acting === e.id,
         onToggle: () => A.setExpanded(A.expanded === e.id ? null : e.id),
-        onResolve: (action: string) => A.resolve(e.id, action),
+        onResolve: (action: string, feedback?: string) => A.resolve(e.id, action, feedback),
         onOpenDoc: () => e.doc && A.setDoc({ entry: e, doc: e.doc }),
         onTrace: () => A.setTrace(e), onAsk: () => A.askAbout(e), onReverse: () => A.reverse(e.id),
     });

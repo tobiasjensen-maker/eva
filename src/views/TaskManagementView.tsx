@@ -2,8 +2,9 @@ import { Fragment, useState, type Dispatch, type DragEvent, type ReactNode, type
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { SEED_DECISIONS, type DecisionItem } from '../day';
+import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
+import { MonthEndCard } from './MonthEnd';
 import { clientName, type LogEntry } from './ActivityView';
 
 // ---- Praksis / AO-house task management ------------------------------------
@@ -31,7 +32,6 @@ export interface Task {
 }
 
 const ME = 'Tobias Holm Jensen'; // the logged-in accountant (matches the sidebar profile)
-const COMPANIES = ['Nordic Build ApS', 'Café Solsikke', 'Tech Equipment AS', 'Office Supplies Co', 'Digital Marketing Pro', 'Cloud Hosting Ltd', 'Bryg & Co ApS', 'Lys Design', 'Fjord Fitness', 'Aarhus Tandklinik'];
 
 export const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; dot: string }> = {
     'todo': { label: 'Not started', bg: '#f1f1f3', fg: '#52525b', dot: '#a8a8b0' },
@@ -49,12 +49,6 @@ const TPRIO: Record<TPriority, { label: string; color: string }> = {
     medium: { label: 'Medium', color: '#b9842b' },
     low: { label: 'Low', color: '#a8a8b0' },
 };
-const BUCKETS: { key: Bucket; label: string }[] = [
-    { key: 'overdue', label: 'Overdue' },
-    { key: 'today', label: 'Due today' },
-    { key: 'week', label: 'Due this week' },
-    { key: 'later', label: 'Later' },
-];
 export const dueColor = (b: Bucket) => (b === 'overdue' ? '#dc2626' : b === 'today' ? '#b9842b' : COLORS.textMuted);
 
 let seq = 0;
@@ -123,7 +117,6 @@ import { WORK_STATUS, WorkTag, SectionCard, type WorkStatus } from './workStatus
 // A human task's tags: To do (+ Overdue) or Done.
 export const workTagsFor = (task: Task): WorkStatus[] => (task.status === 'done' || task.status === 'eva-done' ? ['done'] : task.bucket === 'overdue' ? ['todo', 'overdue'] : ['todo']);
 
-type GroupBy = 'status' | 'deadline' | 'company';
 type Layout = 'board' | 'list';
 // One item of work, whatever its source: a task with you, an EVA draft to review, or something done.
 type WorkItem =
@@ -173,14 +166,13 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
-    onResolveDecision: (id: string, taken: 'confirm' | 'alt', backToYou?: boolean) => void;
+    onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
     activity: LogEntry[]; // the activity log — Done is today's completed work from it
     onOpenActivity: (entryId: string) => void;
     onAddDecision: (d: DecisionItem) => void;
 }) {
     const { t } = useLang();
     const [layout, setLayout] = useState<Layout>('board');
-    const [groupBy, setGroupBy] = useState<GroupBy>('status');
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
@@ -251,7 +243,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         if (it.kind === 'review') {
             if (to === 'done') setReview(it.d);
             else {
-                onResolveDecision(it.d.id, 'alt', true);
+                onResolveDecision(it.d.id, 'alt', { backToYou: true });
                 const backId = `back-${it.d.id}`;
                 setTasks((prev) => [{ id: backId, title: it.d.label, company: it.d.company, accountant: ME, status: 'todo', bucket: 'today', dueLabel: 'Today', priority: 'high' }, ...prev]);
                 setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? backId : x)) }));
@@ -291,20 +283,12 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     ];
     const openItem = (it: WorkItem) => { if (it.kind === 'task') setTrace(it.task); else if (it.kind === 'review') setReview(it.d); else onOpenActivity(it.entry.id); };
 
-    // List grouping — by status (the board's columns), by deadline or by client.
-    const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] =
-        groupBy === 'status'
-            ? [
-                { key: 'todo', title: <WorkTag s="todo" />, items: todo },
-                { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress },
-                { key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 },
-            ]
-            : groupBy === 'deadline'
-            ? [
-                ...BUCKETS.map((bk) => ({ key: bk.key, title: <span className="text-sm font-semibold" style={{ color: bk.key === 'overdue' ? '#dc2626' : COLORS.text }}>{t(bk.label)}</span>, items: [...todo, ...inprogress].filter((it) => (it.kind === 'review' ? 'today' : it.kind === 'task' ? it.task.bucket : '') === bk.key) })),
-                { key: 'done', title: <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Done')}</span>, items: done, footer: doneAll.length > 0 },
-            ]
-            : COMPANIES.map((c) => ({ key: c, title: <span className="flex items-center gap-2"><ClientAvatar name={c} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{c}</span></span>, items: [...todo, ...inprogress, ...done].filter((it) => it.company === c) }));
+    // The list is grouped by status — the board's columns, as sections.
+    const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] = [
+        { key: 'todo', title: <WorkTag s="todo" />, items: todo },
+        { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress },
+        { key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 },
+    ];
 
     return (
         <div className={bare ? 'h-full' : 'h-full overflow-y-auto'}>
@@ -357,10 +341,12 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     })}
                 </div>
 
+                {/* operations first: this month's close across your clients, end to end */}
+                <div className="mb-4"><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} /></div>
+
                 {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                     <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />
-                    {layout === 'list' && <SegmentedTabs value={groupBy} onChange={(v) => setGroupBy(v as GroupBy)} options={[{ value: 'status', label: t('By status') }, { value: 'deadline', label: t('By deadline') }, { value: 'company', label: t('By client') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
                         {(['todo', 'overdue', 'inprogress', 'done'] as WorkStatus[]).map((k) => {
                             const on = statusF.has(k); const m = WORK_STATUS[k];
@@ -398,13 +384,13 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">
-                        {listGroups.filter((g) => g.items.length > 0 || g.footer || groupBy === 'status').map((g) => {
+                        {listGroups.filter((g) => g.items.length > 0 || g.footer || true).map((g) => {
                             // By status, each group is a column you can drag rows into, like the board.
-                            const col = groupBy === 'status' ? (g.key as Col) : null;
+                            const col = g.key as Col;
                             return (
                             <div key={g.key} onDragOver={col ? (e) => { if (!dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(col); } : undefined} onDrop={col ? (e) => { e.preventDefault(); dnd.drop(col); } : undefined}>
                             <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
-                                {g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany={groupBy !== 'company'} last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
+                                {g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
                                 {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
                                 {col && g.items.length === 0 && <p className="text-xs px-4 py-4 text-center" style={{ color: COLORS.textMuted }}>{t(dragId ? 'Drop here' : 'Nothing here')}</p>}
                                 {g.footer && <button onClick={() => onTab('activity')} className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: '#4456c7' }}>{t('See all in the activity log')} →</button>}
@@ -418,7 +404,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </>)}
             </div>
 
-            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolveDecision(review.id, taken); setReview(null); }} />}
+            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
             {trace && <TaskModal task={trace} onClose={() => setTrace(null)} onHandToEva={() => { handToEva(trace.id); setTrace(null); }} onDone={() => { setStatus(trace.id, 'done'); setTrace(null); }} />}
         </div>
     );

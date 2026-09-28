@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
+import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, OWNER, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
+import { LiquidityModal } from './Liquidity';
+import { BudgetModal } from './Budget';
+import { NotesList } from '../memory';
 
 // ---- Clients — the whole portfolio in one place ---------------------------------
 // One list of every client the office serves, with the firm's own client number,
@@ -177,6 +180,8 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
 export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client; onClose: () => void; onOpenBooks: (name: string) => void; onMessage: (client: string) => void }) {
     const { t } = useLang();
     const [noted, setNoted] = useState(false);
+    const [sheet, setSheet] = useState<'cash' | 'budget' | null>(null);
+    const owner = OWNER[c.name];
     const pb = PLAYBOOKS.find((p) => p.id === c.playbook);
     const threads = THREADS.filter((x) => x.client === c.name && x.status !== 'done');
     const b = BOOKS[c.books];
@@ -211,6 +216,20 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client
                         ))}
                     </div>
 
+                    {/* practical advisory, one click away: cash and the plan */}
+                    <div className="grid grid-cols-2 gap-2">
+                        {[
+                            { k: 'cash' as const, icon: 'chart-line', title: 'Cash forecast', sub: c.signal?.kind === 'Cash flow' ? 'Goes below zero in week 44' : 'Next 13 weeks, with scenarios', warn: c.signal?.kind === 'Cash flow' },
+                            { k: 'budget' as const, icon: 'calendar', title: 'Budget 2027', sub: owner ? `Built with ${owner}’s goals · shareable` : 'From actuals and your assumptions', warn: false },
+                        ].map((x) => (
+                            <button key={x.k} onClick={() => setSheet(x.k)} className="flex items-start gap-2.5 rounded-xl p-3 text-left" style={{ border: `1px solid ${x.warn ? '#f5c2c2' : COLORS.cardBorder}`, background: x.warn ? '#fdf6f6' : '#fff' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)')} onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}>
+                                <span className="shrink-0 flex items-center justify-center rounded-lg" style={{ width: 30, height: 30, background: x.warn ? '#fdecec' : '#f1f1f3', color: x.warn ? '#c0392b' : '#52525b' }}><Icon name={x.icon as never} /></span>
+                                <span className="min-w-0"><span className="block text-sm font-semibold" style={{ color: COLORS.text }}>{t(x.title)}</span><span className="block text-xs mt-0.5" style={{ color: x.warn ? '#c0392b' : COLORS.textMuted }}>{t(x.sub)}</span></span>
+                            </button>
+                        ))}
+                    </div>
+
                     {/* talking points — the vision's "speaking notes" for the AO's client conversations */}
                     <div className="rounded-xl p-4" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
                         <div className="flex items-center gap-2 mb-2.5">
@@ -229,7 +248,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client
                     {/* peer benchmarks */}
                     <div>
                         <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('How they compare')}</p>
-                        <p className="text-xs mb-3" style={{ color: COLORS.textMuted }}>{t('Against similar {industry} businesses on e-conomic').replace('{industry}', t(c.industry).toLowerCase())}</p>
+                        <p className="text-xs mb-3" style={{ color: COLORS.textMuted }}>{t('Against similar {industry} businesses of the same size').replace('{industry}', t(c.industry).toLowerCase())}</p>
                         <div className="flex flex-col gap-3">
                             {benchmarks(c).map((m) => {
                                 const good = m.better === 'higher' ? m.you >= m.peers : m.you <= m.peers;
@@ -249,6 +268,14 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client
                                 );
                             })}
                         </div>
+                        <p className="text-[11px] mt-2.5 flex items-start gap-1.5" style={{ color: COLORS.textMuted }}><Icon name="info" /> {t('Source: public statistics (Danmarks Statistik) by industry code and company size, aggregated — no individual e-conomic customer is identifiable.')}</p>
+                    </div>
+
+                    {/* what EVA knows about this client — company-specific context it uses everywhere */}
+                    <div>
+                        <p className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>{t('What EVA knows about {client}').replace('{client}', c.name)}</p>
+                        <p className="text-xs mb-2.5" style={{ color: COLORS.textMuted }}>{t('Used in reviews, controlling and forecasts. Correct anything that’s wrong.')}</p>
+                        <NotesList company={c.name} editable />
                     </div>
 
                     {c.signal && (
@@ -281,6 +308,8 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client
                     <Button onClick={() => onOpenBooks(c.name)}><Icon name="accounting" /> {t('Open their books')}</Button>
                 </div>
             </div>
+            {sheet === 'cash' && <div onClick={(e) => e.stopPropagation()}><LiquidityModal company={c.name} owner={owner} onClose={() => setSheet(null)} onMessage={() => { setSheet(null); onMessage(c.name); }} /></div>}
+            {sheet === 'budget' && <div onClick={(e) => e.stopPropagation()}><BudgetModal company={c.name} owner={owner} onClose={() => setSheet(null)} onMessage={() => { setSheet(null); onMessage(c.name); }} /></div>}
         </div>
     );
 }

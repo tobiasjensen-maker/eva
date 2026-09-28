@@ -150,3 +150,25 @@ separate GitHub Pages deploy — don't remove it.
   `CockpitView` dashboard code remains in `ActivityView.tsx` but is unused.
 - Inbox: EVA's suggestion is split into **EVA does** (the bookkeeping action) and **Reply to …**
   (the message, shown as a draft bubble); the conversation scrolls to the latest message.
+
+## Komma learnings, built in (2026-09-28)
+After Mads's Komma walkthrough we added what Komma had validated, in EVA's structure:
+- **Fix it** (`day.ts` `correction`, `Decisions.tsx`): controlling flags carry the exact posting
+  change — field by field, editable, applied only on approval, logged ("You applied EVA's
+  correction…"). Seeded: Nordic Build's reverse-charge VAT line and a new *Controlling — August*
+  flag for Tech Equipment (rent booked with VAT).
+- **Learning from rejections + company memory** (`src/memory.tsx`): dismissing a flag (review
+  modal or Activity log) asks *why* and can remember it for the client. Notes show in reviews
+  and in the client drawer ("What EVA knows about …"), where you can add or remove them.
+- **13-week cash forecast** (`views/Liquidity.tsx`): rules-based weekly balance with the drivers
+  (salaries, VAT, bills, overdue invoices), scenarios you toggle or add, and "How EVA calculated
+  this". From the client drawer and from cash-flow threads in Inbox.
+- **Budget 2027** (`views/Budget.tsx`): 2025 actual / 2026 expected / 2027 by quarter, assumption
+  sliders, the owner's goals, a read-only client view, share and Excel export.
+- **Month-end as one flow** (`views/MonthEnd.tsx`): on Work → Tasks — bank → documents → missing
+  docs → drafts → controlling → close → report, with a per-client month-end report (Excel).
+- **Formats**: chat answers that name clients can be shown as a table or exported to Excel.
+- **Benchmarks** now state their source (public, aggregated statistics — no identifiable customer).
+- Also: Inbox thread list is resizable; the composer grows with the message; Tasks list is always
+  grouped by status; Activity log is always grouped by day.
+

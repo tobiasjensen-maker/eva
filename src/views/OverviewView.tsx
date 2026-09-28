@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
 import { Card, CountBadge, Orb, MicIcon, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import type { DecisionItem } from '../day';
+import type { DecisionItem, ResolveInfo } from '../day';
 import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client } from '../practice';
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
@@ -56,7 +56,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     onAddDecision: (d: DecisionItem) => void;
     decisions: DecisionItem[];
     replies: number;
-    onResolveDecision: (id: string, taken: 'confirm' | 'alt') => void;
+    onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
     onAsk: (q: string) => void;
     onGo: (v: ViewId) => void;
     onOpenBooks: (name: string) => void;
@@ -163,7 +163,7 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
 
 // Ready for your review — the same decisions as Work's review lane (shared rows and
 // modal, from src/day.ts), filtered to the logged-in accountant.
-function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; replies: number; onResolve: (id: string, taken: 'confirm' | 'alt') => void; onGo: (v: ViewId) => void }) {
+function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; replies: number; onResolve: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onGo: (v: ViewId) => void }) {
     const open = decisions.filter((d) => !d.done && d.accountant === ME);
     const [review, setReview] = useState<DecisionItem | null>(null);
     return (
@@ -177,7 +177,7 @@ function NeedsYouWidget({ t, decisions, replies, onResolve, onGo }: { t: (s: str
                     </div>
                 ) : open.map((d, i) => <DecisionRow key={d.id} d={d} t={t} last={i === open.length - 1} onReview={() => setReview(d)} />)}
             </Widget>
-            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken) => { onResolve(review.id, taken); setReview(null); }} />}
+            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolve(review.id, taken, info); setReview(null); }} />}
         </>
     );
 }
