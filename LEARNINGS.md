@@ -33,9 +33,15 @@ the day starts; every other page is "further in".**
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,
   follows up and drafts the next step.
 - **Work** (`TaskManagementView.tsx`, `#/work`) — the one place for work, three tabs:
-  - **Tasks** — one list, **On my plate**: your tasks *and* EVA's drafts waiting for your review
-    (status "Ready for review", with a Review button; they sit under "Due today" and group /
-    filter like any task). Always your own work (the office-wide view lives under Practice). "Completed by EVA" is a pointer into Activity.
+  - **Tasks** — **Board | List** toggle over one set of work with three statuses, used as
+    tags everywhere tasks appear (`WORK_STATUS` / `WorkTag`, also on the overview and in the task
+    modal): **To do** (sub-status **Overdue**), **In progress** (EVA drafts ready for your
+    review — Review opens the decision modal) and **Done** (latest 5 + "See all in the activity
+    log"). List groups by status (default), deadline or client. Cards/rows are **drag-and-drop**:
+    reorder within a column, and moving between columns does the work — To do ⇄ Done marks it
+    done/reopens it, onto In progress hands it to EVA (shows "EVA is drafting…", then becomes a
+    review card), an EVA draft dropped on Done opens the review (never auto-approves), and one
+    dropped on To do takes it back as your task. Drag order is session state only.
   - **Activity** (`#/activity`) — everything EVA has done: `ActivityFeedView` rendered `embedded`.
   - **Routines** (`#/routines`) — what's planned and automated: **Scheduled for EVA** (EVA's
     scheduled tasks + the active routines' next runs, in time order) above the routines

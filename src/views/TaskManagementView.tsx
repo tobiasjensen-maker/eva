@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { Fragment, useState, type Dispatch, type DragEvent, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
@@ -30,7 +30,6 @@ export interface Task {
 }
 
 const ME = 'Tobias Holm Jensen'; // the logged-in accountant (matches the sidebar profile)
-const ACCOUNTANTS = [ME, 'Mette Sørensen', 'Jonas Vestergaard', 'Sofie Lund', 'Anders Holm', 'Camilla Berg'];
 const COMPANIES = ['Nordic Build ApS', 'Café Solsikke', 'Tech Equipment AS', 'Office Supplies Co', 'Digital Marketing Pro', 'Cloud Hosting Ltd', 'Bryg & Co ApS', 'Lys Design', 'Fjord Fitness', 'Aarhus Tandklinik'];
 
 export const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; dot: string }> = {
@@ -44,7 +43,6 @@ export const TSTATUS: Record<TStatus, { label: string; bg: string; fg: string; d
     'eva-review': { label: 'Ready for review', bg: '#f3f0fb', fg: '#7c3aed', dot: '#7c3aed' },
     'eva-done': { label: 'Auto-completed by EVA', bg: '#eef7ef', fg: '#15803d', dot: '#16a34a' },
 };
-const HUMAN_STATUSES: TStatus[] = ['todo', 'in-progress', 'waiting', 'review', 'done'];
 const TPRIO: Record<TPriority, { label: string; color: string }> = {
     high: { label: 'High', color: '#dc2626' },
     medium: { label: 'Medium', color: '#b9842b' },
@@ -119,7 +117,43 @@ function evaFlagFor(title: string): string {
     return 'Review my work and approve, or take it over.';
 }
 
-type GroupBy = 'accountant' | 'company' | 'deadline' | 'status';
+// The three work statuses shown everywhere tasks appear: To do (sub-status Overdue),
+// In progress (EVA drafts ready for your review) and Done.
+export type WorkStatus = 'todo' | 'overdue' | 'inprogress' | 'done';
+export const WORK_STATUS: Record<WorkStatus, { label: string; bg: string; fg: string; dot: string }> = {
+    todo: { label: 'To do', bg: '#f1f1f3', fg: '#52525b', dot: '#a8a8b0' },
+    overdue: { label: 'Overdue', bg: '#fdecec', fg: '#c0392b', dot: '#dc2626' },
+    inprogress: { label: 'In progress', bg: '#f3f0fb', fg: '#6d28d9', dot: '#7c3aed' },
+    done: { label: 'Done', bg: '#e9f7ef', fg: '#15803d', dot: '#16a34a' },
+};
+export function WorkTag({ s }: { s: WorkStatus }) {
+    const { t } = useLang();
+    const m = WORK_STATUS[s];
+    return <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ background: m.bg, color: m.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: m.dot }} />{t(m.label)}</span>;
+}
+// A human task's tags: To do (+ Overdue) or Done.
+export const workTagsFor = (task: Task): WorkStatus[] => (task.status === 'done' || task.status === 'eva-done' ? ['done'] : task.bucket === 'overdue' ? ['todo', 'overdue'] : ['todo']);
+
+type GroupBy = 'status' | 'deadline' | 'company';
+type Layout = 'board' | 'list';
+// One item of work, whatever its source: a task with you, an EVA draft to review, or something done.
+type WorkItem =
+    | { kind: 'task'; id: string; ws: 'todo' | 'inprogress' | 'done'; overdue: boolean; company: string; title: string; task: Task; doneBy?: 'you' | 'EVA' }
+    | { kind: 'review'; id: string; ws: 'inprogress'; overdue: false; company: string; title: string; d: DecisionItem }
+    | { kind: 'decided'; id: string; ws: 'done'; overdue: false; company: string; title: string; d: DecisionItem };
+const DONE_SHOWN = 5; // Done shows the latest few; the full history is the Activity tab
+type Col = 'todo' | 'inprogress' | 'done';
+// Drag-and-drop wiring shared by board cards and list rows.
+type Dnd = {
+    dragId: string | null;
+    over: { col: Col; beforeId: string | null } | null;
+    start: (it: WorkItem) => void;
+    end: () => void;
+    overItem: (col: Col, it: WorkItem, after: boolean, nextId: string | null) => void;
+    overCol: (col: Col) => void;
+    drop: (col: Col) => void;
+};
+const DropLine = () => <div className="rounded-full" style={{ height: 3, background: '#7c3aed', margin: '-1px 2px' }} />;
 
 function SectionCard({ title, count, right, accent, children }: { title: ReactNode; count?: number; right?: ReactNode; accent?: string; children: ReactNode }) {
     return (
@@ -130,29 +164,6 @@ function SectionCard({ title, count, right, accent, children }: { title: ReactNo
             </div>
             {children}
         </Card>
-    );
-}
-
-function PopMenu({ trigger, items }: { trigger: ReactNode; items: { label: string; onClick: () => void; active?: boolean; mark?: ReactNode }[] }) {
-    const [open, setOpen] = useState(false);
-    return (
-        <div className="relative shrink-0">
-            <button onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}>{trigger}</button>
-            {open && (
-                <>
-                    <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 z-50 mt-1 rounded-xl bg-white py-1" style={{ minWidth: 190, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
-                        {items.map((it) => (
-                            <button key={it.label} onClick={() => { setOpen(false); it.onClick(); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm"
-                                style={{ color: COLORS.text }} onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                {it.mark ?? <span style={{ width: 14 }}>{it.active ? <Icon name="tick" style={{ color: '#16a34a' }} /> : null}</span>}
-                                <span className="flex-1">{it.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </>
-            )}
-        </div>
     );
 }
 
@@ -189,22 +200,27 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     onAddDecision: (d: DecisionItem) => void;
 }) {
     const { t } = useLang();
-    const [groupBy, setGroupBy] = useState<GroupBy>('deadline');
+    const [layout, setLayout] = useState<Layout>('board');
+    const [groupBy, setGroupBy] = useState<GroupBy>('status');
     const [q, setQ] = useState('');
-    const [statusF, setStatusF] = useState<Set<TStatus>>(new Set());
+    const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
     const [review, setReview] = useState<DecisionItem | null>(null);
+    // Board order you set by dragging, per column; and tasks you just dragged to EVA.
+    const [order, setOrder] = useState<Partial<Record<Col, string[]>>>({});
+    const [handing, setHanding] = useState<Set<string>>(new Set());
+    const [dragId, setDragId] = useState<string | null>(null);
+    const [over, setOver] = useState<{ col: Col; beforeId: string | null } | null>(null);
     // Work is the logged-in accountant's own work (the whole office lives under Practice).
     const mine = true;
 
     const patch = (id: string, p: Partial<Task>) => setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...p } : x)));
     const setStatus = (id: string, s: TStatus) => patch(id, { status: s });
-    const reassign = (id: string, a: string) => patch(id, { accountant: a });
     function handToEva(id: string) {
         const task = tasks.find((x) => x.id === id);
         if (task) handTaskToEva(task, setTasks, onAddDecision);
     }
-    const toggleStatusF = (s: TStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+    const toggleStatusF = (s: WorkStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
     // Perspective — "My work" (the logged-in accountant) vs. the whole practice.
     const scoped = mine ? tasks.filter((x) => x.accountant === ME) : tasks;
@@ -217,41 +233,96 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
     const evaDone = all.filter((x) => x.status === 'eva-done');
 
-    // --- overview KPIs (on the perspective's scope) ---
-    const activeAll = scoped.filter((x) => x.status !== 'done' && x.status !== 'eva-done');
+    // --- the work, as one set of items: To do · In progress · Done ---
+    // (a draft you took back is a task with you again, so it isn't also listed as done)
+    const decidedMine = decisions.filter((d) => d.done && d.accountant === ME && !tasks.some((x) => x.id === `back-${d.id}`));
+    const items: WorkItem[] = [
+        ...all.filter((x) => x.status === 'eva-running' && handing.has(x.id)).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'inprogress', overdue: false, company: x.company, title: t(x.title), task: x })),
+        ...all.filter((x) => !isEva(x.status) && x.status !== 'done').map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'todo', overdue: x.bucket === 'overdue', company: x.company, title: t(x.title), task: x })),
+        ...evaReview.map((d): WorkItem => ({ kind: 'review', id: d.id, ws: 'inprogress', overdue: false, company: d.company, title: t(d.label), d })),
+        // latest first: what you just finished, then what EVA completed
+        ...decidedMine.filter((d) => !ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)).map((d): WorkItem => ({ kind: 'decided', id: d.id, ws: 'done', overdue: false, company: d.company, title: t(d.label), d })),
+        ...all.filter((x) => x.status === 'done').map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'done', overdue: false, company: x.company, title: t(x.title), task: x, doneBy: 'you' })),
+        ...evaDone.map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'done', overdue: false, company: x.company, title: t(x.title), task: x, doneBy: 'EVA' })),
+    ];
+    const passes = (it: WorkItem) => statusF.size === 0 || statusF.has(it.ws) || (it.overdue && statusF.has('overdue'));
+    const visible = items.filter(passes);
+    // your drag order wins; anything new since (not yet ordered) goes on top
+    const ordered = (col: Col, list: WorkItem[]) => {
+        const o = order[col]; if (!o) return list;
+        const rank = (id: string) => o.indexOf(id);
+        return list.map((it, i) => ({ it, i })).sort((a, b) => rank(a.it.id) - rank(b.it.id) || a.i - b.i).map((x) => x.it);
+    };
+    const todo = ordered('todo', visible.filter((it) => it.ws === 'todo')).sort((a, b) => Number(b.overdue) - Number(a.overdue));
+    const inprogress = ordered('inprogress', visible.filter((it) => it.ws === 'inprogress'));
+    const doneAll = ordered('done', visible.filter((it) => it.ws === 'done'));
+    const colItems: Record<Col, WorkItem[]> = { todo, inprogress, done: doneAll };
+
+    // Moving a card is doing the work: To do ⇄ Done marks it; onto In progress hands it
+    // to EVA to draft; an EVA draft goes to Done only through review, or back to you.
+    function move(id: string, to: Col, beforeId: string | null) {
+        const it = items.find((x) => x.id === id);
+        if (!it || it.kind === 'decided') return;
+        const ids = colItems[to].map((x) => x.id).filter((x) => x !== id);
+        const at = beforeId ? ids.indexOf(beforeId) : -1;
+        ids.splice(at < 0 ? ids.length : at, 0, id);
+        setOrder((prev) => ({ ...prev, [to]: ids }));
+        if (it.ws === to) return;
+        if (it.kind === 'review') {
+            if (to === 'done') setReview(it.d);
+            else {
+                onResolveDecision(it.d.id, 'alt');
+                const backId = `back-${it.d.id}`;
+                setTasks((prev) => [{ id: backId, title: it.d.label, company: it.d.company, accountant: ME, status: 'todo', bucket: 'today', dueLabel: 'Today', priority: 'high' }, ...prev]);
+                setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? backId : x)) }));
+            }
+            return;
+        }
+        if (to === 'done') patch(id, { status: 'done' });
+        else if (to === 'todo') patch(id, { status: 'todo' });
+        else {
+            setHanding((prev) => new Set(prev).add(id));
+            handTaskToEva(it.task, setTasks, (d) => {
+                onAddDecision(d);
+                setOrder((prev) => ({ ...prev, inprogress: (prev.inprogress ?? []).map((x) => (x === id ? d.id : x)) }));
+            });
+        }
+    }
+    const dnd: Dnd = {
+        dragId, over,
+        start: (it) => setDragId(it.id),
+        end: () => { setDragId(null); setOver(null); },
+        overItem: (col, it, after, nextId) => { const beforeId = after ? nextId : it.id; if (over?.col !== col || over.beforeId !== beforeId) setOver({ col, beforeId }); },
+        overCol: (col) => { if (!over || over.col !== col) setOver({ col, beforeId: null }); },
+        drop: (col) => { if (dragId) move(dragId, col, over?.col === col ? over.beforeId : null); setDragId(null); setOver(null); },
+    };
+    const done = doneAll.slice(0, DONE_SHOWN);
+    const counts = { todo: items.filter((i) => i.ws === 'todo').length, overdue: items.filter((i) => i.overdue).length, inprogress: items.filter((i) => i.ws === 'inprogress').length, done: items.filter((i) => i.ws === 'done').length };
+
     const evaAll = scoped.filter((x) => isEva(x.status));
     const automatedPct = scoped.length ? Math.round((evaAll.length / scoped.length) * 100) : 0;
-    const overdue = activeAll.filter((x) => x.bucket === 'overdue');
-    const companyCount = new Set(scoped.map((x) => x.company)).size;
     const kpis = [
-        { label: t('Open tasks'), value: String(activeAll.length), sub: t(mine ? 'across {n} of your clients' : 'across {n} companies').replace('{n}', String(companyCount)), color: COLORS.text, accent: '' },
+        { label: t('To do'), value: String(counts.todo), sub: t('of which {n} overdue').replace('{n}', String(counts.overdue)), color: COLORS.text, accent: '' },
+        { label: t('Overdue'), value: String(counts.overdue), sub: t('need attention'), color: '#dc2626', accent: '#dc2626' },
+        { label: t('In progress'), value: String(counts.inprogress), sub: t('EVA drafts ready for your review'), color: PURPLE, accent: PURPLE },
         { label: t('Handled by EVA'), value: String(evaAll.length), sub: t('{n}% of the workload').replace('{n}', String(automatedPct)), color: '#16a34a', accent: '' },
-        { label: t('Ready for your review'), value: String(evaReview.length), sub: t('EVA drafts to approve'), color: PURPLE, accent: PURPLE },
-        { label: t('Overdue'), value: String(overdue.length), sub: t('need attention'), color: '#dc2626', accent: '#dc2626' },
     ];
+    const openItem = (it: WorkItem) => { if (it.kind === 'task') setTrace(it.task); else if (it.kind === 'review') setReview(it.d); };
 
-    // --- tasks still with a human, grouped (accountant grouping only in the practice view) ---
-    const groupOptions: [GroupBy, string][] = mine
-        ? [['deadline', 'By deadline'], ['company', 'By client'], ['status', 'By status']]
-        : [['accountant', 'By accountant'], ['company', 'By company'], ['deadline', 'By deadline'], ['status', 'By status']];
-    const effGroup: GroupBy = groupOptions.some(([k]) => k === groupBy) ? groupBy : 'deadline';
-    // One list: the tasks with you, plus EVA's drafts waiting for your review (due today,
-    // grouped and filtered like any other task).
-    const human = all.filter((x) => !isEva(x.status) && (statusF.size === 0 || statusF.has(x.status)));
-    const reviews = evaReview.filter(() => statusF.size === 0 || statusF.has('eva-review'));
-    const order = effGroup === 'accountant' ? ACCOUNTANTS : effGroup === 'company' ? COMPANIES : effGroup === 'status' ? ['eva-review', ...HUMAN_STATUSES] : BUCKETS.map((b) => b.key);
-    const keyOf = (x: Task) => (effGroup === 'accountant' ? x.accountant : effGroup === 'company' ? x.company : effGroup === 'status' ? x.status : x.bucket);
-    const reviewKeyOf = (d: DecisionItem) => (effGroup === 'accountant' ? d.accountant : effGroup === 'company' ? d.company : effGroup === 'status' ? 'eva-review' : 'today');
-    const groups = (order as string[])
-        .map((k) => ({ key: k, reviews: reviews.filter((d) => reviewKeyOf(d) === k), items: human.filter((x) => keyOf(x) === k) }))
-        .filter((g) => g.reviews.length + g.items.length > 0);
-    const plateCount = human.length + reviews.length;
-
-    const groupTitle = (k: string): ReactNode => {
-        if (effGroup === 'accountant' || effGroup === 'company') return <><ClientAvatar name={k} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{k}</span></>;
-        if (effGroup === 'status') return <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: COLORS.text }}><span className="rounded-full" style={{ width: 8, height: 8, background: TSTATUS[k as TStatus].dot }} />{t(TSTATUS[k as TStatus].label)}</span>;
-        return <span className="text-sm font-semibold" style={{ color: k === 'overdue' ? '#dc2626' : COLORS.text }}>{t(BUCKETS.find((b) => b.key === k)!.label)}</span>;
-    };
+    // List grouping — by status (the board's columns), by deadline or by client.
+    const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] =
+        groupBy === 'status'
+            ? [
+                { key: 'todo', title: <WorkTag s="todo" />, items: todo },
+                { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress },
+                { key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 },
+            ]
+            : groupBy === 'deadline'
+            ? [
+                ...BUCKETS.map((bk) => ({ key: bk.key, title: <span className="text-sm font-semibold" style={{ color: bk.key === 'overdue' ? '#dc2626' : COLORS.text }}>{t(bk.label)}</span>, items: [...todo, ...inprogress].filter((it) => (it.kind === 'review' ? 'today' : it.kind === 'task' ? it.task.bucket : '') === bk.key) })),
+                { key: 'done', title: <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Done')}</span>, items: done, footer: doneAll.length > 0 },
+            ]
+            : COMPANIES.map((c) => ({ key: c, title: <span className="flex items-center gap-2"><ClientAvatar name={c} size={22} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{c}</span></span>, items: [...todo, ...inprogress, ...done].filter((it) => it.company === c) }));
 
     return (
         <div className={bare ? 'h-full' : 'h-full overflow-y-auto'}>
@@ -304,58 +375,64 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     })}
                 </div>
 
-                <div className="flex flex-col gap-4">
-                    {/* On my plate — your tasks and EVA's drafts to review, grouped, with Hand to EVA / Review */}
-                    <div className="pt-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: COLORS.textMuted }}>{t(mine ? 'On my plate' : 'Handled by your team')}</p>
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                            <SegmentedTabs value={effGroup} onChange={(v) => setGroupBy(v as GroupBy)} options={groupOptions.map(([value, label]) => ({ value, label: t(label) }))} />
-                            <div className="relative flex-1" style={{ minWidth: 200 }}>
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
-                                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search tasks…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5 mb-4">
-                            {(['eva-review', ...HUMAN_STATUSES] as TStatus[]).map((s) => {
-                                const on = statusF.has(s); const st = TSTATUS[s];
-                                return (
-                                    <button key={s} onClick={() => toggleStatusF(s)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? st.fg : COLORS.cardBorder}`, background: on ? st.bg : '#fff', color: on ? st.fg : COLORS.textMuted }}>
-                                        <span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} /> {t(st.label)}
-                                    </button>
-                                );
-                            })}
-                            {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
-                            <span className="ml-auto text-xs" style={{ color: COLORS.textMuted }}>{t(mine ? '{n} on my plate' : '{n} still with the team').replace('{n}', String(plateCount))}</span>
-                        </div>
-
-                        {groups.length === 0 ? (
-                            <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t(mine ? 'EVA has taken everything — nothing left on your plate. 🎉' : 'EVA has taken everything here — nothing left with the team. 🎉')}</p></Card>
-                        ) : (
-                            <div className="flex flex-col gap-4">
-                                {groups.map((g) => {
-                                    const od = g.items.filter((x) => x.bucket === 'overdue').length;
-                                    return (
-                                        <SectionCard key={g.key} title={<span className="flex items-center gap-2 min-w-0">{groupTitle(g.key)}</span>} count={g.reviews.length + g.items.length} right={od > 0 ? <span className="text-xs font-medium shrink-0" style={{ color: '#dc2626' }}>{od} {t('overdue')}</span> : undefined}>
-                                            {g.reviews.map((d, i) => <ReviewRow key={d.id} d={d} groupBy={effGroup} last={i === g.reviews.length - 1 && g.items.length === 0} onReview={() => setReview(d)} />)}
-                                            {g.items.map((x, i) => (
-                                                <TaskRow key={x.id} task={x} groupBy={effGroup} showAccountant={!mine && effGroup !== 'accountant'} last={i === g.items.length - 1} onStatus={(s) => setStatus(x.id, s)} onReassign={(a) => reassign(x.id, a)} onOpen={() => setTrace(x)} />
-                                            ))}
-                                        </SectionCard>
-                                    );
-                                })}
-                            </div>
-                        )}
+                {/* toolbar: Board / List, grouping (list), search and status filters */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />
+                    {layout === 'list' && <SegmentedTabs value={groupBy} onChange={(v) => setGroupBy(v as GroupBy)} options={[{ value: 'status', label: t('By status') }, { value: 'deadline', label: t('By deadline') }, { value: 'company', label: t('By client') }]} />}
+                    <div className="relative flex-1" style={{ minWidth: 200 }}>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
+                        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search tasks…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
                     </div>
-
-                    {/* What EVA has already done lives in the Activity tab */}
-                    {evaDone.length > 0 && (
-                        <button onClick={() => onTab('activity')} className="flex items-center gap-3 rounded-xl px-4 py-3 text-left" style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}` }}>
-                            <span className="flex items-center justify-center shrink-0 rounded-lg" style={{ width: 30, height: 30, background: '#eef7ef', color: '#16a34a' }}><Icon name="circle-tick" /></span>
-                            <span className="text-sm flex-1" style={{ color: COLORS.text }}>{t('EVA completed {n} tasks for you recently').replace('{n}', String(evaDone.length))}</span>
-                            <span className="text-sm font-medium" style={{ color: '#4456c7' }}>{t('See all activity')} →</span>
-                        </button>
-                    )}
                 </div>
+                <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                    {(['todo', 'overdue', 'inprogress', 'done'] as WorkStatus[]).map((k) => {
+                        const on = statusF.has(k); const m = WORK_STATUS[k];
+                        return (
+                            <button key={k} onClick={() => toggleStatusF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
+                                <span className="rounded-full" style={{ width: 6, height: 6, background: m.dot }} /> {t(m.label)} <CountBadge n={counts[k]} showZero />
+                            </button>
+                        );
+                    })}
+                    {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                </div>
+
+                {layout === 'board' ? (
+                    <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                        <BoardColumn s="todo" count={todo.length} dnd={dnd}>
+                            {todo.map((it, i) => (
+                                <Fragment key={it.id}>
+                                    {it.overdue && i === 0 && <p className="text-[11px] font-semibold uppercase tracking-wide px-1" style={{ color: '#c0392b' }}>{t('Overdue')}</p>}
+                                    {!it.overdue && (i === 0 ? todo.length > 0 && todo[0].overdue : todo[i - 1].overdue) && <p className="text-[11px] font-semibold uppercase tracking-wide px-1 pt-1" style={{ color: COLORS.textMuted }}>{t('Upcoming')}</p>}
+                                    <WorkCard it={it} col="todo" nextId={todo[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />
+                                </Fragment>
+                            ))}
+                        </BoardColumn>
+                        <BoardColumn s="inprogress" count={inprogress.length} dnd={dnd}>
+                            {inprogress.map((it, i) => <WorkCard key={it.id} it={it} col="inprogress" nextId={inprogress[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />)}
+                        </BoardColumn>
+                        <BoardColumn s="done" count={doneAll.length} dnd={dnd} footer={<button onClick={() => onTab('activity')} className="text-xs font-medium w-full text-left px-1 pt-1" style={{ color: '#4456c7' }}>{t('See all in the activity log')} →</button>}>
+                            {done.map((it, i) => <WorkCard key={it.id} it={it} col="done" nextId={done[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />)}
+                        </BoardColumn>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        {listGroups.filter((g) => g.items.length > 0 || g.footer || groupBy === 'status').map((g) => {
+                            // By status, each group is a column you can drag rows into, like the board.
+                            const col = groupBy === 'status' ? (g.key as Col) : null;
+                            return (
+                            <div key={g.key} onDragOver={col ? (e) => { if (!dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(col); } : undefined} onDrop={col ? (e) => { e.preventDefault(); dnd.drop(col); } : undefined}>
+                            <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
+                                {g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany={groupBy !== 'company'} last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
+                                {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
+                                {col && g.items.length === 0 && <p className="text-xs px-4 py-4 text-center" style={{ color: COLORS.textMuted }}>{t(dragId ? 'Drop here' : 'Nothing here')}</p>}
+                                {g.footer && <button onClick={() => onTab('activity')} className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: '#4456c7' }}>{t('See all in the activity log')} →</button>}
+                            </SectionCard>
+                            </div>
+                            );
+                        })}
+                        {listGroups.every((g) => g.items.length === 0) && <Card className="p-10 text-center"><p className="text-sm" style={{ color: COLORS.textMuted }}>{t('Nothing matches — try clearing the filters.')}</p></Card>}
+                    </div>
+                )}
                 </>)}
             </div>
 
@@ -365,58 +442,100 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     );
 }
 
-// An EVA draft waiting for your review — sits in the list like any task, with Review instead of Hand to EVA.
-function ReviewRow({ d, groupBy, last, onReview }: { d: DecisionItem; groupBy: GroupBy; last: boolean; onReview: () => void }) {
+// ---- Board + list pieces --------------------------------------------------------------------
+function BoardColumn({ s, count, children, footer, dnd }: { s: Col; count: number; children: ReactNode; footer?: ReactNode; dnd: Dnd }) {
     const { t } = useLang();
-    const st = TSTATUS['eva-review'];
+    const m = WORK_STATUS[s];
+    const target = dnd.over?.col === s;
     return (
-        <div className="flex items-center gap-3 p-4" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-            <button onClick={onReview} className="flex-1 min-w-0 flex items-center gap-3 text-left" title={t('Review')}>
-                <ClientAvatar name={d.company} size={30} />
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate hover:underline" style={{ color: COLORS.text }}>{t(d.label)}</p>
-                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{groupBy !== 'company' ? `${d.company} · ` : ''}<span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span> · {t(d.question)}</p>
-                </div>
-            </button>
-            <Button onClick={onReview}>{t('Review')}</Button>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
+        <div className="rounded-xl p-2.5 flex flex-col gap-2 transition-colors" style={{ background: target && dnd.dragId ? '#ecebf3' : '#f4f4f6', minHeight: 120 }}
+            onDragOver={(e) => { if (!dnd.dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(s); }}
+            onDrop={(e) => { e.preventDefault(); dnd.drop(s); }}>
+            <div className="flex items-center gap-2 px-1.5 pt-0.5 pb-1">
+                <span className="rounded-full" style={{ width: 8, height: 8, background: m.dot }} />
+                <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t(m.label)}</p>
+                <CountBadge n={count} showZero />
+            </div>
+            {children}
+            {target && dnd.dragId && dnd.over?.beforeId === null && <DropLine />}
+            {count === 0 && <p className="text-xs px-1.5 py-3 text-center" style={{ color: COLORS.textMuted }}>{t(dnd.dragId ? 'Drop here' : 'Nothing here')}</p>}
+            {footer}
         </div>
     );
 }
 
-function TaskRow({ task, groupBy, showAccountant, last, onStatus, onReassign, onOpen }: { task: Task; groupBy: GroupBy; showAccountant: boolean; last: boolean; onStatus: (s: TStatus) => void; onReassign: (a: string) => void; onOpen: () => void }) {
-    const { t } = useLang();
-    const st = TSTATUS[task.status];
-    const prio = TPRIO[task.priority];
-    const secondary: ReactNode[] = [];
-    if (groupBy !== 'company') secondary.push(<span key="c">{task.company}</span>);
-    secondary.push(<span key="d" style={{ color: dueColor(task.bucket), fontWeight: 500 }}>{t(task.dueLabel)}</span>);
+// drag handlers for one card/row: which half you hover decides whether it drops before or after
+const dragProps = (it: WorkItem, col: Col | null, nextId: string | null, dnd: Dnd) => {
+    if (!col) return {};
+    const movable = it.kind !== 'decided';
+    return {
+        draggable: movable,
+        onDragStart: movable ? (e: DragEvent<HTMLElement>) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', it.id); dnd.start(it); } : undefined,
+        onDragEnd: () => dnd.end(),
+        onDragOver: (e: DragEvent<HTMLElement>) => {
+            if (!dnd.dragId) return;
+            e.preventDefault(); e.stopPropagation();
+            const r = e.currentTarget.getBoundingClientRect();
+            dnd.overItem(col, it, e.clientY > r.top + r.height / 2, nextId);
+        },
+        onDrop: (e: DragEvent<HTMLElement>) => { e.preventDefault(); e.stopPropagation(); dnd.drop(col); },
+    };
+};
 
+const itemSub = (it: WorkItem, t: (s: string) => string): ReactNode =>
+    it.kind === 'review' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span> · {t(it.d.question)}</>
+    : it.kind === 'decided' ? <>{t(it.d.taken === 'alt' ? 'Taken back by you' : 'Approved by you')} · {t('just now')}</>
+    : it.ws === 'inprogress' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA is drafting this…')}</span></>
+    : it.ws === 'done' ? <>{it.doneBy === 'EVA' ? t('Done by EVA') : t('Done by you')} · {t(it.doneBy === 'EVA' ? it.task.dueLabel.replace(/^Done /, '') : 'just now')}</>
+    : <><span style={{ color: dueColor(it.task.bucket), fontWeight: 500 }}>{t(it.task.dueLabel)}</span>{it.task.status === 'waiting' ? <> · {t('Waiting on client')}</> : null}</>;
+
+const tagsOf = (it: WorkItem): WorkStatus[] => (it.overdue ? ['todo', 'overdue'] : [it.ws]);
+
+function WorkCard({ it, col, nextId, dnd, onOpen }: { it: WorkItem; col: Col; nextId: string | null; dnd: Dnd; onOpen: () => void }) {
+    const { t } = useLang();
+    const clickable = it.kind !== 'decided';
+    const dragging = dnd.dragId === it.id;
     return (
-        <div className="flex items-center gap-3 p-4" style={last ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-            <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-3 text-left" title={t('Open task')}>
-                <ClientAvatar name={task.company} size={30} />
+        <>
+        {dnd.dragId && dnd.over?.col === col && dnd.over.beforeId === it.id && <DropLine />}
+        <div {...dragProps(it, col, nextId, dnd)} onClick={clickable ? onOpen : undefined} className={`rounded-lg bg-white p-3 flex flex-col gap-2 ${clickable ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ border: `1px solid ${it.overdue ? '#f5c2c2' : COLORS.cardBorder}`, opacity: dragging ? 0.4 : it.ws === 'done' ? 0.85 : 1 }}
+            onMouseEnter={clickable ? (e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)') : undefined} onMouseLeave={clickable ? (e) => (e.currentTarget.style.boxShadow = 'none') : undefined}>
+            <div className="flex items-start gap-2">
+                <ClientAvatar name={it.company} size={20} />
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-snug" style={{ color: COLORS.text }}>{it.title}</p>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{it.company}</p>
+                </div>
+            </div>
+            <p className="text-xs leading-snug" style={{ color: COLORS.textMuted, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{itemSub(it, t)}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+                {tagsOf(it).map((s) => <WorkTag key={s} s={s} />)}
+                {it.kind === 'review' && <span className="ml-auto"><Button onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); onOpen(); }}>{t('Review')}</Button></span>}
+            </div>
+        </div>
+        </>
+    );
+}
+
+function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: WorkItem; col: Col | null; nextId: string | null; dnd: Dnd; showCompany: boolean; last: boolean; onOpen: () => void }) {
+    const { t } = useLang();
+    const clickable = it.kind !== 'decided';
+    return (
+        <>
+        {col && dnd.dragId && dnd.over?.col === col && dnd.over.beforeId === it.id && <DropLine />}
+        <div {...dragProps(it, col, nextId, dnd)} className="flex items-center gap-3 p-4 bg-white" style={{ ...(last ? {} : { borderBottom: `1px solid ${COLORS.cardBorder}` }), opacity: dnd.dragId === it.id ? 0.4 : it.ws === 'done' ? 0.85 : 1, cursor: col && clickable ? 'grab' : undefined }}>
+            {col && <span className="shrink-0 -ml-1" style={{ color: clickable ? '#c4c4cc' : 'transparent' }} aria-hidden><Icon name="drag" /></span>}
+            <button onClick={clickable ? onOpen : undefined} className="flex-1 min-w-0 flex items-center gap-3 text-left" style={{ cursor: clickable ? 'pointer' : 'default' }} title={clickable ? t('Open task') : undefined}>
+                <ClientAvatar name={it.company} size={30} />
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate hover:underline" style={{ color: COLORS.text }}>{t(task.title)}</p>
-                    <p className="text-xs mt-0.5 truncate flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                        {secondary.map((n, i) => <span key={i} className="flex items-center gap-1.5">{i > 0 && <span>·</span>}{n}</span>)}
-                    </p>
+                    <p className={`text-sm font-medium truncate ${clickable ? 'hover:underline' : ''}`} style={{ color: COLORS.text }}>{it.title}</p>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{showCompany ? <>{it.company} · </> : null}{itemSub(it, t)}</p>
                 </div>
             </button>
-
-
-            {showAccountant && (
-                <PopMenu
-                    trigger={<span className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5" style={{ border: `1px solid ${COLORS.cardBorder}` }} title={t('Responsible: {name}').replace('{name}', task.accountant)}><ClientAvatar name={task.accountant} size={18} /><span className="text-xs hidden lg:inline" style={{ color: COLORS.text }}>{task.accountant.split(' ')[0]}</span></span>}
-                    items={ACCOUNTANTS.map((a) => ({ label: a, active: a === task.accountant, mark: <ClientAvatar name={a} size={16} />, onClick: () => onReassign(a) }))}
-                />
-            )}
-            <span title={`${t('Priority')}: ${t(prio.label)}`} className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: prio.color }} />
-            <PopMenu
-                trigger={<span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} /> {t(st.label)}<Icon name="chevron-down" /></span>}
-                items={HUMAN_STATUSES.map((s) => ({ label: t(TSTATUS[s].label), active: s === task.status, onClick: () => onStatus(s) }))}
-            />
+            {it.kind === 'review' && <Button onClick={onOpen}>{t('Review')}</Button>}
+            <div className="flex items-center gap-1.5 shrink-0">{tagsOf(it).map((s) => <WorkTag key={s} s={s} />)}</div>
         </div>
+        </>
     );
 }
 
@@ -473,7 +592,8 @@ export function TaskModal({ task, onClose, onHandToEva, onDone }: { task: Task; 
 
                 <div className="px-5 py-4 flex flex-col gap-4">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
+                        {eva && task.status !== 'eva-done' ? <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
+                            : workTagsFor(task).map((w) => <WorkTag key={w} s={w} />)}
                         <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: '#f1f1f3', color: dueColor(task.bucket) }}>{t(task.dueLabel)}{task.evaWhen ? ` · ${task.evaWhen}` : ''}</span>
                         <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: '#f1f1f3', color: '#52525b' }}><span className="rounded-full" style={{ width: 6, height: 6, background: prio.color }} />{t('Priority')}: {t(prio.label)}</span>
                     </div>

@@ -7,7 +7,7 @@ import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client } from '../
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
 import { DecisionRow, DecisionReview } from './Decisions';
-import { TSTATUS, TaskModal, dueColor, handTaskToEva, isEva, type Task } from './TaskManagementView';
+import { TaskModal, WorkTag, dueColor, handTaskToEva, isEva, workTagsFor, type Task } from './TaskManagementView';
 import type { Dispatch, SetStateAction } from 'react';
 
 // ---- Portfolio overview — where the AO starts the day ----------------------------
@@ -143,7 +143,6 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
                     <p className="text-sm" style={{ color: COLORS.text }}>{t('Nothing on your plate — EVA has it.')}</p>
                 </div>
             ) : plate.map((x, i) => {
-                const st = TSTATUS[x.status];
                 return (
                     <button key={x.id} onClick={() => setOpen(x)} className="w-full text-left flex items-center gap-3 px-4 py-2.5" style={i === 0 ? undefined : { borderTop: `1px solid ${COLORS.cardBorder}` }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
@@ -151,7 +150,7 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
                             <p className="text-sm truncate" style={{ color: COLORS.text }}>{t(x.title)}</p>
                             <p className="text-xs truncate mt-0.5" style={{ color: COLORS.textMuted }}>{x.company} · <span style={{ color: dueColor(x.bucket), fontWeight: 500 }}>{t(x.dueLabel)}</span></p>
                         </div>
-                        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: st.bg, color: st.fg }}><span className="rounded-full" style={{ width: 6, height: 6, background: st.dot }} />{t(st.label)}</span>
+                        <span className="shrink-0 flex items-center gap-1.5">{workTagsFor(x).map((w) => <WorkTag key={w} s={w} />)}</span>
                     </button>
                 );
             })}
