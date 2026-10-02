@@ -222,4 +222,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   post (draft postings) — plus the client's 8 month-end steps. *Close September* is enabled once
   nothing is left. Lists the real open flags and replies from shared state; works from both the
   overview's Books card and Work's month-end card.
+- Ledger: a **Booked by** column — EVA (its mark) for bills, bank-matched payments and its own bookings;
+  the client's owner for the invoices they create; *You* for salaries and corrections you applied.
 

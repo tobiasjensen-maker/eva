@@ -1918,4 +1918,6 @@ const DA: Record<string, string> = {
     'Received — EVA matched them': 'Modtaget — EVA har matchet dem',
     'EVA flag': 'EVA-markering',
     'Booked by EVA': 'Bogført af EVA',
+    'Booked by': 'Bogført af',
+    'The client': 'Kunden',
 };

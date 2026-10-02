@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { ClientAvatar, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { CLIENTS, MY_PORTFOLIO, type Thread } from '../practice';
+import { CLIENTS, ME, MY_PORTFOLIO, OWNER, type Thread } from '../practice';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
 import { downloadCsv } from '../exportCsv';
@@ -15,7 +15,7 @@ import { downloadCsv } from '../exportCsv';
 
 type Group = 'Income' | 'Expenses' | 'Assets & liabilities';
 type Account = { no: string; name: string; group: Group };
-type Line = { id: string; date: string; voucher: string; text: string; account: string; amount: number; vat?: string; source: 'EVA' | 'Bank import' | 'You'; flag?: string; waiting?: string };
+type Line = { id: string; date: string; voucher: string; text: string; account: string; amount: number; vat?: string; source: 'EVA' | 'Bank import' | 'You'; by: string; flag?: string; waiting?: string }; // by: 'EVA' or a person's name
 
 const ACCOUNTS: Account[] = [
     { no: '1010', name: 'Sales, domestic', group: 'Income' },
@@ -52,9 +52,10 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
     let v = 1001 + Math.floor(rand() * 400);
     const add = (date: string, text: string, legs: [string, number, string?][], source: Line['source'] = 'EVA', extra: Partial<Line> = {}) => {
         const voucher = `#${v++}`;
-        legs.forEach(([account, amount, vat], i) => out.push({ id: `${voucher}-${i}`, date, voucher, text, account, amount, vat, source, ...extra }));
+        legs.forEach(([account, amount, vat], i) => out.push({ id: `${voucher}-${i}`, date, voucher, text, account, amount, vat, source, by: 'EVA', ...extra }));
     };
-    out.push({ id: 'ob', date: '2026-01-01', voucher: 'Opening', text: 'Opening balance', account: '6810', amount: r100(fee * 22), source: 'EVA' });
+    out.push({ id: 'ob', date: '2026-01-01', voucher: 'Opening', text: 'Opening balance', account: '6810', amount: r100(fee * 22), source: 'You', by: ME });
+    const owner = OWNER[company] ?? 'The client'; // the client's own person
     const noVatRent = company === 'Tech Equipment AS';
     for (let m = 1; m <= 9; m++) {
         const mm = d2(m);
@@ -66,7 +67,7 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
             const net = r100((monthly / 4) * (0.7 + rand() * 0.6));
             const day = d2(3 + k * 6 + Math.floor(rand() * 3));
             const cust = CUSTOMERS[Math.floor(rand() * CUSTOMERS.length)];
-            add(`2026-${mm}-${day}`, `Invoice — ${cust}`, [['6910', net * 1.25], ['1010', -net, 'U25'], ['7320', -net * 0.25]]);
+            add(`2026-${mm}-${day}`, `Invoice — ${cust}`, [['6910', net * 1.25], ['1010', -net, 'U25'], ['7320', -net * 0.25]], 'EVA', { by: owner }); // the client invoices in e-conomic themselves
             if (m < 9 || k < 2) add(`2026-${mm}-${d2(Math.min(28, Number(day) + 12))}`, `Payment — ${cust}`, [['6810', net * 1.25], ['6910', -net * 1.25]], 'Bank import');
         }
         // purchases
@@ -81,7 +82,7 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
         const sw = r100(fee * 0.12 + 300);
         add(`2026-${mm}-15`, 'Software subscriptions', [['4510', sw, 'I25'], ['7310', sw * 0.25], ['6810', -sw * 1.25]], 'Bank import');
         const sal = r100(fee * 7.5);
-        add(`2026-${mm}-${m === 2 ? '27' : '28'}`, 'Salaries', [['3010', sal], ['6810', -sal]]);
+        add(`2026-${mm}-${m === 2 ? '27' : '28'}`, 'Salaries', [['3010', sal], ['6810', -sal]], 'You', { by: ME });
     }
 
     // ---- the postings EVA has had something to say about ----
@@ -90,14 +91,14 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
         const fixed = d?.done && d.taken === 'confirm';
         add('2026-02-14', 'Holz Handel GmbH (Germany)', fixed
             ? [['5520', 48200, 'EUK'], ['7310', 12050], ['7330', -12050], ['7010', -48200]]
-            : [['5510', 48200, 'I25'], ['7310', 12050], ['7010', -60250]], 'EVA', fixed ? { text: 'Holz Handel GmbH (Germany) · corrected by you' } : d && !d.done ? { flag: d.id } : {});
+            : [['5510', 48200, 'I25'], ['7310', 12050], ['7010', -60250]], 'EVA', fixed ? { text: 'Holz Handel GmbH (Germany) · corrected', by: ME } : d && !d.done ? { flag: d.id } : {});
     }
     if (company === 'Tech Equipment AS') {
         const d = decisions.find((x) => x.id === 'd-ctrl');
         const fixed = d?.done && d.taken === 'confirm';
         add('2026-08-01', 'Rent — Ejendomsselskabet Industrivej', fixed
             ? [['4310', 18000, 'None'], ['6810', -18000]]
-            : [['4310', 18000, 'I25'], ['7310', 4500], ['6810', -22500]], 'Bank import', fixed ? { text: 'Rent — Ejendomsselskabet Industrivej · corrected by you' } : d && !d.done ? { flag: d.id } : {});
+            : [['4310', 18000, 'I25'], ['7310', 4500], ['6810', -22500]], 'Bank import', fixed ? { text: 'Rent — Ejendomsselskabet Industrivej · corrected', by: ME } : d && !d.done ? { flag: d.id } : {});
     }
     if (company === 'Bryg & Co ApS') {
         const answered = threads.find((x) => x.id === 't1')?.status !== 'needs';
@@ -106,6 +107,20 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
             : [['9990', 2860], ['6810', -2860]], 'Bank import', answered ? { text: 'Restaurant Kødbyen · business entertainment (Mads confirmed)' } : { waiting: 'Waiting on Mads — what was the dinner for?' });
     }
     return out.sort((a, b) => a.date.localeCompare(b.date) || a.voucher.localeCompare(b.voucher));
+}
+
+// Who booked a posting: EVA (its mark) or a person (initial + name; you are "You").
+function BookedBy({ by }: { by: string }) {
+    const { t } = useLang();
+    if (by === 'EVA') return <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: '#6d28d9' }}><Orb size={12} /> EVA</span>;
+    const you = by === ME;
+    const name = you ? t('You') : by;
+    return (
+        <span className="inline-flex items-center gap-1.5" style={{ color: COLORS.text }} title={by}>
+            <span className="inline-flex items-center justify-center rounded-full text-[9px] font-semibold" style={{ width: 16, height: 16, background: you ? '#1c1b3a' : '#e4e4e7', color: you ? '#fff' : '#52525b' }}>{by.charAt(0)}</span>
+            {name}
+        </span>
+    );
 }
 
 type Period = 'sep' | 'q3' | 'ytd';
@@ -162,8 +177,8 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
     const debit = rows.list.reduce((s, l) => s + Math.max(0, l.amount), 0), credit = rows.list.reduce((s, l) => s + Math.max(0, -l.amount), 0);
     const accName = (no: string) => { const a = ACCOUNTS.find((x) => x.no === no); return a ? `${a.no} · ${t(a.name)}` : no; };
     const exportIt = () => downloadCsv(`${company} — ${sel ? accName(sel) : t('All postings')} — ${p.label}.csv`, [
-        [t('Date'), t('Voucher'), t('Text'), t('Account'), t('VAT'), t('Debit'), t('Credit'), ...(sel ? [t('Balance')] : [])],
-        ...rows.list.map((l) => [l.date, l.voucher, l.text, accName(l.account), l.vat ?? '', Math.max(0, l.amount), Math.max(0, -l.amount), ...(sel ? [l.run] : [])]),
+        [t('Date'), t('Voucher'), t('Text'), t('Booked by'), t('Account'), t('VAT'), t('Debit'), t('Credit'), ...(sel ? [t('Balance')] : [])],
+        ...rows.list.map((l) => [l.date, l.voucher, l.text, l.by, accName(l.account), l.vat ?? '', Math.max(0, l.amount), Math.max(0, -l.amount), ...(sel ? [l.run] : [])]),
     ]);
     const openFlag = (l: Line) => { const d = decisions.find((x) => x.id === l.flag); if (d) setReview(d); };
 
@@ -235,14 +250,14 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
                             <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                                 <thead>
                                     <tr className="text-xs" style={{ color: COLORS.textMuted }}>
-                                        {['Date', 'Voucher', 'Text', ...(sel ? [] : ['Account']), 'VAT', 'Debit', 'Credit', ...(sel ? ['Balance'] : [])].map((h, i, arr) => (
-                                            <th key={h} className={`font-medium py-2 px-2 sticky top-0 bg-white ${['Debit', 'Credit', 'Balance'].includes(h) ? 'text-right' : 'text-left'}`} style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, paddingLeft: i === 0 ? 0 : undefined, paddingRight: i === arr.length - 1 ? 0 : undefined }}>{t(h)}</th>
+                                        {['Date', 'Voucher', 'Text', 'Booked by', ...(sel ? [] : ['Account']), 'VAT', 'Debit', 'Credit', ...(sel ? ['Balance'] : [])].map((h, i, arr) => (
+                                            <th key={h} className={`font-medium py-2 px-2 sticky top-0 bg-white whitespace-nowrap ${['Debit', 'Credit', 'Balance'].includes(h) ? 'text-right' : 'text-left'}`} style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, paddingLeft: i === 0 ? 0 : undefined, paddingRight: i === arr.length - 1 ? 0 : undefined }}>{t(h)}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sel && selAcc?.group === 'Assets & liabilities' && (
-                                        <tr><td colSpan={7} className="py-2 text-xs" style={{ color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.cardBorder}` }}>{t('Opening balance')} {fmtDate(p.from)}: <b style={{ color: COLORS.text }}>{kr(rows.opening)} kr</b></td></tr>
+                                        <tr><td colSpan={8} className="py-2 text-xs" style={{ color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.cardBorder}` }}>{t('Opening balance')} {fmtDate(p.from)}: <b style={{ color: COLORS.text }}>{kr(rows.opening)} kr</b></td></tr>
                                     )}
                                     {rows.list.map((l) => {
                                         const hl = l.flag ? '#f7f4fd' : l.waiting ? '#fdf8ee' : undefined;
@@ -253,7 +268,6 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
                                                 <td className="py-2 px-2" style={{ color: COLORS.text, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                                     <span className="flex items-center gap-2 flex-wrap">
                                                         {t(l.text)}
-                                                        {l.source === 'EVA' && !l.flag && <span className="text-[10px] font-medium rounded-full pl-1 pr-1.5 py-px inline-flex items-center gap-1" style={{ background: '#f3f0fb', color: '#6d28d9' }} title={t('Booked by EVA')}><Orb size={10} /> EVA</span>}
                                                         {l.flag && (
                                                             // EVA's mark, like everywhere else: orange dots on the subtle purple
                                                             <button onClick={() => openFlag(l)} className="text-[11px] font-medium rounded-full pl-1.5 pr-2 py-0.5 inline-flex items-center gap-1.5"
@@ -265,6 +279,7 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
                                                         {l.waiting && <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ background: '#fbf3e0', color: '#92710f' }}>{t(l.waiting)}</span>}
                                                     </span>
                                                 </td>
+                                                <td className="py-2 px-2 whitespace-nowrap text-xs" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}><BookedBy by={l.by} /></td>
                                                 {!sel && <td className="py-2 px-2 whitespace-nowrap text-xs" style={{ color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.cardBorder}` }}>{accName(l.account)}</td>}
                                                 <td className="py-2 px-2 whitespace-nowrap text-xs" style={{ color: l.flag ? '#c0392b' : COLORS.textMuted, fontWeight: l.flag ? 600 : 400, borderBottom: `1px solid ${COLORS.cardBorder}` }}>{l.vat ?? ''}</td>
                                                 <td className="py-2 px-2 text-right tabular-nums whitespace-nowrap" style={{ color: COLORS.text, borderBottom: `1px solid ${COLORS.cardBorder}` }}>{l.amount > 0 ? kr(l.amount) : ''}</td>
@@ -273,7 +288,7 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
                                             </tr>
                                         );
                                     })}
-                                    {rows.list.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-sm" style={{ color: COLORS.textMuted }}>{t('No postings in this period.')}</td></tr>}
+                                    {rows.list.length === 0 && <tr><td colSpan={9} className="py-10 text-center text-sm" style={{ color: COLORS.textMuted }}>{t('No postings in this period.')}</td></tr>}
                                 </tbody>
                             </table>
                         </div>
