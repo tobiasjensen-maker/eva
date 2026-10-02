@@ -253,8 +253,15 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
                                                 <td className="py-2 px-2" style={{ color: COLORS.text, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                                     <span className="flex items-center gap-2 flex-wrap">
                                                         {t(l.text)}
-                                                        {l.source === 'EVA' && !l.flag && <span className="text-[10px] font-medium rounded px-1 py-px" style={{ background: '#f3f0fb', color: '#6d28d9' }}>EVA</span>}
-                                                        {l.flag && <button onClick={() => openFlag(l)} className="text-[11px] font-medium rounded-full px-2 py-0.5 flex items-center gap-1" style={{ background: '#7c3aed', color: '#fff' }}>{t('EVA flag · Review')}</button>}
+                                                        {l.source === 'EVA' && !l.flag && <span className="text-[10px] font-medium rounded-full pl-1 pr-1.5 py-px inline-flex items-center gap-1" style={{ background: '#f3f0fb', color: '#6d28d9' }} title={t('Booked by EVA')}><Orb size={10} /> EVA</span>}
+                                                        {l.flag && (
+                                                            // EVA's mark, like everywhere else: orange dots on the subtle purple
+                                                            <button onClick={() => openFlag(l)} className="text-[11px] font-medium rounded-full pl-1.5 pr-2 py-0.5 inline-flex items-center gap-1.5"
+                                                                style={{ background: '#f3f0fb', color: '#6d28d9', border: '1px solid #7c3aed40' }}
+                                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#ebe5fa')} onMouseLeave={(e) => (e.currentTarget.style.background = '#f3f0fb')}>
+                                                                <Orb size={12} /> {t('EVA flag')} · <span className="underline underline-offset-2">{t('Review')}</span>
+                                                            </button>
+                                                        )}
                                                         {l.waiting && <span className="text-[11px] font-medium rounded-full px-2 py-0.5" style={{ background: '#fbf3e0', color: '#92710f' }}>{t(l.waiting)}</span>}
                                                     </span>
                                                 </td>

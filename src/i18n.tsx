@@ -1916,4 +1916,6 @@ const DA: Record<string, string> = {
     'Reply': 'Svar',
     'Nothing needs you — EVA is finishing the last steps.': 'Intet kræver dig — EVA gør de sidste trin færdige.',
     'Received — EVA matched them': 'Modtaget — EVA har matchet dem',
+    'EVA flag': 'EVA-markering',
+    'Booked by EVA': 'Bogført af EVA',
 };
