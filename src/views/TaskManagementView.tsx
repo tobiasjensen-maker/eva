@@ -67,14 +67,15 @@ export const TASKS: Task[] = [
     // EVA has these scheduled to run soon
     T('Bank reconciliation', 'Café Solsikke', ME, 'Tonight', 'today', 'eva-scheduled', 'medium', 'Tonight at 22:00'),
     T('VAT return — Q1', 'Cloud Hosting Ltd', ME, 'Tomorrow', 'week', 'eva-scheduled', 'high', 'Tomorrow at 06:00'),
-    T('Payroll run — June', 'Aarhus Tandklinik', 'Camilla Berg', 'In 2 days', 'week', 'eva-scheduled', 'medium', 'Fri at 06:00'),
+    T('Payroll run — October', 'Aarhus Tandklinik', 'Camilla Berg', '28 Oct', 'later', 'eva-scheduled', 'medium', '28 Oct at 06:00'),
     // EVA already completed these autonomously
     T('Bank reconciliation', 'Nordic Build ApS', ME, 'Done yesterday', 'week', 'eva-done', 'low'),
     T('Missing receipts (3)', 'Lys Design', 'Sofie Lund', 'Done today', 'today', 'eva-done', 'medium'),
-    T('Payroll run — June', 'Café Solsikke', 'Sofie Lund', 'Done today', 'week', 'eva-done', 'medium'),
+    T('Payroll run — September', 'Café Solsikke', 'Sofie Lund', 'Done 30 Sep', 'week', 'eva-done', 'medium'),
     // Still with the team
     T('Debtor follow-up', 'Café Solsikke', ME, 'Overdue 2 days', 'overdue', 'waiting', 'medium'),
-    T('Payroll run — June', 'Office Supplies Co', ME, 'Today', 'today', 'todo', 'high'),
+    T('Payroll run — October', 'Office Supplies Co', ME, '28 Oct', 'later', 'eva-scheduled', 'high', '28 Oct at 06:00'),
+    T('Payroll run — September', 'Nordic Build ApS', ME, 'Done 30 Sep', 'week', 'eva-done', 'medium'),
     T('Annual report draft', 'Nordic Build ApS', ME, 'In 3 days', 'week', 'in-progress', 'high'),
     T('VAT reconciliation', 'Digital Marketing Pro', ME, 'In 10 days', 'later', 'todo', 'low'),
     T('Month-end close', 'Café Solsikke', 'Sofie Lund', 'Overdue 1 day', 'overdue', 'waiting', 'high'),
@@ -85,7 +86,7 @@ export const TASKS: Task[] = [
     T('Year-end close', 'Office Supplies Co', 'Camilla Berg', 'In 12 days', 'later', 'todo', 'medium'),
     T('Supplier invoice approval', 'Cloud Hosting Ltd', 'Anders Holm', 'In 8 days', 'later', 'todo', 'low'),
     T('Debtor follow-up', 'Aarhus Tandklinik', 'Camilla Berg', 'In 5 days', 'week', 'todo', 'low'),
-    T('Payroll run — June', 'Bryg & Co ApS', 'Jonas Vestergaard', 'In 7 days', 'week', 'todo', 'high'),
+    T('Payroll run — October', 'Bryg & Co ApS', 'Jonas Vestergaard', '28 Oct', 'later', 'eva-scheduled', 'high', '28 Oct at 06:00'),
 ];
 
 // What EVA did on a task — shown in the "See what EVA did" trace.
@@ -153,6 +154,7 @@ const PLANNED_RUNS: { when: string; title: string; scope: string }[] = [
     { when: 'Every hour', title: 'Smart voucher creation', scope: 'New receipts and bills as they arrive' },
     { when: 'Tomorrow at 07:00', title: 'Supplier invoice processor', scope: '14 invoices waiting across 6 clients' },
     { when: '10 Oct at 06:00', title: 'VAT return auto-filing', scope: '12 clients due this quarter' },
+    { when: '28 Oct at 06:00', title: 'Payroll run — October', scope: '14 clients · 116 employees · paid 30 Oct' },
 ];
 // Order "when" labels in time: continuous first, then tonight, tomorrow, weekdays, dates.
 const whenRank = (w: string) => {

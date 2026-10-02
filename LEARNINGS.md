@@ -223,5 +223,13 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   nothing is left. Lists the real open flags and replies from shared state; works from both the
   overview's Books card and Work's month-end card.
 - Ledger: a **Booked by** column — EVA (its mark) for bills, bank-matched payments and its own bookings;
-  the client's owner for the invoices they create; *You* for salaries and corrections you applied.
+  the client's owner for the invoices they create; *You* for the opening balance and corrections you applied.
+  Payroll is EVA's (`Payroll — <month> (EVA payroll run)`).
+- **Payroll is run by agents.** *Run payroll every month* is a pre-installed, active routine (collect
+  hours → check tax cards → calculate → explain changes → route exceptions → pay & report to
+  eIndkomst → book the journal). October's run is in *Scheduled for EVA* (28 Oct); payroll tasks are
+  EVA's (scheduled/done), the one exception (Office Supplies: new hire without a tax card) is a
+  high-priority review; Activity logs September's report and October's draft; the ledger shows
+  `Payroll — <month> (EVA payroll run)` booked by EVA; "Walk me through my day" mentions it.
+- Activity traces name the logged-in accountant (Tobias) as approver/authority on their own work.
 

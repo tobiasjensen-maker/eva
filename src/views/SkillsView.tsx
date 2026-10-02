@@ -235,6 +235,19 @@ function st(label: string, approach: StepApproach, capId?: string): FlowStep {
 }
 
 const FLOW_TEMPLATES: FlowTemplate[] = [
+    // ---- Payroll — run end to end by EVA, with you approving exceptions ----
+    { id: 't-payroll', title: 'Run payroll every month', emoji: '💸', category: 'Payroll', price: 449, trialDays: 30,
+        desc: 'Drafts every client’s payroll, pays on time, reports to eIndkomst and books the salary journals.',
+        conditions: ['Changes vs. last month are within 10%', 'Every employee has a tax card'],
+        starter: 'schedule', steps: [
+            st('Collect hours, absence and changes', 'rule'),
+            st('Check tax cards in eIndkomst', 'rule'),
+            st('Calculate salaries, A-tax, AM-contribution, ATP and pension', 'rule'),
+            st('Explain changes vs. last month', 'eva'),
+            st('Route exceptions to the accountant', 'review'),
+            st('Pay and report to eIndkomst', 'rule'),
+            st('Book the salary journal', 'eva'),
+        ] },
     // ---- Accounting & bookkeeping ----
     { id: 't-voucher', title: 'Smart voucher creation', emoji: '🧾', category: 'Bookkeeping', price: 399, trialDays: 30,
         desc: 'Turn scanned and electronic documents into booked vouchers automatically.',
@@ -424,7 +437,7 @@ function flowFromTemplate(tpl: FlowTemplate, id: string, stat: string): LocalFlo
 }
 
 // Doc-based flows that ship already installed and running (keep their template ids so perf maps).
-const PREINSTALLED_FLOW_IDS = ['t-voucher', 't-recon', 't-supplier', 't-vatfile'];
+const PREINSTALLED_FLOW_IDS = ['t-voucher', 't-recon', 't-supplier', 't-vatfile', 't-payroll'];
 function preinstalledFlows(): LocalFlow[] {
     return PREINSTALLED_FLOW_IDS
         .map((id) => FLOW_TEMPLATES.find((tpl) => tpl.id === id))
@@ -761,6 +774,7 @@ function SwitchOffConfirm({ cap, deps, onKeep, onConfirm }: { cap: Capability; d
 const FLOW_PERF: Record<string, { actions: number; hours: number; pct: number }> = {
     // pre-installed doc-based flows
     't-voucher': { actions: 612, hours: 71, pct: 96 },
+    't-payroll': { actions: 112, hours: 38, pct: 93 }, // September: 14 clients, 112 payslips, 1 exception
     't-recon': { actions: 318, hours: 44, pct: 94 },
     't-supplier': { actions: 240, hours: 33, pct: 90 },
     't-vatfile': { actions: 18, hours: 12, pct: 80 },

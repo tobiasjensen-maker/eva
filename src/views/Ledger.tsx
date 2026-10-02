@@ -82,7 +82,8 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
         const sw = r100(fee * 0.12 + 300);
         add(`2026-${mm}-15`, 'Software subscriptions', [['4510', sw, 'I25'], ['7310', sw * 0.25], ['6810', -sw * 1.25]], 'Bank import');
         const sal = r100(fee * 7.5);
-        add(`2026-${mm}-${m === 2 ? '27' : '28'}`, 'Salaries', [['3010', sal], ['6810', -sal]], 'You', { by: ME });
+        // payroll is run by EVA's payroll routine, then booked from the run
+        add(`2026-${mm}-${m === 2 ? '27' : '28'}`, `Payroll — ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'][m - 1]} (EVA payroll run)`, [['3010', sal], ['6810', -sal]]);
     }
 
     // ---- the postings EVA has had something to say about ----

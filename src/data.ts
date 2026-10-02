@@ -78,9 +78,10 @@ export const INITIAL_SKILLS: Skill[] = [
         id: 'payroll',
         emoji: '💸',
         title: 'Run payroll every month',
-        description: 'Automates monthly payroll processing and reporting.',
+        description: 'Drafts every client’s payroll, pays on time, reports to eIndkomst and books the salary journals.',
         color: '#fb7185',
-        state: 'locked',
+        state: 'active',
+        stat: '14 clients · 112 payslips in September',
         price: 1200,
     },
     {

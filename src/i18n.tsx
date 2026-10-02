@@ -1920,4 +1920,9 @@ const DA: Record<string, string> = {
     'Booked by EVA': 'Bogført af EVA',
     'Booked by': 'Bogført af',
     'The client': 'Kunden',
+    'Payroll run — October': 'Lønkørsel — oktober',
+    'Payroll run — September': 'Lønkørsel — september',
+    'Run payroll': 'Kør løn',
+    'Wait for tax card': 'Vent på skattekort',
+    '9 people get paid on 30 Oct — approve by the 28th': '9 personer får løn 30. okt — godkend senest den 28.',
 };

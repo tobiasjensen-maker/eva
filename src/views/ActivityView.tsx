@@ -63,7 +63,7 @@ export function workEntry(p: { id: string; title: string; desc: string; client: 
 // Task companies are names; the log keys clients by agreement id.
 export const clientId = (name: string) => AGREEMENTS.find((a) => a.name === name)?.id ?? name;
 
-// The trace pulled on demand (Mette's 14:20 moment): routine → version → action →
+// The trace pulled on demand (the vision's 14:20 moment): routine → version → action →
 // data read → conclusion → approval → authority. The load-bearing trust artefact.
 export interface TraceInfo {
     routine: string;
@@ -83,6 +83,7 @@ export const isAdvisory = (e: { skill: string }) => ADVISORY_SKILLS.has(e.skill)
 const SKILL_INFO: Record<string, { emoji: string; label: string }> = {
     tasks: { emoji: '✅', label: 'Tasks' },
     inbox: { emoji: '💬', label: 'Client messages' },
+    payroll: { emoji: '💸', label: 'Payroll' },
     reconciliation: { emoji: '🏦', label: 'Bank reconciliation' },
     reminders: { emoji: '🔔', label: 'Payment reminders' },
     documents: { emoji: '📎', label: 'Document collection' },
@@ -106,15 +107,20 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         reasoning: ['A change to reporting rules landed overnight.', 'I worked out which 6 of your 40 clients it touches, and why.', 'A tailored note is drafted for each — “does this apply to me, and what do I do”.'],
         source: 'SKAT guidance · effective 1 Apr',
         suggestions: ['Review the 6 clients', 'Send the drafted updates'],
-        trace: { routine: 'Regulation watch', version: 'v5', action: 'Resolve a rule change per client', dataRead: 'The new SKAT guidance; each client’s profile, sector and filings', concluded: '6 of 40 clients are affected; drafts prepared for each', approvedBy: 'Pending your approval', authority: 'Mette Sørensen · client manager' } },
+        trace: { routine: 'Regulation watch', version: 'v5', action: 'Resolve a rule change per client', dataRead: 'The new SKAT guidance; each client’s profile, sector and filings', concluded: '6 of 40 clients are affected; drafts prepared for each', approvedBy: 'Pending your approval', authority: 'Tobias Holm Jensen · client manager' } },
     { id: 'p2', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '06:35', skill: 'advisory', client: 'portfolio',
         desc: '4 clients will drop below 60 days of cash runway in Q2', confidence: 'medium', status: 'needs-review', proactive: true,
         reasoning: ['I watched all 40 ledgers together, not one at a time.', 'On the current trend, 4 clients fall under 60 days of runway in Q2.', 'Each has a one-page conversation starter ready for you.'],
         source: 'Portfolio liquidity model',
         suggestions: ['Open conversation starters', 'Book the 4 calls'],
-        trace: { routine: 'Portfolio liquidity watch', version: 'v3', action: 'Detect runway risk across the book', dataRead: 'Trailing cash flow and commitments for all 40 clients', concluded: '4 clients projected below 60 days runway in Q2', approvedBy: 'Pending your approval', authority: 'Mette Sørensen · client manager' } },
+        trace: { routine: 'Portfolio liquidity watch', version: 'v3', action: 'Detect runway risk across the book', dataRead: 'Trailing cash flow and commitments for all 40 clients', concluded: '4 clients projected below 60 days runway in Q2', approvedBy: 'Pending your approval', authority: 'Tobias Holm Jensen · client manager' } },
 
     // ---- Today ----
+    { id: 'pay1', daysAgo: 0, bucket: 'today', dateLabel: 'Today', time: '07:30', title: 'October payroll drafted', skill: 'payroll', client: 'portfolio',
+        desc: 'Drafted October payroll for 14 clients — 116 payslips, 1 exception for you', confidence: 'high', status: 'completed',
+        reasoning: ['Collected hours, absence and changes from each client’s time registration.', 'Calculated salaries, A-tax, AM-contribution, ATP and pension for 116 employees.', 'One new hire at Office Supplies Co has no tax card yet — that run waits for your call.'],
+        source: 'Zenegy · eIndkomst',
+        trace: { routine: 'Run payroll every month', version: 'v3', action: 'Draft the monthly payroll per client', dataRead: 'Time registration, employee master data and tax cards from eIndkomst', concluded: '13 runs ready to pay on 30 Oct; 1 needs a decision', approvedBy: 'Auto (within autonomy cap)', authority: 'Tobias Holm Jensen · client manager' } },
     { id: 'a1', daysAgo: 0, title: 'Booked transaction #4521', bucket: 'today', dateLabel: 'Today', time: '09:12', skill: 'reconciliation', client: 'nordic',
         desc: 'Booked transaction #4521 to Account 2100 — Creditors', confidence: 'high', status: 'completed',
         reasoning: ['Bank import line matched a single open supplier bill by amount and reference.', 'Amount 34.200 DKK matched exactly with no rounding difference.', 'Posting rule for Account 2100 applied automatically.'],
@@ -152,14 +158,19 @@ export const ACTIVITY_ENTRIES: LogEntry[] = [
         desc: 'Asked Jonas which project the 8.400 DKK cost belongs to', confidence: 'medium', status: 'waiting', waitingOn: 'Jonas · client',
         reasoning: ['The cost could sit on either of two active projects.', 'Sent Jonas a one-line question in the firm’s tone.', 'A reminder is set for Thursday if he hasn’t replied.'],
         source: 'Entry #8840 · 8.400 DKK',
-        trace: { routine: 'Month-end close', version: 'v4', action: 'Ask the client to clarify a cost allocation', dataRead: 'Entry #8840, the two open projects for Nordic Build ApS', concluded: 'Ambiguous project allocation — needs the client to decide', approvedBy: 'Auto (within autonomy cap)', authority: 'Mette Sørensen · client manager' } },
+        trace: { routine: 'Month-end close', version: 'v4', action: 'Ask the client to clarify a cost allocation', dataRead: 'Entry #8840, the two open projects for Nordic Build ApS', concluded: 'Ambiguous project allocation — needs the client to decide', approvedBy: 'Auto (within autonomy cap)', authority: 'Tobias Holm Jensen · client manager' } },
     { id: 'w2', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '13:20', skill: 'documents', client: 'cafe',
         desc: 'Requested the missing receipt for entry #8830 from the client', confidence: 'high', status: 'waiting', waitingOn: 'Café Solsikke',
         reasoning: ['Entry was booked without supporting documentation.', 'Client notified via the request link.', 'Follow-up scheduled in 3 days.'],
         source: 'Entry #8830 · 2.150 DKK',
-        trace: { routine: 'Missing receipt chaser', version: 'v2', action: 'Request a document from the client', dataRead: 'Entry #8830, its missing-attachment flag', concluded: 'No receipt on file — request it before period close', approvedBy: 'Auto (read-only outreach)', authority: 'Mette Sørensen · client manager' } },
+        trace: { routine: 'Missing receipt chaser', version: 'v2', action: 'Request a document from the client', dataRead: 'Entry #8830, its missing-attachment flag', concluded: 'No receipt on file — request it before period close', approvedBy: 'Auto (read-only outreach)', authority: 'Tobias Holm Jensen · client manager' } },
 
     // ---- Yesterday ----
+    { id: 'pay0', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '06:10', title: 'September payroll reported', skill: 'payroll', client: 'portfolio',
+        desc: 'Reported September A-tax and ATP to eIndkomst for 14 clients and booked the salary journals', confidence: 'high', status: 'completed',
+        reasoning: ['All 14 September payroll runs were paid on 30 Sep.', 'Reported A-tax, AM-contribution and ATP to eIndkomst before the deadline.', 'Booked each client’s salary journal to account 3010 and reconciled it against the bank.'],
+        source: 'eIndkomst receipt · 112 payslips',
+        trace: { routine: 'Run payroll every month', version: 'v3', action: 'Report and book the monthly payroll', dataRead: 'The paid payroll runs and the bank transactions', concluded: 'Reported and booked — totals match the bank to the krone', approvedBy: 'Auto (within autonomy cap)', authority: 'Tobias Holm Jensen · client manager' } },
     { id: 'a7', daysAgo: 1, bucket: 'yesterday', dateLabel: 'Yesterday', time: '16:30', skill: 'reconciliation', client: 'bryg',
         desc: 'Booked transaction #4498 to Account 1000 — Sales', confidence: 'high', status: 'completed',
         reasoning: ['Inbound payment matched an open sales invoice.', 'Reference and amount matched exactly.'],
@@ -234,7 +245,7 @@ const CONF_STYLE: Record<Confidence, { bg: string; fg: string; label: string; ex
 // Illustrative metrics shown in the "Why did EVA do this?" panel.
 const CONF_PCT: Record<Confidence, string> = { high: '99%', medium: '86%', low: '62%' };
 const SKILL_TIME: Record<string, string> = {
-    reconciliation: '~1 min', reminders: '~2 min', documents: '~3 min', monitor: '~10 min', anomalies: '~5 min', 'close-books': '~30 min',
+    payroll: '~40 min', reconciliation: '~1 min', reminders: '~2 min', documents: '~3 min', monitor: '~10 min', anomalies: '~5 min', 'close-books': '~30 min',
 };
 const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: string; icon: string }> = {
     completed: { bg: '#e9f7ef', fg: '#15803d', label: 'Completed', icon: 'circle-tick' },
@@ -553,8 +564,8 @@ function traceOf(e: LogEntry): TraceInfo {
         action: e.desc,
         dataRead: e.source ?? (e.doc ? `${e.doc.kind} ${e.doc.ref} — ${e.doc.detail}` : 'Ledger data for this agreement'),
         concluded: e.reasoning[e.reasoning.length - 1] ?? e.desc,
-        approvedBy: e.status === 'completed' ? (e.resolution ? 'Mette Sørensen · client manager' : 'Auto — within the routine’s autonomy cap') : e.status === 'waiting' ? 'Auto — read-only outreach' : 'Pending your approval',
-        authority: 'Mette Sørensen · client manager',
+        approvedBy: e.status === 'completed' ? (e.resolution ? 'Tobias Holm Jensen · client manager' : 'Auto — within the routine’s autonomy cap') : e.status === 'waiting' ? 'Auto — read-only outreach' : 'Pending your approval',
+        authority: 'Tobias Holm Jensen · client manager',
     };
 }
 
