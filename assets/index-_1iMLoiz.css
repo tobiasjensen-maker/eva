@@ -4440,10 +4440,6 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   padding-top: 2rem;
   padding-bottom: 2rem;
 }
-.py-px {
-  padding-top: 1px;
-  padding-bottom: 1px;
-}
 .\!pb-0 {
   padding-bottom: 0px !important;
 }
@@ -4632,6 +4628,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .text-\[13px\] {
   font-size: 13px;
+}
+.text-\[9px\] {
+  font-size: 9px;
 }
 .text-base {
   font-size: 1rem;
