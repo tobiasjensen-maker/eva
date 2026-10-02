@@ -76,7 +76,7 @@ export function MonthEndCard({ decisions, onReview }: { decisions: DecisionItem[
     );
 }
 
-function MonthEndReport({ onClose, flags }: { onClose: () => void; flags: number }) {
+export function MonthEndReport({ onClose, flags }: { onClose: () => void; flags: number }) {
     const { t } = useLang();
     const rows = rowsFor().sort((a, b) => (a.status === b.status ? b.missing - a.missing : a.status === 'blocked' ? -1 : b.status === 'blocked' ? 1 : a.status === 'todo' ? -1 : 1));
     const label = { closed: 'Closed', todo: 'To do', blocked: 'Blocked' } as const;

@@ -214,4 +214,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   drafted message — written from the actual numbers and any scenarios you ticked — and a small
   preview card attached (key figures + mini chart). Remove it or edit before sending; the card stays on
   the sent message. From the Inbox's own *Cash forecast* button it drops into the current thread.
+- Portfolio overview → Books status: the footer link is "Month-end report →" and opens that report modal
+  (exported `MonthEndReport`), instead of jumping to Work.
 
