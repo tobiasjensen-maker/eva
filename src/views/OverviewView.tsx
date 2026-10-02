@@ -104,7 +104,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
                     <TasksWidget t={t} tasks={tasks} setTasks={setTasks} onAddDecision={onAddDecision} onGo={onGo} />
                     <NeedsYouWidget t={t} decisions={decisions} threads={threads} onOpenThread={onOpenThread} onResolve={onResolveDecision} onGo={onGo} />
-                    <BooksWidget t={t} flags={decisions.filter((d) => !d.done && d.correction && d.accountant === ME).length} />
+                    <BooksWidget t={t} flags={decisions.filter((d) => !d.done && d.correction && d.accountant === ME).length} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />
                 </div>
 
                 <ClientList onSelect={setSel} />
@@ -197,7 +197,7 @@ function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo }
 }
 
 // Where every client's books stand this month — a large donut, legend underneath.
-function BooksWidget({ t, flags }: { t: (s: string) => string; flags: number }) {
+function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenThread }: { t: (s: string) => string; flags: number; decisions: DecisionItem[]; threads: Thread[]; onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread: (th: Thread) => void }) {
     const [report, setReport] = useState(false);
     const total = BOOKS_STATUS.reduce((s, b) => s + b.count, 0);
     const SIZE = 184, R = 70, W = 24, C = 2 * Math.PI * R;
@@ -232,7 +232,7 @@ function BooksWidget({ t, flags }: { t: (s: string) => string; flags: number }) 
                 <p className="text-xs mt-3 text-center" style={{ color: COLORS.textMuted }}>{t('EVA closes most of these on its own.')}</p>
             </div>
         </Widget>
-        {report && <MonthEndReport onClose={() => setReport(false)} flags={flags} />}
+        {report && <MonthEndReport onClose={() => setReport(false)} flags={flags} decisions={decisions.filter((d) => d.accountant === ME)} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />}
         </>
     );
 }

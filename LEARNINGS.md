@@ -216,4 +216,10 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   the sent message. From the Inbox's own *Cash forecast* button it drops into the current thread.
 - Portfolio overview → Books status: the footer link is "Month-end report →" and opens that report modal
   (exported `MonthEndReport`), instead of jumping to Work.
+- **Month-end report → a client** shows what's left to close September: each item tagged with whose
+  move it is (You / Client / EVA) and an action — Review (open correction), Reply (client waiting),
+  Remind now (missing documents; in the demo they arrive ~2.5s later and EVA matches them), Approve &
+  post (draft postings) — plus the client's 8 month-end steps. *Close September* is enabled once
+  nothing is left. Lists the real open flags and replies from shared state; works from both the
+  overview's Books card and Work's month-end card.
 

@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { MY_PORTFOLIO } from '../practice';
+import { MY_PORTFOLIO, OWNER, type Thread } from '../practice';
 import { downloadCsv } from '../exportCsv';
-import type { DecisionItem } from '../day';
+import type { DecisionItem, ResolveInfo } from '../day';
+import { DecisionReview } from './Decisions';
 
 // ---- Month-end, as one flow ----------------------------------------------------------------
 // Operations first: the bookkeeping EVA runs across your clients every month, end to end —
@@ -21,7 +22,7 @@ const rowsFor = () => MY_PORTFOLIO.map((c, i) => {
     return { c, lines, matched: lines - missing, missing, status: c.books };
 });
 
-export function MonthEndCard({ decisions, onReview }: { decisions: DecisionItem[]; onReview: (d: DecisionItem) => void }) {
+export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, onOpenThread }: { decisions: DecisionItem[]; onReview: (d: DecisionItem) => void; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread?: (th: Thread) => void }) {
     const { t } = useLang();
     const [open, setOpen] = useState(false);
     const [report, setReport] = useState(false);
@@ -71,55 +72,186 @@ export function MonthEndCard({ decisions, onReview }: { decisions: DecisionItem[
                     ))}
                 </div>
             )}
-            {report && <MonthEndReport onClose={() => setReport(false)} flags={flags.length} />}
+            {report && <MonthEndReport onClose={() => setReport(false)} flags={flags.length} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />}
         </Card>
     );
 }
 
-export function MonthEndReport({ onClose, flags }: { onClose: () => void; flags: number }) {
+type Row = ReturnType<typeof rowsFor>[number];
+type Who = 'You' | 'Client' | 'EVA';
+const WHO_STYLE: Record<Who, [string, string]> = { You: ['#f3f0fb', '#6d28d9'], Client: ['#fbf3e0', '#92710f'], EVA: ['#eef2ff', '#4456c7'] };
+
+export function MonthEndReport({ onClose, flags, decisions = [], threads = [], onResolveDecision, onOpenThread }: {
+    onClose: () => void;
+    flags: number;
+    // shared state, so a client's "what's left" lists the real flags and replies
+    decisions?: DecisionItem[];
+    threads?: Thread[];
+    onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
+    onOpenThread?: (th: Thread) => void;
+}) {
     const { t } = useLang();
-    const rows = rowsFor().sort((a, b) => (a.status === b.status ? b.missing - a.missing : a.status === 'blocked' ? -1 : b.status === 'blocked' ? 1 : a.status === 'todo' ? -1 : 1));
+    const [sel, setSel] = useState<string | null>(null); // client drilled into
+    const [review, setReview] = useState<DecisionItem | null>(null);
+    // what you did from here this session
+    const [reminded, setReminded] = useState<Set<string>>(new Set());
+    const [posted, setPosted] = useState<Set<string>>(new Set());
+    const [closedNow, setClosedNow] = useState<Set<string>>(new Set());
+    const [received, setReceived] = useState<Set<string>>(new Set()); // demo: the client answers the reminder
+    const remind = (name: string) => {
+        setReminded((p) => new Set(p).add(name));
+        setTimeout(() => setReceived((p) => new Set(p).add(name)), 2500);
+    };
+    const statusOf = (r: Row) => (closedNow.has(r.c.name) ? 'closed' : r.status);
+    const rows = rowsFor().sort((a, b) => (statusOf(a) === statusOf(b) ? b.missing - a.missing : statusOf(a) === 'blocked' ? -1 : statusOf(b) === 'blocked' ? 1 : statusOf(a) === 'todo' ? -1 : 1));
     const label = { closed: 'Closed', todo: 'To do', blocked: 'Blocked' } as const;
     const tone = { closed: ['#e9f7ef', '#15803d'], todo: ['#f1f1f3', '#52525b'], blocked: ['#fdecec', '#c0392b'] } as const;
     const exportIt = () => downloadCsv('Month-end September 2026.csv', [
         [t('Client'), t('Bank lines'), t('Matched'), t('Missing documents'), t('Status')],
-        ...rows.map((r) => [r.c.name, r.lines, r.matched, r.missing, t(label[r.status])]),
+        ...rows.map((r) => [r.c.name, r.lines, r.matched, r.missing, t(label[statusOf(r)])]),
     ]);
+
+    // What still stands between a client and a closed month — and whose move it is.
+    const leftFor = (r: Row) => {
+        const name = r.c.name, owner = OWNER[name] ?? 'the client';
+        // `done` = settled from here; `note` = acted on but still outstanding (e.g. a reminder sent)
+        const items: { key: string; who: Who; text: string; sub?: string; action?: { label: string; run: () => void }; done?: string; note?: string }[] = [];
+        decisions.filter((d) => !d.done && d.company === name).forEach((d) => items.push({ key: d.id, who: 'You', text: t(d.question), sub: `${t(d.label)} · ${t('EVA has a fix ready')}`, action: onResolveDecision ? { label: 'Review', run: () => setReview(d) } : undefined }));
+        threads.filter((x) => x.status === 'needs' && x.client === name).forEach((x) => items.push({ key: x.id, who: 'You', text: `${x.contact} ${t('is waiting for your reply')}`, sub: t(x.subject), action: onOpenThread ? { label: 'Reply', run: () => onOpenThread(x) } : undefined }));
+        if (r.missing > 0 && statusOf(r) !== 'closed') items.push({ key: 'docs', who: 'Client', text: t('{n} documents missing').replace('{n}', String(r.missing)), sub: t('Requested from {name} on 24 Sep · EVA chases every 3 days').replace('{name}', owner),
+            ...(received.has(name) ? { done: t('Received — EVA matched them') } : reminded.has(name) ? { note: t('Reminder sent') } : { action: { label: 'Remind now', run: () => remind(name) } }) });
+        const drafts = statusOf(r) === 'closed' ? 0 : 3 + (r.lines % 9);
+        if (drafts && (r.missing < 10 || received.has(name))) items.push({ key: 'drafts', who: 'You', text: t('{n} draft postings ready to post').replace('{n}', String(drafts)), sub: t('EVA matched them — approve to post'),
+            ...(posted.has(name) ? { done: t('Posted') } : { action: { label: 'Approve & post', run: () => setPosted((p) => new Set(p).add(name)) } }) });
+        if (r.missing >= 10 && statusOf(r) !== 'closed') items.push({ key: 'blocked', who: 'EVA', text: t('Can’t post the card purchases until the receipts arrive'), sub: t('EVA posts them as soon as they come in'), ...(received.has(name) ? { done: t('Posted') } : {}) });
+        return items;
+    };
+    const selRow = sel ? rows.find((r) => r.c.name === sel) : undefined;
+    const left = selRow ? leftFor(selRow).filter((i) => !i.done) : [];
+    const open = left.filter((i) => i.who === 'You'); // what needs *you*
+    const stepsFor = (r: Row) => {
+        const st = statusOf(r);
+        const flagged = decisions.some((d) => !d.done && d.company === r.c.name && d.correction);
+        return [
+            { title: 'Bank transactions', state: 'done', note: `${r.lines} ${t('lines')}` },
+            { title: 'Matched to documents', state: r.missing ? 'open' : 'done', note: `${r.matched} ${t('of')} ${r.lines}` },
+            { title: 'Missing documents', state: st === 'closed' || !r.missing ? 'done' : 'open', note: r.missing ? `${r.missing} ${t('requested')}` : t('none') },
+            { title: 'Inbox documents', state: 'done', note: t('all read') },
+            { title: 'Draft postings', state: st === 'closed' || posted.has(r.c.name) ? 'done' : 'open', note: st === 'closed' ? t('posted') : posted.has(r.c.name) ? t('posted') : t('ready to post') },
+            { title: 'Controlling', state: flagged ? 'you' : 'done', note: flagged ? t('flag for you') : t('all clear') },
+            { title: 'Final posting & close', state: st === 'closed' ? 'done' : 'open', note: st === 'closed' ? t('closed') : t('not yet') },
+            { title: 'Month-end report', state: st === 'closed' ? 'done' : 'open', note: st === 'closed' ? t('included') : t('after close') },
+        ];
+    };
+    const dot = { done: '#16a34a', open: '#c4c4cc', you: '#dc2626' } as Record<string, string>;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 760, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                    {selRow && <button onClick={() => setSel(null)} className="rounded-md p-1 mt-0.5" style={{ color: COLORS.textMuted }} title={t('All clients')}><Icon name="arrow-left" /></button>}
+                    {selRow && <ClientAvatar name={selRow.c.name} size={32} />}
                     <div className="min-w-0 flex-1">
-                        <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Month-end report · September 2026')}</p>
-                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Your {n} clients · draft — final on 1 October').replace('{n}', String(rows.length))}</p>
+                        <p className="text-base font-semibold" style={{ color: COLORS.text }}>{selRow ? selRow.c.name : t('Month-end report · September 2026')}</p>
+                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{selRow ? t('September close') : t('Your {n} clients · draft — final on 1 October').replace('{n}', String(rows.length))}</p>
                     </div>
+                    {selRow && <span className="rounded-full px-2 py-0.5 text-xs font-medium mt-1" style={{ background: tone[statusOf(selRow)][0], color: tone[statusOf(selRow)][1] }}>{t(label[statusOf(selRow)])}</span>}
                     <button onClick={onClose} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
                 </div>
+
+                {selRow ? (
+                    // ---- one client: what's left to close, and whose move it is ----
+                    <div className="px-5 py-4 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 min-h-0 space-y-4">
+                        <div className="rounded-lg p-3.5 flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
+                            <span className="shrink-0 mt-0.5"><Orb size={18} /></span>
+                            <p className="text-sm" style={{ color: COLORS.text }}>
+                                {statusOf(selRow) === 'closed'
+                                    ? (open.length ? t('September is closed. {n} thing(s) still need you — EVA books them as an adjustment once they’re done.').replace('{n}', String(open.length)) : t('September is closed — nothing needs you.'))
+                                    : open.length ? t('{n} thing(s) need you before September can close.').replace('{n}', String(open.length))
+                                    : left.some((i) => i.who === 'Client') ? t('Nothing needs you — September closes once {name} sends the missing documents.').replace('{name}', OWNER[selRow.c.name] ?? t('the client'))
+                                    : left.length ? t('Nothing needs you — EVA is finishing the last steps.')
+                                    : t('Everything is in place — September is ready to close.')}
+                            </p>
+                        </div>
+
+                        {leftFor(selRow).length > 0 && (
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('What’s left')}</p>
+                                <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                    {leftFor(selRow).map((it, i) => (
+                                        <div key={it.key} className="flex items-center gap-3 px-3 py-2.5" style={i ? { borderTop: `1px solid ${COLORS.cardBorder}` } : undefined}>
+                                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium text-center" style={{ background: WHO_STYLE[it.who][0], color: WHO_STYLE[it.who][1], width: 56 }}>{t(it.who)}</span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm" style={{ color: COLORS.text, textDecoration: it.done ? 'line-through' : undefined }}>{it.text}</p>
+                                                {it.sub && <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{it.sub}</p>}
+                                            </div>
+                                            {it.done ? <span className="text-xs flex items-center gap-1 shrink-0" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {it.done}</span>
+                                                : it.note ? <span className="text-xs flex items-center gap-1 shrink-0" style={{ color: COLORS.textMuted }}><Icon name="time" /> {it.note}</span>
+                                                : it.action && <Button onClick={it.action.run}>{t(it.action.label)}</Button>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Month-end steps')}</p>
+                            <div className="grid gap-px rounded-lg overflow-hidden" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', background: COLORS.cardBorder, border: `1px solid ${COLORS.cardBorder}` }}>
+                                {stepsFor(selRow).map((s, i) => (
+                                    <div key={s.title} className="bg-white px-2.5 py-2">
+                                        <p className="text-xs font-medium flex items-center gap-1.5" style={{ color: COLORS.text }}><span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: dot[s.state] }} /><span className="truncate">{i + 1}. {t(s.title)}</span></p>
+                                        <p className="text-[11px] mt-0.5" style={{ color: s.state === 'you' ? '#c0392b' : COLORS.textMuted }}>{s.note}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                ) : (
                 <div className="px-5 py-4 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 min-h-0 space-y-3">
                     <div className="rounded-lg p-3 text-sm flex items-start gap-2.5" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26', color: COLORS.text }}>
                         <Orb size={16} />
-                        <span>{t('{c} of {n} clients are closed. The rest are waiting on {m} documents from clients — EVA keeps chasing them.').replace('{c}', String(rows.filter((r) => r.status === 'closed').length)).replace('{n}', String(rows.length)).replace('{m}', String(rows.reduce((a, r) => a + r.missing, 0)))} {flags ? t('{f} controlling flag(s) still need your review.').replace('{f}', String(flags)) : t('Controlling found nothing else.')}</span>
+                        <span>{t('{c} of {n} clients are closed. The rest are waiting on {m} documents from clients — EVA keeps chasing them.').replace('{c}', String(rows.filter((r) => statusOf(r) === 'closed').length)).replace('{n}', String(rows.length)).replace('{m}', String(rows.reduce((a, r) => a + r.missing, 0)))} {flags ? t('{f} controlling flag(s) still need your review.').replace('{f}', String(flags)) : t('Controlling found nothing else.')} {t('Click a client to see what’s left.')}</span>
                     </div>
                     <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                        <div className="grid px-3 py-2 text-xs font-medium" style={{ gridTemplateColumns: '1fr 90px 90px 110px 90px', background: '#fafafa', color: COLORS.textMuted }}>
-                            <span>{t('Client')}</span><span className="text-right">{t('Bank lines')}</span><span className="text-right">{t('Matched')}</span><span className="text-right">{t('Missing docs')}</span><span className="text-right">{t('Status')}</span>
+                        <div className="grid px-3 py-2 text-xs font-medium" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', background: '#fafafa', color: COLORS.textMuted }}>
+                            <span>{t('Client')}</span><span className="text-right">{t('Bank lines')}</span><span className="text-right">{t('Matched')}</span><span className="text-right">{t('Missing docs')}</span><span className="text-right">{t('Status')}</span><span />
                         </div>
-                        {rows.map((r) => (
-                            <div key={r.c.id} className="grid items-center px-3 py-2 text-sm" style={{ gridTemplateColumns: '1fr 90px 90px 110px 90px', borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                                <span className="flex items-center gap-2 min-w-0"><ClientAvatar name={r.c.name} size={20} /><span className="truncate" style={{ color: COLORS.text }}>{r.c.name}</span></span>
-                                <span className="text-right" style={{ color: COLORS.textMuted }}>{r.lines}</span>
-                                <span className="text-right" style={{ color: COLORS.textMuted }}>{r.matched}</span>
-                                <span className="text-right" style={{ color: r.missing ? '#b9842b' : COLORS.textMuted, fontWeight: r.missing ? 500 : 400 }}>{r.missing || '—'}</span>
-                                <span className="text-right"><span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: tone[r.status][0], color: tone[r.status][1] }}>{t(label[r.status])}</span></span>
-                            </div>
-                        ))}
+                        {rows.map((r) => {
+                            const needsYou = leftFor(r).filter((i) => !i.done && i.who === 'You').length;
+                            return (
+                                <button key={r.c.id} onClick={() => setSel(r.c.name)} className="w-full grid items-center px-3 py-2 text-sm text-left" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', borderTop: `1px solid ${COLORS.cardBorder}` }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                    <span className="flex items-center gap-2 min-w-0">
+                                        <ClientAvatar name={r.c.name} size={20} /><span className="truncate" style={{ color: COLORS.text }}>{r.c.name}</span>
+                                        {needsYou > 0 && <span className="shrink-0 rounded-full px-1.5 text-[10px] font-semibold" style={{ background: '#f3f0fb', color: '#6d28d9' }}>{needsYou} {t('for you')}</span>}
+                                    </span>
+                                    <span className="text-right" style={{ color: COLORS.textMuted }}>{r.lines}</span>
+                                    <span className="text-right" style={{ color: COLORS.textMuted }}>{r.matched}</span>
+                                    <span className="text-right" style={{ color: r.missing ? '#b9842b' : COLORS.textMuted, fontWeight: r.missing ? 500 : 400 }}>{r.missing || '—'}</span>
+                                    <span className="text-right"><span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: tone[statusOf(r)][0], color: tone[statusOf(r)][1] }}>{t(label[statusOf(r)])}</span></span>
+                                    <span className="text-right" style={{ color: '#b0b0b8' }}><Icon name="chevron-right" /></span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
+                )}
+
                 <div className="flex items-center justify-end gap-2 px-5 py-4 shrink-0" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                    <Button onClick={exportIt}><Icon name="download" /> {t('Export to Excel')}</Button>
-                    <Button appearance="primary" onClick={onClose}>{t('Done')}</Button>
+                    {selRow ? (<>
+                        <Button onClick={() => setSel(null)}>{t('All clients')}</Button>
+                        {statusOf(selRow) !== 'closed' && (
+                            <Button appearance="primary" disabled={leftFor(selRow).some((i) => !i.done)} onClick={() => setClosedNow((p) => new Set(p).add(selRow.c.name))}>
+                                <Icon name="circle-tick" /> {t('Close September')}
+                            </Button>
+                        )}
+                    </>) : (<>
+                        <Button onClick={exportIt}><Icon name="download" /> {t('Export to Excel')}</Button>
+                        <Button appearance="primary" onClick={onClose}>{t('Done')}</Button>
+                    </>)}
                 </div>
             </div>
+            {review && <div onClick={(e) => e.stopPropagation()}><DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision?.(review.id, taken, info); setReview(null); }} /></div>}
         </div>
     );
 }

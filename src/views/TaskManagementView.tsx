@@ -354,7 +354,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </div>
 
                 {/* operations first: this month's close across your clients, end to end */}
-                <div className="mb-4"><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} /></div>
+                <div className="mb-4"><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>
 
                 {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
                 <div className="flex flex-wrap items-center gap-2 mb-4">
