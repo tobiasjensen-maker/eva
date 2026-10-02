@@ -107,7 +107,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 <ClientList onSelect={setSel} />
             </div>
 
-            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} />}
+            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} />}
         </div>
     );
 }

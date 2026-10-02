@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, OWNER, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client } from '../practice';
+import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, OWNER, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client, type Thread } from '../practice';
 import { LiquidityModal } from './Liquidity';
+import { LedgerModal } from './Ledger';
+import type { DecisionItem, ResolveInfo } from '../day';
 import { BudgetModal } from './Budget';
 import { NotesList } from '../memory';
 
@@ -177,13 +179,17 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
     );
 }
 
-export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client; onClose: () => void; onOpenBooks: (name: string) => void; onMessage: (client: string) => void }) {
+export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [], threads: liveThreads, onResolveDecision }: {
+    c: Client; onClose: () => void; onOpenBooks: (name: string) => void; onMessage: (client: string) => void;
+    // shared state, so the books show open flags and applied corrections
+    decisions?: DecisionItem[]; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
+}) {
     const { t } = useLang();
     const [noted, setNoted] = useState(false);
-    const [sheet, setSheet] = useState<'cash' | 'budget' | null>(null);
+    const [sheet, setSheet] = useState<'cash' | 'budget' | 'books' | null>(null);
     const owner = OWNER[c.name];
     const pb = PLAYBOOKS.find((p) => p.id === c.playbook);
-    const threads = THREADS.filter((x) => x.client === c.name && x.status !== 'done');
+    const threads = (liveThreads ?? THREADS).filter((x) => x.client === c.name && x.status !== 'done');
     const b = BOOKS[c.books];
     return (
         <div className="fixed inset-0 z-50 flex justify-end" style={{ background: 'rgba(0,0,0,0.25)' }} onClick={onClose}>
@@ -305,10 +311,11 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage }: { c: Client
                         </button>
                     )}
 
-                    <Button onClick={() => onOpenBooks(c.name)}><Icon name="accounting" /> {t('Open their books')}</Button>
+                    <Button onClick={() => setSheet('books')}><Icon name="accounting" /> {t('View the books')}</Button>
                 </div>
             </div>
             {sheet === 'cash' && <div onClick={(e) => e.stopPropagation()}><LiquidityModal company={c.name} owner={owner} onClose={() => setSheet(null)} onMessage={() => { setSheet(null); onMessage(c.name); }} /></div>}
+            {sheet === 'books' && <div onClick={(e) => e.stopPropagation()}><LedgerModal company={c.name} decisions={decisions} threads={liveThreads ?? THREADS} onResolveDecision={onResolveDecision} onClose={() => setSheet(null)} onOpenInsights={() => { setSheet(null); onOpenBooks(c.name); }} /></div>}
             {sheet === 'budget' && <div onClick={(e) => e.stopPropagation()}><BudgetModal company={c.name} owner={owner} onClose={() => setSheet(null)} onMessage={() => { setSheet(null); onMessage(c.name); }} /></div>}
         </div>
     );

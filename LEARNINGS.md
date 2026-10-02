@@ -203,4 +203,10 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   Scheduled for EVA) or a person (you → To do, or someone on the team).
 - Native selects share one style (`index.css`): no browser chrome, a custom chevron with room,
   focus ring. `ul`/`ol` margins are reset globally (taco's base CSS adds them).
+- **The books** (`views/Ledger.tsx`): "View the books" in the client drawer opens the client's
+  general ledger — chart of accounts with period balances (September / Q3 / year to date), postings
+  per account with VAT code, debit/credit and running balance, search, Excel. It reads shared
+  state: open EVA flags are highlighted with *EVA flag · Review* (same review modal), applied fixes
+  show corrected, and Bryg & Co's restaurant bill sits in suspense until Mads's reply is sent.
+  Opens on the period that contains what EVA wants you to see. Postings are generated per client.
 
