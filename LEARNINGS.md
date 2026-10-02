@@ -232,4 +232,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   high-priority review; Activity logs September's report and October's draft; the ledger shows
   `Payroll — <month> (EVA payroll run)` booked by EVA; "Walk me through my day" mentions it.
 - Activity traces name the logged-in accountant (Tobias) as approver/authority on their own work.
+- Month-end report → client → **each of the 8 steps opens** what was done: who (EVA / you / waiting on the
+  client), when, a summary and the detail lines (bank import, matches, missing documents, inbox reads,
+  postings, controlling rules, close checks). Reflects what you did in the report (reminded, posted, closed).
 

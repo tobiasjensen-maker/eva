@@ -14,6 +14,7 @@ import { DecisionReview } from './Decisions';
 // Per-client month-end numbers (deterministic mock, consistent with the Books donut).
 const MISSING: Record<string, number> = {};
 const SPREAD = [14, 11, 8, 7, 6, 5, 4, 2, 1]; // 58 documents across 9 clients
+const MERCHANTS = ['Bauhaus', 'Q8', 'Netto', 'Circle K', 'Elgiganten', 'Jysk', 'IKEA', 'Matas', 'Shell', 'Silvan', 'DSB', 'Føtex'];
 MY_PORTFOLIO.filter((c) => c.books !== 'closed').concat(MY_PORTFOLIO.filter((c) => c.books === 'closed').slice(0, 2))
     .forEach((c, i) => { MISSING[c.name] = SPREAD[i] ?? 0; });
 const rowsFor = () => MY_PORTFOLIO.map((c, i) => {
@@ -144,6 +145,40 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
         ];
     };
     const dot = { done: '#16a34a', open: '#c4c4cc', you: '#dc2626' } as Record<string, string>;
+    // What was actually done in each step for a client — the audit trail behind the dots.
+    const [openStep, setOpenStep] = useState<number | null>(null);
+    const stepLog = (r: Row, i: number): { who: Who | 'Bank'; when: string; summary: string; lines: [string, string, string][] } => {
+        const st = statusOf(r), owner = OWNER[r.c.name] ?? t('the client');
+        const seed = r.c.name.length + r.lines;
+        const pick = <T,>(arr: T[], k: number) => arr[(seed + k * 7) % arr.length];
+        const kr = (n: number) => `${n.toLocaleString('da-DK')} kr`;
+        const missingItems = Array.from({ length: Math.min(r.missing, 6) }, (_, k): [string, string, string] => [`${pick([3, 5, 8, 11, 14, 17, 19, 22, 24, 26], k)} Sep`, `${t('Card purchase')} — ${pick(MERCHANTS, k)}`, kr(pick([149, 289, 435, 612, 899, 1240, 2190, 3480], k))]);
+        const matches: [string, string, string][] = Array.from({ length: 4 }, (_, k) => [`${pick([2, 4, 9, 12, 16, 21, 25, 29], k)} Sep`, `${pick(MERCHANTS, k + 3)} → ${t(k % 3 === 2 ? 'invoice in the Inbox (fuzzy: amount + date)' : 'invoice in the Inbox (exact)')}`, kr(pick([1250, 3480, 8900, 12500, 640, 2290], k))]);
+        const byDay = (x: [string, string, string], y: [string, string, string]) => parseInt(x[0]) - parseInt(y[0]);
+        missingItems.sort(byDay); matches.sort(byDay);
+        const flag = decisions.find((d) => !d.done && d.company === r.c.name && d.correction);
+        const drafts = st === 'closed' ? 6 + (r.lines % 7) : 3 + (r.lines % 9);
+        switch (i) {
+            case 0: return { who: 'EVA', when: '1 Oct · 05:12', summary: t('Imported {n} bank lines for September from Danske Bank · 4471.').replace('{n}', String(r.lines)), lines: [['1–30 Sep', t('Bank statement imported'), `${r.lines} ${t('lines')}`], ['1 Oct', t('Opening and closing balance checked against the bank'), t('matches')]] };
+            case 1: return { who: 'EVA', when: '1 Oct · 05:20', summary: t('Matched {m} of {n} lines to documents — {e} exact, {f} on amount and date.').replace('{m}', String(r.matched)).replace('{n}', String(r.lines)).replace('{e}', String(Math.round(r.matched * 0.85))).replace('{f}', String(r.matched - Math.round(r.matched * 0.85))), lines: matches };
+            case 2: return r.missing
+                ? { who: 'Client', when: reminded.has(r.c.name) ? t('Reminded just now') : '24 Sep · reminded 27 and 30 Sep', summary: received.has(r.c.name) ? t('{name} sent the documents — EVA matched them.').replace('{name}', owner) : t('{n} lines have no document. EVA asked {name} for them on 24 Sep and keeps chasing every 3 days.').replace('{n}', String(r.missing)).replace('{name}', owner), lines: missingItems }
+                : { who: 'EVA', when: '1 Oct · 05:20', summary: t('Nothing missing — every bank line has a document.'), lines: [] };
+            case 3: return { who: 'EVA', when: '30 Sep · 23:00', summary: t('Read {n} documents from the Inbox — {m} matched, 1 duplicate ignored.').replace('{n}', String(12 + (seed % 9))).replace('{m}', String(11 + (seed % 9))), lines: [['28 Sep', `${t('Invoice')} — ${pick(MERCHANTS, 1)}`, t('booked')], ['29 Sep', `${t('Receipt')} — ${pick(MERCHANTS, 2)}`, t('booked')], ['29 Sep', `${t('Receipt')} — ${pick(MERCHANTS, 2)}`, t('duplicate · ignored')]] };
+            case 4: return st === 'closed' || posted.has(r.c.name)
+                ? { who: posted.has(r.c.name) ? 'You' : 'EVA', when: posted.has(r.c.name) ? t('Just now') : '30 Sep · 18:05', summary: t('{n} draft postings posted to the ledger.').replace('{n}', String(drafts)), lines: [['Sep', t('Supplier bills'), String(Math.ceil(drafts / 2))], ['Sep', t('Card purchases'), String(Math.floor(drafts / 2))]] }
+                : { who: 'You', when: t('Waiting'), summary: t('{n} draft postings are ready — approve them to post.').replace('{n}', String(drafts)), lines: [['Sep', t('Supplier bills'), String(Math.ceil(drafts / 2))], ['Sep', t('Card purchases'), String(Math.floor(drafts / 2))]] };
+            case 5: return flag
+                ? { who: 'You', when: '1 Oct · 06:00', summary: `${t('Checked {n} postings — 1 needs your review:').replace('{n}', String(r.lines * 3))} ${t(flag.question)}`, lines: [[t('Rule'), t('VAT code vs. account and history'), t('flag')], [t('Rule'), t('Amounts vs. the last 12 months'), t('ok')], [t('Rule'), t('Missing or double postings'), t('ok')]] }
+                : { who: 'EVA', when: '1 Oct · 06:00', summary: t('Checked {n} postings against the account plan and the last 12 months — nothing unusual.').replace('{n}', String(r.lines * 3)), lines: [[t('Rule'), t('VAT code vs. account and history'), t('ok')], [t('Rule'), t('Amounts vs. the last 12 months'), t('ok')], [t('Rule'), t('Missing or double postings'), t('ok')]] };
+            case 6: return st === 'closed'
+                ? { who: 'EVA', when: closedNow.has(r.c.name) ? t('Just now · closed by you') : '30 Sep · 18:40', summary: t('September is locked. Totals reconciled to the bank and the VAT accounts.'), lines: [[t('Bank'), t('Ledger balance vs. bank statement'), t('matches')], [t('VAT'), t('Input and output VAT reconciled'), t('matches')]] }
+                : { who: 'You', when: t('Not yet'), summary: t('September closes when everything above is done.'), lines: [] };
+            default: return st === 'closed'
+                ? { who: 'EVA', when: '1 Oct · 07:00', summary: t('Included in the September month-end report.'), lines: [] }
+                : { who: 'EVA', when: t('After close'), summary: t('Added to the report once September is closed.'), lines: [] };
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
@@ -197,13 +232,43 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Month-end steps')}</p>
                             <div className="grid gap-px rounded-lg overflow-hidden" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', background: COLORS.cardBorder, border: `1px solid ${COLORS.cardBorder}` }}>
-                                {stepsFor(selRow).map((s, i) => (
-                                    <div key={s.title} className="bg-white px-2.5 py-2">
-                                        <p className="text-xs font-medium flex items-center gap-1.5" style={{ color: COLORS.text }}><span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: dot[s.state] }} /><span className="truncate">{i + 1}. {t(s.title)}</span></p>
-                                        <p className="text-[11px] mt-0.5" style={{ color: s.state === 'you' ? '#c0392b' : COLORS.textMuted }}>{s.note}</p>
-                                    </div>
-                                ))}
+                                {stepsFor(selRow).map((s, i) => {
+                                    const on = openStep === i;
+                                    return (
+                                        <button key={s.title} onClick={() => setOpenStep(on ? null : i)} className="text-left px-2.5 py-2" style={{ background: on ? '#f3f0fb' : '#fff' }}
+                                            onMouseEnter={(e) => { if (!on) e.currentTarget.style.background = '#fafafa'; }} onMouseLeave={(e) => { if (!on) e.currentTarget.style.background = '#fff'; }}>
+                                            <p className="text-xs font-medium flex items-center gap-1.5" style={{ color: on ? '#6d28d9' : COLORS.text }}><span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: dot[s.state] }} /><span className="truncate flex-1">{i + 1}. {t(s.title)}</span><Icon name={on ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8', fontSize: 12 }} /></p>
+                                            <p className="text-[11px] mt-0.5" style={{ color: s.state === 'you' ? '#c0392b' : COLORS.textMuted }}>{s.note}</p>
+                                        </button>
+                                    );
+                                })}
                             </div>
+                            {openStep !== null && (() => {
+                                const lg = stepLog(selRow, openStep);
+                                const st = stepsFor(selRow)[openStep];
+                                return (
+                                    <div className="mt-2 rounded-lg p-3.5 anim-in" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{openStep + 1}. {t(st.title)}</p>
+                                            <span className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                                {lg.who === 'EVA' ? <><Orb size={12} /> <span style={{ color: '#6d28d9', fontWeight: 500 }}>EVA</span></> : <span className="font-medium" style={{ color: COLORS.text }}>{t(lg.who === 'Client' ? 'Waiting on the client' : 'You')}</span>} · {lg.when}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm mt-1.5" style={{ color: COLORS.text }}>{lg.summary}</p>
+                                        {lg.lines.length > 0 && (
+                                            <div className="mt-2.5 rounded-md overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                                                {lg.lines.map((l, k) => (
+                                                    <div key={k} className="grid items-center gap-3 px-3 py-1.5 text-xs" style={{ gridTemplateColumns: '64px minmax(0,1fr) auto', ...(k ? { borderTop: `1px solid ${COLORS.cardBorder}` } : {}) }}>
+                                                        <span style={{ color: COLORS.textMuted }}>{l[0]}</span>
+                                                        <span className="truncate" style={{ color: COLORS.text }}>{l[1]}</span>
+                                                        <span className="tabular-nums" style={{ color: /flag/.test(l[2]) ? '#c0392b' : COLORS.textMuted, fontWeight: /flag/.test(l[2]) ? 600 : 400 }}>{l[2]}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 ) : (
@@ -219,7 +284,7 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
                         {rows.map((r) => {
                             const needsYou = leftFor(r).filter((i) => !i.done && i.who === 'You').length;
                             return (
-                                <button key={r.c.id} onClick={() => setSel(r.c.name)} className="w-full grid items-center px-3 py-2 text-sm text-left" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', borderTop: `1px solid ${COLORS.cardBorder}` }}
+                                <button key={r.c.id} onClick={() => { setSel(r.c.name); setOpenStep(null); }} className="w-full grid items-center px-3 py-2 text-sm text-left" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', borderTop: `1px solid ${COLORS.cardBorder}` }}
                                     onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                                     <span className="flex items-center gap-2 min-w-0">
                                         <ClientAvatar name={r.c.name} size={20} /><span className="truncate" style={{ color: COLORS.text }}>{r.c.name}</span>
