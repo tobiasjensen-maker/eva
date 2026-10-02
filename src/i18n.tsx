@@ -1881,4 +1881,6 @@ const DA: Record<string, string> = {
     'Suspense — awaiting info': 'Mellemregning — afventer info',
     'Waiting on Mads — what was the dinner for?': 'Venter på Mads — hvad var middagen til?',
     'Software subscriptions': 'Softwareabonnementer',
+    'Budget 2027 · read-only': 'Budget 2027 · skrivebeskyttet',
+    'Week 52': 'Uge 52',
 };

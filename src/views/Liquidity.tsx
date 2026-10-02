@@ -3,6 +3,7 @@ import { Button, Icon } from '@economic/taco';
 import { ClientAvatar, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { CLIENTS } from '../practice';
+import type { ShareDraft } from './Attachment';
 
 // ---- 13-week cash forecast ------------------------------------------------------------------
 // The numbers come from rules over the ledger — booked transactions, unpaid invoices, payment
@@ -77,7 +78,7 @@ function run(m: Model) {
     });
 }
 
-export function LiquidityModal({ company, owner, onClose, onMessage }: { company: string; owner?: string; onClose: () => void; onMessage?: () => void }) {
+export function LiquidityModal({ company, owner, onClose, onDiscuss }: { company: string; owner?: string; onClose: () => void; onDiscuss?: (d: ShareDraft) => void }) {
     const { t } = useLang();
     const base = useMemo(() => modelFor(company), [company]);
     const [on, setOn] = useState<Set<string>>(new Set());
@@ -104,6 +105,23 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
     const max = Math.max(...all), min = Math.min(...all);
     const y = (v: number) => pad + ((max - v) / (max - min || 1)) * (H - pad * 2);
     const bw = (W - 40) / WEEKS;
+
+    // "Discuss with …": a drafted message with the forecast attached, opened in the Inbox
+    const draft = (): ShareDraft => {
+        const who = owner ?? 'there';
+        const picked = base.scenarios.filter((s) => on.has(s.id)).map((s) => t(s.label).toLowerCase());
+        const text = firstNeg >= 0 || baseLo.v < 0
+            ? `Hi ${who} — I've looked at your cash for the next 13 weeks. On the current plan you'd go below zero around ${weekDate(baseSeries.findIndex((v) => v < 0))} (week ${weekNo(baseSeries.findIndex((v) => v < 0))}), with the low point at ${kr(baseLo.v)} in week ${weekNo(baseLo.i)} when salaries and VAT land together.${!scenario ? '' : lo.v > baseLo.v
+                ? ` If we ${[...picked, ...(custom.length ? ['make the changes we discussed'] : [])].join(' and ')}, the lowest point becomes ${kr(lo.v)} instead.`
+                : ` Even if we ${[...picked, ...(custom.length ? ['make the changes we discussed'] : [])].join(' and ')}, week ${weekNo(lo.i)} would still dip to ${kr(lo.v)} — so it's worth looking at the bigger levers too.`} Could we take 30 minutes this week to go through the options? I've attached the forecast.`
+            : `Hi ${who} — I've looked at your cash for the next 13 weeks and it looks healthy: the tightest week is week ${weekNo(lo.i)} at ${kr(lo.v)}. I've attached the forecast in case you'd like to go through it.`;
+        return {
+            client: company, subject: 'Your cash for the next 13 weeks', text,
+            attachment: { kind: 'forecast', title: 'Cash forecast · next 13 weeks', sub: `${company} · week ${weekNo(0)}–${weekNo(WEEKS - 1)}${scenario ? ' · with scenarios' : ''}`,
+                stats: [{ label: 'Cash today', value: kr(base.start) }, { label: 'Lowest point', value: kr(lo.v), bad: lo.v < 0 }, { label: 'Week 52', value: kr(series[WEEKS - 1]), bad: series[WEEKS - 1] < 0 }],
+                series },
+        };
+    };
 
     const groups = ['Salaries', 'VAT', 'Rent', 'Supplier bills', 'Customer invoices'] as const;
     const addCustom = () => {
@@ -248,7 +266,7 @@ export function LiquidityModal({ company, owner, onClose, onMessage }: { company
                     <span className="text-xs" style={{ color: COLORS.textMuted }}>{t('Scenarios are only a what-if — nothing is booked or sent.')}</span>
                     <div className="flex gap-2">
                         <Button onClick={onClose}>{t('Close')}</Button>
-                        {onMessage && <Button appearance="primary" onClick={onMessage}><Icon name="chat" /> {t('Discuss with {name}').replace('{name}', owner ?? t('the client'))}</Button>}
+                        {onDiscuss && <Button appearance="primary" onClick={() => onDiscuss(draft())}><Icon name="chat" /> {t('Discuss with {name}').replace('{name}', owner ?? t('the client'))}</Button>}
                     </div>
                 </div>
             </div>

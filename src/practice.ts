@@ -90,7 +90,7 @@ export const LEADS = [
 
 // ---- Client conversations — the inbox -------------------------------------------
 export type ThreadStatus = 'needs' | 'waiting' | 'done';
-export interface Msg { from: 'firm' | 'client' | 'eva'; who: string; at: string; text: string }
+export interface Msg { from: 'firm' | 'client' | 'eva'; who: string; at: string; text: string; attachment?: import('./views/Attachment').Attachment }
 export interface Thread {
     id: string;
     client: string;

@@ -7,6 +7,7 @@ import { LiquidityModal } from './Liquidity';
 import { LedgerModal } from './Ledger';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { BudgetModal } from './Budget';
+import type { ShareDraft } from './Attachment';
 import { NotesList } from '../memory';
 
 // ---- Clients — the whole portfolio in one place ---------------------------------
@@ -179,10 +180,11 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
     );
 }
 
-export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [], threads: liveThreads, onResolveDecision }: {
+export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [], threads: liveThreads, onResolveDecision, onShare }: {
     c: Client; onClose: () => void; onOpenBooks: (name: string) => void; onMessage: (client: string) => void;
     // shared state, so the books show open flags and applied corrections
     decisions?: DecisionItem[]; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
+    onShare?: (d: ShareDraft) => void; // open the Inbox with a drafted message + attachment
 }) {
     const { t } = useLang();
     const [noted, setNoted] = useState(false);
@@ -314,9 +316,9 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                     <Button onClick={() => setSheet('books')}><Icon name="accounting" /> {t('View the books')}</Button>
                 </div>
             </div>
-            {sheet === 'cash' && <div onClick={(e) => e.stopPropagation()}><LiquidityModal company={c.name} owner={owner} onClose={() => setSheet(null)} onMessage={() => { setSheet(null); onMessage(c.name); }} /></div>}
+            {sheet === 'cash' && <div onClick={(e) => e.stopPropagation()}><LiquidityModal company={c.name} owner={owner} onClose={() => setSheet(null)} onDiscuss={onShare ? (d) => { setSheet(null); onShare(d); } : undefined} /></div>}
             {sheet === 'books' && <div onClick={(e) => e.stopPropagation()}><LedgerModal company={c.name} decisions={decisions} threads={liveThreads ?? THREADS} onResolveDecision={onResolveDecision} onClose={() => setSheet(null)} onOpenInsights={() => { setSheet(null); onOpenBooks(c.name); }} /></div>}
-            {sheet === 'budget' && <div onClick={(e) => e.stopPropagation()}><BudgetModal company={c.name} owner={owner} onClose={() => setSheet(null)} onMessage={() => { setSheet(null); onMessage(c.name); }} /></div>}
+            {sheet === 'budget' && <div onClick={(e) => e.stopPropagation()}><BudgetModal company={c.name} owner={owner} onClose={() => setSheet(null)} onShare={onShare ? (d) => { setSheet(null); onShare(d); } : undefined} /></div>}
         </div>
     );
 }

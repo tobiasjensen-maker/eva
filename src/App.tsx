@@ -39,6 +39,7 @@ import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
+import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
 import PracticeView from './views/PracticeView';
@@ -158,6 +159,8 @@ export default function App() {
     // Client conversations — shared so the rail badge and client profiles stay in sync.
     const [threads, setThreads] = useState(THREADS);
     const [inboxFocus, setInboxFocus] = useState<string | null>(null);
+    // A forecast/budget shared from a client: the Inbox opens with this drafted message + attachment.
+    const [compose, setCompose] = useState<ShareDraft | null>(null);
     const needsReply = threads.filter((x) => x.status === 'needs').length;
     // Menu counts — one subtle badge style for every item.
     // Work's badge is its In progress queue: EVA's drafts to review + client replies drafted in the Inbox.
@@ -808,7 +811,7 @@ export default function App() {
                         onClose={(turns) => { setPanelCarry(turns.length ? { view: chatReturn, turns } : null); setChatCarry(null); setChatCollapsed(false); goView(chatReturn); }}
                     />
                 )}
-                {view === 'inbox' && <InboxView threads={threads} setThreads={setThreads} focusClient={inboxFocus} />}
+                {view === 'inbox' && <InboxView threads={threads} setThreads={setThreads} focusClient={inboxFocus} compose={compose} onComposeConsumed={() => setCompose(null)} />}
                 {view === 'practice' && <PracticeView />}
                 {view === 'home' && (
                     <OverviewView
@@ -823,6 +826,7 @@ export default function App() {
                         // The question box hands off to the EVA panel, answer included.
                         onAsk={(q) => { setPendingAsk({ user: q, answer: overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }) }); setChatCollapsed(false); }}
                         onMessage={(client) => { setInboxFocus(client); goView('inbox'); }}
+                        onShare={(d) => { setCompose(d); goView('inbox'); }}
                         onOpenBooks={(name) => {
                             // Clients that are also agreements open their analysis in scope; the rest in a new tab.
                             const a = AGREEMENTS.find((x) => x.name === name);

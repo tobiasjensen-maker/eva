@@ -7,6 +7,7 @@ import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client, type Threa
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
 import { DecisionRow, DecisionReview, ReplyRow } from './Decisions';
+import type { ShareDraft } from './Attachment';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread } from '../priority';
 import { TaskModal, WorkTag, dueColor, handTaskToEva, isEva, workTagsFor, type Task } from './TaskManagementView';
 import type { Dispatch, SetStateAction } from 'react';
@@ -51,7 +52,7 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
     return da ? 'Spørg mig om din dag, en af dine kunder, eller hvem der er klar til rådgivning.' : 'Ask me about your day, one of your clients, or who’s ready for an advisory conversation.';
 }
 
-export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage }: {
+export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage, onShare }: {
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     onAddDecision: (d: DecisionItem) => void;
@@ -63,6 +64,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     onGo: (v: ViewId) => void;
     onOpenBooks: (name: string) => void;
     onMessage: (client: string) => void;
+    onShare: (d: ShareDraft) => void;
 }) {
     const { t } = useLang();
     const [q, setQ] = useState('');
@@ -107,7 +109,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 <ClientList onSelect={setSel} />
             </div>
 
-            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} />}
+            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
         </div>
     );
 }

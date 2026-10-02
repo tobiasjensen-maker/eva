@@ -209,4 +209,9 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   state: open EVA flags are highlighted with *EVA flag · Review* (same review modal), applied fixes
   show corrected, and Bryg & Co's restaurant bill sits in suspense until Mads's reply is sent.
   Opens on the period that contains what EVA wants you to see. Postings are generated per client.
+- **Share to the Inbox** (`views/Attachment.tsx`): "Discuss with …" (cash forecast) and "Share with …" /
+  "Ask … to confirm" (budget) open the Inbox in that client's conversation (or start one) with a
+  drafted message — written from the actual numbers and any scenarios you ticked — and a small
+  preview card attached (key figures + mini chart). Remove it or edit before sending; the card stays on
+  the sent message. From the Inbox's own *Cash forecast* button it drops into the current thread.
 

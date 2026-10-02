@@ -4,6 +4,7 @@ import { ClientAvatar, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { CLIENTS } from '../practice';
 import { downloadCsv } from '../exportCsv';
+import type { ShareDraft } from './Attachment';
 
 // ---- Budget 2027 ---------------------------------------------------------------------------
 // Built from the ledger (2025 actuals, 2026 so far + forecast), the owner's goals and the
@@ -36,7 +37,7 @@ function baseFor(company: string): Base {
     };
 }
 
-export function BudgetModal({ company, owner, onClose, onMessage }: { company: string; owner?: string; onClose: () => void; onMessage?: () => void }) {
+export function BudgetModal({ company, owner, onClose, onShare }: { company: string; owner?: string; onClose: () => void; onShare?: (d: ShareDraft) => void }) {
     const { t } = useLang();
     const b = useMemo(() => baseFor(company), [company]);
     const margin26 = Math.round((1 - b.y2026.cogs / b.y2026.revenue) * 100);
@@ -60,6 +61,20 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
     }), [b, growth, margin, hires, otherChg, site]);
     const y27: Year = q.reduce((a, x) => ({ revenue: a.revenue + x.revenue, cogs: a.cogs + x.cogs, salaries: a.salaries + x.salaries, other: a.other + x.other }), { revenue: 0, cogs: 0, salaries: 0, other: 0 });
     const res = (y: Year) => y.revenue - y.cogs - y.salaries - y.other;
+    // "Share with …" / "Ask … to confirm": a drafted message with the plan attached, opened in the Inbox
+    const attachment = () => ({
+        kind: 'budget' as const, title: 'Budget 2027 · read-only', sub: `${company} · sales and profit by quarter`,
+        stats: [{ label: 'Sales', value: big(y27.revenue) }, { label: 'Costs', value: big(y27.cogs + y27.salaries + y27.other) }, { label: 'Profit', value: big(res(y27)), bad: res(y27) < 0 }],
+        series: q.map((x) => x.revenue), series2: q.map(res),
+    });
+    const shareDraft = (): ShareDraft => ({
+        client: company, subject: 'Your budget for 2027', attachment: attachment(),
+        text: `Hi ${owner ?? 'there'} — here's the draft budget for 2027${site ? ', including the second location from July' : ''}. It plans sales of ${big(y27.revenue)} (${pct(y27.revenue, b.y2026.revenue) >= 0 ? '+' : ''}${pct(y27.revenue, b.y2026.revenue)}% on this year) and a profit of ${big(res(y27))}. It's read-only for you — have a look, and let me know what you think before we lock it.`,
+    });
+    const goalsDraft = (): ShareDraft => ({
+        client: company, subject: 'Your goals for 2027', attachment: attachment(),
+        text: `Hi ${owner ?? 'there'} — before I finish your 2027 budget: are these still your goals? ${b.goals.map((g) => `• ${g}`).join(' ')} Anything you'd add or change? I've attached the draft so far.`,
+    });
     const rows: { label: string; get: (y: Year) => number; strong?: boolean }[] = [
         { label: 'Revenue', get: (y) => y.revenue, strong: true },
         { label: 'Cost of goods', get: (y) => -y.cogs },
@@ -99,7 +114,7 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
                         <div className="rounded-xl p-3.5" style={{ background: '#fff7ed', border: '1px solid #efddc0' }}>
                             <div className="flex items-center gap-2">
                                 <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t('What {name} wants from 2027').replace('{name}', name)}</p>
-                                {onMessage && <button onClick={onMessage} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Ask {name} to confirm →').replace('{name}', name)}</button>}
+                                {onShare && <button onClick={() => onShare(goalsDraft())} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Ask {name} to confirm →').replace('{name}', name)}</button>}
                             </div>
                             <ul style={{ marginBottom: 0 }} className="mt-1.5 flex flex-col gap-0.5">{b.goals.map((g) => <li key={g} className="text-sm" style={{ color: COLORS.text }}>• {t(g)}</li>)}</ul>
                         </div>
@@ -211,7 +226,7 @@ export function BudgetModal({ company, owner, onClose, onMessage }: { company: s
                     <span className="text-xs" style={{ color: shared ? '#15803d' : COLORS.textMuted }}>{shared ? `✓ ${t('Shared with {name} — read-only. You’ll see when they’ve opened it.').replace('{name}', name)}` : t('Nothing is shared until you choose to.')}</span>
                     <div className="flex gap-2">
                         <Button onClick={exportIt}><Icon name="download" /> {t('Export to Excel')}</Button>
-                        <Button appearance="primary" onClick={() => setShared(true)} disabled={shared}><Icon name="envelope" /> {t(shared ? 'Shared' : 'Share with {name}').replace('{name}', name)}</Button>
+                        <Button appearance="primary" onClick={() => (onShare ? onShare(shareDraft()) : setShared(true))} disabled={shared}><Icon name="envelope" /> {t(shared ? 'Shared' : 'Share with {name}').replace('{name}', name)}</Button>
                     </div>
                 </div>
             </div>

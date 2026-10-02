@@ -4,6 +4,7 @@ import { ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from
 import { useLang } from '../i18n';
 import { CLIENTS, ME, OWNER, type Thread, type ThreadStatus } from '../practice';
 import { LiquidityModal } from './Liquidity';
+import { AttachmentCard, type Attachment, type ShareDraft } from './Attachment';
 
 // ---- Inbox — every client conversation in one place --------------------------------
 // Questions, documents and follow-ups with clients, tied to the transaction they're
@@ -16,7 +17,7 @@ const TAB: { key: ThreadStatus | 'all'; label: string }[] = [
     { key: 'all', label: 'All' },
 ];
 
-export default function InboxView({ threads, setThreads, focusClient }: { threads: Thread[]; setThreads: (f: (t: Thread[]) => Thread[]) => void; focusClient?: string | null }) {
+export default function InboxView({ threads, setThreads, focusClient, compose, onComposeConsumed }: { threads: Thread[]; setThreads: (f: (t: Thread[]) => Thread[]) => void; focusClient?: string | null; compose?: ShareDraft | null; onComposeConsumed?: () => void }) {
     const { t } = useLang();
     const [tab, setTab] = useState<ThreadStatus | 'all'>('needs');
     const [selId, setSelId] = useState<string>(() => threads.find((x) => x.status === 'needs')?.id ?? threads[0].id);
@@ -25,6 +26,23 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
     const draft = drafts[selId] ?? '';
     const setDraft = (v: string) => setDrafts((d) => ({ ...d, [selId]: v }));
     const [settings, setSettings] = useState(false);
+    // Attachments waiting to be sent, per conversation (a forecast or budget shared from a client).
+    const [attach, setAttach] = useState<Record<string, Attachment>>({});
+
+    // Arriving with a shared forecast/budget: open (or start) that client's conversation with the
+    // drafted message and the preview attached — you review it and send.
+    useEffect(() => {
+        if (!compose) return;
+        const th = threads.find((x) => x.client === compose.client && x.status !== 'done') ?? threads.find((x) => x.client === compose.client);
+        const id = th?.id ?? `share-${Date.now()}`;
+        if (!th) setThreads((all) => [{ id, client: compose.client, contact: OWNER[compose.client] ?? 'Owner', subject: compose.subject, status: 'waiting', at: 'Now', messages: [] }, ...all]);
+        setSelId(id);
+        setTab(th && th.status !== 'done' ? th.status : 'all');
+        setDrafts((d) => ({ ...d, [id]: compose.text }));
+        setAttach((a) => ({ ...a, [id]: compose.attachment }));
+        onComposeConsumed?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [compose]);
 
     // Arriving from a client profile: open that client's thread.
     useEffect(() => {
@@ -53,11 +71,12 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
             suggestion: extra?.result ? undefined : x.suggestion,
             messages: [
                 ...x.messages,
-                { from: 'firm', who: ME, at: 'Now', text },
+                { from: 'firm', who: ME, at: 'Now', text, ...(attach[x.id] ? { attachment: attach[x.id] } : {}) },
                 ...(extra?.result ? [{ from: 'eva' as const, who: 'EVA', at: 'Now', text: extra.result }] : []),
             ],
         }));
         setDraft('');
+        if (sel && attach[sel.id]) setAttach((a) => { const n = { ...a }; delete n[sel.id]; return n; });
     }
 
     const [cashFor, setCashFor] = useState<string | null>(null);
@@ -172,6 +191,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
                                                     {m.from === 'eva' && <Orb size={12} />}<span className="font-medium" style={{ color: COLORS.text }}>{t(m.who)}</span> · {t(m.at)}
                                                 </p>
                                                 <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{t(m.text)}</p>
+                                                {m.attachment && <div className="mt-2"><AttachmentCard a={m.attachment} /></div>}
                                             </div>
                                         </div>
                                     );
@@ -183,6 +203,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
 
                             <form onSubmit={(e) => { e.preventDefault(); sendNow(); }} className="mx-5 mb-5 flex flex-col gap-2 rounded-xl px-3.5 pt-3 pb-2.5" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
                                 {/* Enter sends, Shift+Enter adds a new line, Tab takes EVA's suggested reply */}
+                                {attach[sel.id] && <AttachmentCard a={attach[sel.id]} onRemove={() => setAttach((a) => { const n = { ...a }; delete n[sel.id]; return n; })} />}
                                 <div className="relative">
                                     {ghost && (
                                         <div ref={ghostRef} aria-hidden className="absolute inset-x-0 top-0 text-sm leading-relaxed whitespace-pre-wrap pointer-events-none" style={{ color: '#a1a1aa' }}>{ghost}</div>
@@ -228,7 +249,7 @@ export default function InboxView({ threads, setThreads, focusClient }: { thread
             </div>
 
             {settings && <InboxSettings onClose={() => setSettings(false)} />}
-            {cashFor && <LiquidityModal company={cashFor} owner={OWNER[cashFor]} onClose={() => setCashFor(null)} />}
+            {cashFor && <LiquidityModal company={cashFor} owner={OWNER[cashFor]} onClose={() => setCashFor(null)} onDiscuss={(d) => { setCashFor(null); setDrafts((x) => ({ ...x, [selId]: d.text })); setAttach((a) => ({ ...a, [selId]: d.attachment })); }} />}
         </div>
     );
 }
