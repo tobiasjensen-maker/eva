@@ -4814,6 +4814,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .no-underline {
   text-decoration-line: none;
 }
+.underline-offset-2 {
+  text-underline-offset: 2px;
+}
 .opacity-0 {
   opacity: 0;
 }
