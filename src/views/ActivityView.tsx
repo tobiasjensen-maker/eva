@@ -607,7 +607,8 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
 
             {open && (
                 <div className="px-4 pb-4 anim-in">
-                    <div className="rounded-xl p-4" style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}>
+                    {/* EVA's explanation — the same subtle purple as EVA's other messages */}
+                    <div className="rounded-xl p-4" style={{ border: '1px solid #7c3aed26', background: '#7c3aed0a' }}>
                         <div className="flex items-center gap-2">
                             <Orb size={18} />
                             <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{actorOf(entry) === 'You' ? t('What happened') : consider ? t('What EVA wants you to check') : needsReview ? t('Why EVA suggests this') : t('Why did EVA do this?')}</span>
@@ -635,7 +636,7 @@ function LogRow({ entry, open, acting, onToggle, onResolve, onOpenDoc, onTrace, 
                             </button>
                         </div>
 
-                        <div style={{ borderTop: `1px solid ${COLORS.cardBorder}`, margin: '14px -16px 0' }} />
+                        <div style={{ borderTop: '1px solid #7c3aed1f', margin: '14px -16px 0' }} />
 
                         {/* footer: every item is a suggestion — accept, dismiss, or ask EVA to do something else */}
                         <div className="flex items-center justify-between pt-3 gap-3">
