@@ -202,20 +202,18 @@ function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenTh
     const [hover, setHover] = useState<Books | null>(null);
     const total = BOOKS_STATUS.reduce((s, b) => s + b.count, 0);
     const SIZE = 184, R = 70, W = 24, C = 2 * Math.PI * R, GAP = 2;
-    // Fill in on load: the ring sweeps clockwise, segment after segment, while the total counts up.
-    const [p, setP] = useState(() => (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 0));
+    // On load the ring settles in: each slice draws itself with a soft ease-out, slightly staggered,
+    // while the ring fades and turns a few degrees into place. The total doesn't count — it's simply there.
+    const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const [shown, setShown] = useState(reduce);
     useEffect(() => {
-        if (p === 1) return;
-        // a hidden tab pauses animation frames — show the finished chart there rather than an empty ring
-        if (document.visibilityState === 'hidden') { setP(1); return; }
-        let raf = 0; const t0 = performance.now(), dur = 1100;
-        const tick = (now: number) => { const x = Math.min(1, (now - t0) / dur); setP(1 - Math.pow(1 - x, 3)); if (x < 1) raf = requestAnimationFrame(tick); };
-        raf = requestAnimationFrame(tick);
-        const done = setTimeout(() => setP(1), dur + 400); // safety net if frames are throttled
-        return () => { cancelAnimationFrame(raf); clearTimeout(done); };
+        if (shown) return;
+        const id = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+        const done = setTimeout(() => setShown(true), 120); // hidden tabs pause frames — don't leave an empty ring
+        return () => { cancelAnimationFrame(id); clearTimeout(done); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    const drawn = p * C;
+    const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
     const hv = hover ? BOOKS_STATUS.find((b) => b.key === hover)! : null;
     let acc = 0;
     return (
@@ -223,16 +221,20 @@ function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenTh
         <Widget title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
             footer={<button onClick={() => setReport('all')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Month-end report')} →</button>}>
             <div className="flex flex-col items-center px-4 pb-4 pt-2">
-                <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={BOOKS_STATUS.map((b) => `${t(b.label)} ${b.count}`).join(', ')} onMouseLeave={() => setHover(null)}>
+                <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ opacity: shown ? 1 : 0, transition: reduce ? undefined : 'opacity 500ms ease' }} role="img" aria-label={BOOKS_STATUS.map((b) => `${t(b.label)} ${b.count}`).join(', ')} onMouseLeave={() => setHover(null)}>
+                    {/* only the ring turns into place — the number stays put */}
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center', transform: shown ? 'rotate(0deg)' : 'rotate(-14deg)', transition: reduce ? undefined : `transform 1100ms ${EASE}` }}>
                     <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#f1f1f3" strokeWidth={W} />
                     {BOOKS_STATUS.map((b) => {
                         const len = (b.count / total) * C;
-                        const vis = Math.max(0, Math.min(len - GAP, drawn - acc)); // how much of this segment the sweep has reached
+                        const vis = shown ? len - GAP : 0;
+                        const i = BOOKS_STATUS.indexOf(b);
                         const on = hover === b.key, dim = hover && !on;
                         const el = (
                             <circle key={b.key} cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke={b.color} strokeWidth={on ? W + 6 : W}
-                                strokeDasharray={`${vis} ${C - vis}`} strokeDashoffset={-acc} transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-                                style={{ opacity: dim ? 0.3 : 1, transition: 'stroke-width 160ms ease, opacity 160ms ease', cursor: 'pointer' }}
+                                strokeDashoffset={-acc} transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+                                style={{ strokeDasharray: `${vis} ${C}`, opacity: dim ? 0.3 : 1, cursor: 'pointer',
+                                    transition: `stroke-dasharray ${reduce ? 0 : 1000}ms ${EASE} ${reduce ? 0 : 150 + i * 140}ms, stroke-width 160ms ease, opacity 160ms ease` }}
                                 onMouseEnter={() => setHover(b.key)} onClick={() => setReport(b.key)}>
                                 <title>{`${t(b.label)}: ${b.count} ${t('clients')} — ${t('click to see them')}`}</title>
                             </circle>
@@ -240,7 +242,8 @@ function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenTh
                         acc += len;
                         return el;
                     })}
-                    <text x={SIZE / 2} y={SIZE / 2 - 2} textAnchor="middle" fontSize="30" fontWeight="600" fill={hv ? hv.color : COLORS.text} style={{ transition: 'fill 160ms ease' }}>{hv ? hv.count : Math.round(p * total)}</text>
+                    </g>
+                    <text x={SIZE / 2} y={SIZE / 2 - 2} textAnchor="middle" fontSize="30" fontWeight="600" fill={hv ? hv.color : COLORS.text} style={{ transition: 'fill 160ms ease' }}>{hv ? hv.count : total}</text>
                     <text x={SIZE / 2} y={SIZE / 2 + 18} textAnchor="middle" fontSize="12" fill={COLORS.textMuted}>{hv ? `${t(hv.label)} · ${Math.round((hv.count / total) * 100)}%` : t('clients')}</text>
                 </svg>
                 <div className="grid grid-cols-3 gap-2 w-full mt-4">
