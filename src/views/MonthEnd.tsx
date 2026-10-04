@@ -82,7 +82,7 @@ type Row = ReturnType<typeof rowsFor>[number];
 type Who = 'You' | 'Client' | 'EVA';
 const WHO_STYLE: Record<Who, [string, string]> = { You: ['#f3f0fb', '#6d28d9'], Client: ['#fbf3e0', '#92710f'], EVA: ['#eef2ff', '#4456c7'] };
 
-export function MonthEndReport({ onClose, flags, decisions = [], threads = [], onResolveDecision, onOpenThread }: {
+export function MonthEndReport({ onClose, flags, decisions = [], threads = [], onResolveDecision, onOpenThread, initialFilter }: {
     onClose: () => void;
     flags: number;
     // shared state, so a client's "what's left" lists the real flags and replies
@@ -90,8 +90,10 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
     threads?: Thread[];
     onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
     onOpenThread?: (th: Thread) => void;
+    initialFilter?: 'closed' | 'todo' | 'blocked'; // opened from a slice of the Books donut
 }) {
     const { t } = useLang();
+    const [filter, setFilter] = useState<'all' | 'closed' | 'todo' | 'blocked'>(initialFilter ?? 'all');
     const [sel, setSel] = useState<string | null>(null); // client drilled into
     const [review, setReview] = useState<DecisionItem | null>(null);
     // what you did from here this session
@@ -277,11 +279,24 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
                         <Orb size={16} />
                         <span>{t('{c} of {n} clients are closed. The rest are waiting on {m} documents from clients — EVA keeps chasing them.').replace('{c}', String(rows.filter((r) => statusOf(r) === 'closed').length)).replace('{n}', String(rows.length)).replace('{m}', String(rows.reduce((a, r) => a + r.missing, 0)))} {flags ? t('{f} controlling flag(s) still need your review.').replace('{f}', String(flags)) : t('Controlling found nothing else.')} {t('Click a client to see what’s left.')}</span>
                     </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {(['all', 'blocked', 'todo', 'closed'] as const).map((k) => {
+                            const on = filter === k;
+                            const n = k === 'all' ? rows.length : rows.filter((r) => statusOf(r) === k).length;
+                            return (
+                                <button key={k} onClick={() => setFilter(k)} className="rounded-full px-3 py-1 text-xs font-medium inline-flex items-center gap-1.5"
+                                    style={{ border: `1px solid ${on ? '#7c3aed' : COLORS.cardBorder}`, background: on ? '#f3f0fb' : '#fff', color: on ? '#6d28d9' : COLORS.textMuted }}>
+                                    {k !== 'all' && <span className="rounded-full" style={{ width: 7, height: 7, background: tone[k][1] }} />}
+                                    {t(k === 'all' ? 'All' : label[k])} <span className="tabular-nums">{n}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                     <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
                         <div className="grid px-3 py-2 text-xs font-medium" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', background: '#fafafa', color: COLORS.textMuted }}>
                             <span>{t('Client')}</span><span className="text-right">{t('Bank lines')}</span><span className="text-right">{t('Matched')}</span><span className="text-right">{t('Missing docs')}</span><span className="text-right">{t('Status')}</span><span />
                         </div>
-                        {rows.map((r) => {
+                        {rows.filter((r) => filter === 'all' || statusOf(r) === filter).map((r) => {
                             const needsYou = leftFor(r).filter((i) => !i.done && i.who === 'You').length;
                             return (
                                 <button key={r.c.id} onClick={() => { setSel(r.c.name); setOpenStep(null); }} className="w-full grid items-center px-3 py-2 text-sm text-left" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', borderTop: `1px solid ${COLORS.cardBorder}` }}

@@ -1935,4 +1935,6 @@ const DA: Record<string, string> = {
     'Budget 2027 workshop': 'Budget 2027-workshop',
     'Growth plan meeting': 'Møde om vækstplan',
     'Hiring plan and payroll budget': 'Ansættelsesplan og lønbudget',
+    'click to see them': 'klik for at se dem',
+    'Show these clients': 'Vis disse kunder',
 };

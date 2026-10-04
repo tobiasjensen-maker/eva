@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
 import { Card, CountBadge, Orb, MicIcon, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem, ResolveInfo } from '../day';
-import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Client, type Thread } from '../practice';
+import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Books, type Client, type Thread } from '../practice';
 import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
 import { DecisionRow, DecisionReview, ReplyRow } from './Decisions';
@@ -198,41 +198,70 @@ function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo }
 
 // Where every client's books stand this month — a large donut, legend underneath.
 function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenThread }: { t: (s: string) => string; flags: number; decisions: DecisionItem[]; threads: Thread[]; onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread: (th: Thread) => void }) {
-    const [report, setReport] = useState(false);
+    const [report, setReport] = useState<Books | 'all' | null>(null);
+    const [hover, setHover] = useState<Books | null>(null);
     const total = BOOKS_STATUS.reduce((s, b) => s + b.count, 0);
-    const SIZE = 184, R = 70, W = 24, C = 2 * Math.PI * R;
+    const SIZE = 184, R = 70, W = 24, C = 2 * Math.PI * R, GAP = 2;
+    // Fill in on load: the ring sweeps clockwise, segment after segment, while the total counts up.
+    const [p, setP] = useState(() => (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 0));
+    useEffect(() => {
+        if (p === 1) return;
+        // a hidden tab pauses animation frames — show the finished chart there rather than an empty ring
+        if (document.visibilityState === 'hidden') { setP(1); return; }
+        let raf = 0; const t0 = performance.now(), dur = 1100;
+        const tick = (now: number) => { const x = Math.min(1, (now - t0) / dur); setP(1 - Math.pow(1 - x, 3)); if (x < 1) raf = requestAnimationFrame(tick); };
+        raf = requestAnimationFrame(tick);
+        const done = setTimeout(() => setP(1), dur + 400); // safety net if frames are throttled
+        return () => { cancelAnimationFrame(raf); clearTimeout(done); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    const drawn = p * C;
+    const hv = hover ? BOOKS_STATUS.find((b) => b.key === hover)! : null;
     let acc = 0;
     return (
         <>
         <Widget title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
-            footer={<button onClick={() => setReport(true)} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Month-end report')} →</button>}>
+            footer={<button onClick={() => setReport('all')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Month-end report')} →</button>}>
             <div className="flex flex-col items-center px-4 pb-4 pt-2">
-                <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+                <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={BOOKS_STATUS.map((b) => `${t(b.label)} ${b.count}`).join(', ')} onMouseLeave={() => setHover(null)}>
                     <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#f1f1f3" strokeWidth={W} />
                     {BOOKS_STATUS.map((b) => {
                         const len = (b.count / total) * C;
-                        const el = <circle key={b.key} cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke={b.color} strokeWidth={W} strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-acc} transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`} />;
+                        const vis = Math.max(0, Math.min(len - GAP, drawn - acc)); // how much of this segment the sweep has reached
+                        const on = hover === b.key, dim = hover && !on;
+                        const el = (
+                            <circle key={b.key} cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke={b.color} strokeWidth={on ? W + 6 : W}
+                                strokeDasharray={`${vis} ${C - vis}`} strokeDashoffset={-acc} transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+                                style={{ opacity: dim ? 0.3 : 1, transition: 'stroke-width 160ms ease, opacity 160ms ease', cursor: 'pointer' }}
+                                onMouseEnter={() => setHover(b.key)} onClick={() => setReport(b.key)}>
+                                <title>{`${t(b.label)}: ${b.count} ${t('clients')} — ${t('click to see them')}`}</title>
+                            </circle>
+                        );
                         acc += len;
                         return el;
                     })}
-                    <text x={SIZE / 2} y={SIZE / 2 - 2} textAnchor="middle" fontSize="30" fontWeight="600" fill={COLORS.text}>{total}</text>
-                    <text x={SIZE / 2} y={SIZE / 2 + 18} textAnchor="middle" fontSize="12" fill={COLORS.textMuted}>{t('clients')}</text>
+                    <text x={SIZE / 2} y={SIZE / 2 - 2} textAnchor="middle" fontSize="30" fontWeight="600" fill={hv ? hv.color : COLORS.text} style={{ transition: 'fill 160ms ease' }}>{hv ? hv.count : Math.round(p * total)}</text>
+                    <text x={SIZE / 2} y={SIZE / 2 + 18} textAnchor="middle" fontSize="12" fill={COLORS.textMuted}>{hv ? `${t(hv.label)} · ${Math.round((hv.count / total) * 100)}%` : t('clients')}</text>
                 </svg>
                 <div className="grid grid-cols-3 gap-2 w-full mt-4">
-                    {BOOKS_STATUS.map((b) => (
-                        <div key={b.key} className="text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                                <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: b.color }} />
-                                <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(b.label)}</span>
-                            </div>
-                            <p className="text-base font-semibold mt-0.5" style={{ color: COLORS.text }}>{b.count}</p>
-                        </div>
-                    ))}
+                    {BOOKS_STATUS.map((b) => {
+                        const on = hover === b.key;
+                        return (
+                            <button key={b.key} onMouseEnter={() => setHover(b.key)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(b.key)} onBlur={() => setHover(null)} onClick={() => setReport(b.key)}
+                                className="text-center rounded-lg py-1" style={{ background: on ? '#f7f7f8' : 'transparent', opacity: hover && !on ? 0.55 : 1, transition: 'opacity 160ms ease, background 160ms ease' }} title={t('Show these clients')}>
+                                <div className="flex items-center justify-center gap-1.5">
+                                    <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: b.color }} />
+                                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{t(b.label)}</span>
+                                </div>
+                                <p className="text-base font-semibold mt-0.5" style={{ color: COLORS.text }}>{b.count}</p>
+                            </button>
+                        );
+                    })}
                 </div>
                 <p className="text-xs mt-3 text-center" style={{ color: COLORS.textMuted }}>{t('EVA closes most of these on its own.')}</p>
             </div>
         </Widget>
-        {report && <MonthEndReport onClose={() => setReport(false)} flags={flags} decisions={decisions.filter((d) => d.accountant === ME)} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />}
+        {report && <MonthEndReport onClose={() => setReport(null)} initialFilter={report === 'all' ? undefined : report} flags={flags} decisions={decisions.filter((d) => d.accountant === ME)} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />}
         </>
     );
 }

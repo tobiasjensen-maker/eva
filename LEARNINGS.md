@@ -264,4 +264,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   relationship, advice and sign-off: a cash-flow call, a quarterly review, signing the annual report,
   customer-concentration advice, budget/growth/hiring conversations (`isPeopleWork`). Their modal shows
   *What EVA prepared for you* and has no "Hand to EVA"; dragging one to In progress opens it instead.
+- Books status donut: fills in clockwise on load (≈1.1s, ease-out; the total counts up; skipped for
+  reduced motion and in hidden tabs), hover a slice or legend item to focus it (centre shows count and
+  share), click to open the month-end report filtered to that status (filter chips in the report).
 
