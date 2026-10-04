@@ -1937,4 +1937,5 @@ const DA: Record<string, string> = {
     'Hiring plan and payroll budget': 'Ansættelsesplan og lønbudget',
     'click to see them': 'klik for at se dem',
     'Show these clients': 'Vis disse kunder',
+    'Nice work — logged in Activity.': 'Godt klaret — logget i Aktivitet.',
 };

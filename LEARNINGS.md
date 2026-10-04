@@ -272,4 +272,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   Used on the overview (greeting → question → chips → cards → client list), Work (numbers, month-end,
   toolbar, board), Inbox, page headers, Activity, Routines, Connectors, Practice and Insights. Off for
   reduced motion. Keep modals out of `.land-kids` containers (they'd animate in late when opened).
+- **Marking a task done** (overview, Work board, any task modal) shows a confirmation at the bottom: a check
+  that draws itself with a small burst of EVA-coloured dots, "Done · <task> — logged in Activity", and Undo
+  (restores the previous status). The card arriving in Done gets a soft green pop. Practice metric cards land too.
 

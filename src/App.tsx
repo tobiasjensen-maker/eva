@@ -29,6 +29,37 @@ function decisionEntry(d: DecisionItem, live: boolean): LogEntry {
 // shell and main alike (behind the sidebar too), fading into the canvas below the hero.
 const HOME_BG = `linear-gradient(180deg, #edf3fb 0px, #f4f0fb 260px, ${CANVAS} 380px)`;
 
+// The "done" confirmation: slides up, draws a check, a small burst — then gets out of the way.
+function DoneToast({ title, t, onUndo, onClose }: { title: string; t: (s: string) => string; onUndo: () => void; onClose: () => void }) {
+    const [leaving, setLeaving] = useState(false);
+    useEffect(() => {
+        const a = setTimeout(() => setLeaving(true), 3800), b = setTimeout(onClose, 4100);
+        return () => { clearTimeout(a); clearTimeout(b); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    const dots = [['#ed9b2c', -26, -20], ['#16a34a', 24, -24], ['#7c3aed', 30, 6], ['#ed9b2c', -30, 10], ['#16a34a', -6, -32], ['#7c3aed', 8, 28]] as const;
+    return (
+        <div role="status" aria-live="polite" className={`done-toast fixed z-[60] flex items-center gap-3 rounded-2xl bg-white pl-3 pr-2 py-2.5 ${leaving ? 'leaving' : ''}`}
+            style={{ left: '50%', bottom: 28, minWidth: 340, maxWidth: 520, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', border: '1px solid #e9e9ec' }}>
+            <span className="relative shrink-0" style={{ width: 32, height: 32 }}>
+                {dots.map(([c, x, y], i) => <span key={i} className="done-dot absolute rounded-full" style={{ left: 13, top: 13, width: 6, height: 6, background: c, ['--bx' as string]: `${x}px`, ['--by' as string]: `${y}px` }} />)}
+                <svg width="32" height="32" viewBox="0 0 28 28" aria-hidden>
+                    <circle cx="14" cy="14" r="12" fill="#e9f7ef" />
+                    <circle className="done-ring" cx="14" cy="14" r="12" fill="none" stroke="#16a34a" strokeWidth="2" transform="rotate(-90 14 14)" />
+                    <path className="done-tick" d="M8.5 14.5l3.5 3.5 7-7.5" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{t('Done')} · {title}</p>
+                <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Nice work — logged in Activity.')}</p>
+            </div>
+            <button onClick={onUndo} className="text-sm font-medium rounded-lg px-2.5 py-1.5" style={{ color: '#4456c7' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f6')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>{t('Undo')}</button>
+            <button onClick={() => { setLeaving(true); setTimeout(onClose, 260); }} aria-label={t('Close')} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
+        </div>
+    );
+}
+
 const SIDEBAR_BG = 'rgb(41, 40, 62)';
 const SIDEBAR_BORDER = 'rgba(255,255,255,0.10)';
 import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
@@ -37,7 +68,7 @@ import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
-import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
+import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab, type TStatus } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
 import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
@@ -200,6 +231,8 @@ export default function App() {
     };
     // Board moves (mark done, reopen, hand to EVA) are written to the log as they happen —
     // whichever surface made them (Work, the overview's My tasks, the task modal).
+    // Marked done (overview, Work, a modal): a confirmation with a small celebration, and Undo.
+    const [doneToast, setDoneToast] = useState<{ id: string; title: string; prev: TStatus; key: number } | null>(null);
     const prevTasks = useRef(tasks);
     useEffect(() => {
         const before = new Map(prevTasks.current.map((x) => [x.id, x]));
@@ -210,6 +243,7 @@ export default function App() {
             if (!was || was.status === x.status || x.accountant !== 'Tobias Holm Jensen') return;
             const base = { title: x.title, client: x.company, actor: 'you' as const, taskId: x.id };
             const id = `w-${x.id}-${Date.now()}`;
+            if (x.status === 'done') setDoneToast({ id: x.id, title: x.title, prev: was.status, key: Date.now() });
             if (x.status === 'done') logged.push(workEntry({ ...base, id, event: 'done', desc: `You marked “${x.title}” done`, resolution: 'Done by you', reasoning: [`Moved to Done on the Tasks board (was due ${x.dueLabel.toLowerCase()}).`] }));
             else if (was.status === 'done') logged.push(workEntry({ ...base, id, event: 'reopened', desc: `You reopened “${x.title}”`, resolution: 'Reopened', reasoning: ['Moved back to To do on the Tasks board.'] }));
             else if (x.status === 'eva-running') logged.push(workEntry({ ...base, id, event: 'handed', desc: `You handed “${x.title}” to EVA`, resolution: 'Handed to EVA', reasoning: ['EVA drafts it and brings it back to you for review.'] }));
@@ -857,6 +891,8 @@ export default function App() {
                     />
                 )}
                 {view === 'customers' && <CustomersView />}
+                {doneToast && <DoneToast key={doneToast.key} title={t(doneToast.title)} t={t} onClose={() => setDoneToast(null)}
+                    onUndo={() => { const d = doneToast; setDoneToast(null); setTasks((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: d.prev } : x))); }} />}
                 {(() => {
                     const tk = logTask ? tasks.find((x) => x.id === logTask) : undefined;
                     const d = logDecision ? dayDecisions.find((x) => x.id === logDecision) : undefined;

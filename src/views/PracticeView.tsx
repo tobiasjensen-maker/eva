@@ -34,8 +34,8 @@ export default function PracticeView({ initialTab = 'capacity' }: { initialTab?:
                         { l: 'Team utilisation', v: `${util}%`, s: t('of booked capacity this month'), c: COLORS.text },
                         { l: 'Effective rate', v: kr(avgRate), s: t('per human hour · target {n}').replace('{n}', kr(TARGET_RATE)), c: avgRate >= TARGET_RATE ? '#15803d' : '#b9842b' },
                         { l: 'Advisory revenue', v: `${advisoryShare}%`, s: t('of fees — up from 9% last year'), c: '#6d28d9' },
-                    ].map((k) => (
-                        <div key={k.l} className="rounded-xl p-4" style={{ background: '#fff', border: `1px solid ${COLORS.cardBorder}` }}>
+                    ].map((k, i) => (
+                        <div key={k.l} className="rounded-xl p-4 land" style={{ ['--d' as string]: `${60 + i * 50}ms`, background: '#fff', border: `1px solid ${COLORS.cardBorder}` }}>
                             <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(k.l)}</p>
                             <p className="text-2xl font-semibold leading-tight mt-1" style={{ color: k.c }}>{k.v}</p>
                             <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>{k.s}</p>
@@ -43,10 +43,13 @@ export default function PracticeView({ initialTab = 'capacity' }: { initialTab?:
                     ))}
                 </div>
 
+                {/* the tab's content lands after the numbers (keyed, so switching tabs lands it again) */}
+                <div key={tab} className="land" style={{ ['--d' as string]: '260ms' }}>
                 {tab === 'capacity' && <Capacity team={team} setTeam={setTeam} />}
                 {tab === 'profit' && <Profitability />}
                 {tab === 'growth' && <Growth />}
                 {tab === 'playbooks' && <Playbooks />}
+                </div>
             </div>
         </div>
     );

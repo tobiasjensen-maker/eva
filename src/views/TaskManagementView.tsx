@@ -498,7 +498,7 @@ function WorkCard({ it, col, nextId, dnd, onOpen }: { it: WorkItem; col: Col; ne
     return (
         <>
         {dnd.dragId && dnd.over?.col === col && dnd.over.beforeId === it.id && <DropLine />}
-        <div {...dragProps(it, col, nextId, dnd)} onClick={clickable ? onOpen : undefined} className={`rounded-lg bg-white p-3 flex flex-col gap-2 ${clickable ? 'cursor-grab active:cursor-grabbing' : ''}`} style={{ border: `1px solid ${it.overdue ? '#f5c2c2' : COLORS.cardBorder}`, opacity: dragging ? 0.4 : it.ws === 'done' ? 0.85 : 1 }}
+        <div {...dragProps(it, col, nextId, dnd)} onClick={clickable ? onOpen : undefined} className={`rounded-lg bg-white p-3 flex flex-col gap-2 ${clickable ? 'cursor-grab active:cursor-grabbing' : ''} ${it.kind === 'logged' && it.entry.at && Date.now() - it.entry.at < 2500 ? 'just-done' : ''}`} style={{ border: `1px solid ${it.overdue ? '#f5c2c2' : COLORS.cardBorder}`, opacity: dragging ? 0.4 : it.ws === 'done' ? 0.85 : 1 }}
             onMouseEnter={clickable ? (e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)') : undefined} onMouseLeave={clickable ? (e) => (e.currentTarget.style.boxShadow = 'none') : undefined}>
             <div className="flex items-start gap-2">
                 <ClientAvatar name={it.company} size={20} />
