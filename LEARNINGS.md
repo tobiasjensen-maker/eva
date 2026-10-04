@@ -259,4 +259,9 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - Month-end report → client → **each of the 8 steps opens** what was done: who (EVA / you / waiting on the
   client), when, a summary and the detail lines (bank import, matches, missing documents, inbox reads,
   postings, controlling rules, close checks). Reflects what you did in the report (reminded, posted, closed).
+- **People do people work.** Every bookkeeping task (debtor follow-up, VAT, month-end, annual report
+  drafts, supplier invoices, payroll) is EVA's — running, scheduled or done. Human tasks are the
+  relationship, advice and sign-off: a cash-flow call, a quarterly review, signing the annual report,
+  customer-concentration advice, budget/growth/hiring conversations (`isPeopleWork`). Their modal shows
+  *What EVA prepared for you* and has no "Hand to EVA"; dragging one to In progress opens it instead.
 

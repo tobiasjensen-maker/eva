@@ -72,21 +72,28 @@ export const TASKS: Task[] = [
     T('Bank reconciliation', 'Nordic Build ApS', ME, 'Done yesterday', 'week', 'eva-done', 'low'),
     T('Missing receipts (3)', 'Lys Design', 'Sofie Lund', 'Done today', 'today', 'eva-done', 'medium'),
     T('Payroll run — September', 'Café Solsikke', 'Sofie Lund', 'Done 30 Sep', 'week', 'eva-done', 'medium'),
-    // Still with the team
-    T('Debtor follow-up', 'Café Solsikke', ME, 'Overdue 2 days', 'overdue', 'waiting', 'medium'),
+    // Bookkeeping is EVA's — the rest of the recurring work
+    T('Debtor follow-up', 'Café Solsikke', ME, 'Running', 'today', 'eva-running', 'medium'),
+    T('Annual report draft', 'Nordic Build ApS', ME, 'In 3 days', 'week', 'eva-running', 'high'),
+    T('VAT reconciliation', 'Digital Marketing Pro', ME, 'Done today', 'today', 'eva-done', 'low'),
     T('Payroll run — October', 'Office Supplies Co', ME, '28 Oct', 'later', 'eva-scheduled', 'high', '28 Oct at 06:00'),
     T('Payroll run — September', 'Nordic Build ApS', ME, 'Done 30 Sep', 'week', 'eva-done', 'medium'),
-    T('Annual report draft', 'Nordic Build ApS', ME, 'In 3 days', 'week', 'in-progress', 'high'),
-    T('VAT reconciliation', 'Digital Marketing Pro', ME, 'In 10 days', 'later', 'todo', 'low'),
-    T('Month-end close', 'Café Solsikke', 'Sofie Lund', 'Overdue 1 day', 'overdue', 'waiting', 'high'),
-    T('Quarterly report', 'Lys Design', 'Sofie Lund', 'In 3 days', 'week', 'in-progress', 'medium'),
-    T('VAT return — Q1', 'Fjord Fitness', 'Anders Holm', 'In 3 days', 'week', 'todo', 'high'),
-    T('Month-end close', 'Aarhus Tandklinik', 'Camilla Berg', 'In 4 days', 'week', 'todo', 'medium'),
-    T('Annual report draft', 'Tech Equipment AS', 'Jonas Vestergaard', 'In 9 days', 'later', 'todo', 'high'),
-    T('Year-end close', 'Office Supplies Co', 'Camilla Berg', 'In 12 days', 'later', 'todo', 'medium'),
-    T('Supplier invoice approval', 'Cloud Hosting Ltd', 'Anders Holm', 'In 8 days', 'later', 'todo', 'low'),
-    T('Debtor follow-up', 'Aarhus Tandklinik', 'Camilla Berg', 'In 5 days', 'week', 'todo', 'low'),
+    T('Month-end close', 'Café Solsikke', 'Sofie Lund', 'Running', 'today', 'eva-running', 'high'),
+    T('Quarterly report', 'Lys Design', 'Sofie Lund', 'Done yesterday', 'week', 'eva-done', 'medium'),
+    T('VAT return — Q3', 'Fjord Fitness', 'Anders Holm', 'Tomorrow', 'week', 'eva-scheduled', 'high', 'Tomorrow at 06:00'),
+    T('Month-end close', 'Aarhus Tandklinik', 'Camilla Berg', 'In 4 days', 'week', 'eva-scheduled', 'medium', 'Fri at 06:00'),
+    T('Annual report draft', 'Tech Equipment AS', 'Jonas Vestergaard', 'In 9 days', 'later', 'eva-running', 'high'),
+    T('Supplier invoice approval', 'Cloud Hosting Ltd', 'Anders Holm', 'Done today', 'today', 'eva-done', 'low'),
     T('Payroll run — October', 'Bryg & Co ApS', 'Jonas Vestergaard', '28 Oct', 'later', 'eva-scheduled', 'high', '28 Oct at 06:00'),
+    // People's work: the client relationship, advice and judgement — EVA prepares, a person does it
+    T('Cash-flow call with Ida', 'Café Solsikke', ME, 'Overdue 2 days', 'overdue', 'todo', 'high'),
+    T('Quarterly review meeting', 'Nordic Build ApS', ME, 'In 3 days', 'week', 'in-progress', 'high'),
+    T('Sign off the annual report', 'Tech Equipment AS', ME, 'In 6 days', 'week', 'todo', 'medium'),
+    T('Customer-concentration advice', 'Digital Marketing Pro', ME, 'In 10 days', 'later', 'todo', 'medium'),
+    T('Advisory call — slower-paying customers', 'Lys Design', 'Sofie Lund', 'In 2 days', 'week', 'waiting', 'high'),
+    T('Budget 2027 workshop', 'Aarhus Tandklinik', 'Camilla Berg', 'In 5 days', 'week', 'todo', 'medium'),
+    T('Growth plan meeting', 'Cloud Hosting Ltd', 'Anders Holm', 'In 8 days', 'later', 'todo', 'low'),
+    T('Hiring plan and payroll budget', 'Bryg & Co ApS', 'Jonas Vestergaard', 'In 12 days', 'later', 'todo', 'medium'),
 ];
 
 // What EVA did on a task — shown in the "See what EVA did" trace.
@@ -266,6 +273,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         }
         const task = it.task!;
         const tid = task.id;
+        if (to === 'inprogress' && isPeopleWork(task.title)) { setTrace(task); return; } // a person's task: not EVA's to take — open it instead
         if (to === 'done') patch(tid, { status: 'done' });
         else if (to === 'todo') { patch(tid, { status: 'todo' }); setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? tid : x)) })); }
         else {
@@ -644,8 +652,34 @@ function NewTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (t
 }
 
 // What a task is — the description shown when you open it.
+// What EVA prepared for a person's task (the call, the advice, the sign-off is theirs).
+function evaPrepFor(title: string): string[] {
+    const s = title.toLowerCase();
+    if (s.includes('cash-flow')) return ['Built the 13-week cash forecast', 'Modelled four ways to bridge the dip in weeks 44–49', 'Proposed Thursday 14:00 and drafted the invite'];
+    if (s.includes('quarterly review')) return ['Pulled Q3 results against the budget', 'Worked out what the new SKAT rule means for them', 'Drafted talking points for the meeting'];
+    if (s.includes('sign off')) return ['Drafted the annual report', 'Reconciled every balance to the books', 'Listed the 3 judgement calls for you'];
+    if (s.includes('concentration')) return ['Measured revenue per customer over 24 months', 'Compared with similar agencies', 'Drafted options and talking points'];
+    if (s.includes('slower-paying')) return ['Tracked days-to-pay per customer', 'Found the 4 customers behind the slowdown', 'Drafted new payment terms to suggest'];
+    if (s.includes('budget')) return ['Drafted the 2027 budget from actuals', 'Collected the owner’s goals', 'Prepared the client view to share'];
+    if (s.includes('growth plan')) return ['Projected 12 months at the current growth', 'Checked cash and capacity', 'Drafted questions for the owner'];
+    if (s.includes('hiring')) return ['Calculated the payroll cost of two hires', 'Ran it through the cash forecast', 'Updated the budget draft'];
+    return ['Collected the numbers', 'Drafted talking points'];
+}
+
+// Work only a person should do: the client relationship, advice and professional sign-off.
+// EVA prepares it; it can't be handed over.
+export const isPeopleWork = (title: string) => /call|meeting|review meeting|advice|workshop|sign off|plan\b|hiring/i.test(title);
+
 export function taskBriefFor(task: Task): string {
     const s = task.title.toLowerCase(), c = task.company;
+    if (s.includes('cash-flow call')) return `Walk Ida through Café Solsikke’s 13-week cash forecast and agree how to bridge weeks 44–49 — collecting overdue invoices, spreading the Hamburg bill or a credit line.`;
+    if (s.includes('quarterly review')) return `Go through ${c}’s Q3 with the owner: results against budget, project margins, and what the new SKAT reporting rule means for them.`;
+    if (s.includes('sign off')) return `Review and sign ${c}’s annual report. EVA has drafted it and reconciled every balance — your professional sign-off is what’s left.`;
+    if (s.includes('concentration')) return `${c} earns 41% of its revenue from one customer. Prepare advice on the risk and what to do before that contract renews next quarter.`;
+    if (s.includes('slower-paying')) return `${c}’s customers pay 18 days slower than last quarter. Talk through payment terms and reminders with the owner.`;
+    if (s.includes('budget 2027')) return `Build ${c}’s 2027 budget together with the owner, starting from EVA’s draft and their goals.`;
+    if (s.includes('growth plan')) return `${c} is growing 22% a year. Plan the next 12 months with the owner — hiring, cash and pricing.`;
+    if (s.includes('hiring plan')) return `${c} wants to hire two people. Work out what it means for payroll, cash and the budget.`;
     if (s.includes('payroll')) return `Run this month’s payroll for ${c}: collect hours and changes, calculate salaries and deductions, and post the salary journals.`;
     if (s.includes('vat return')) return `Prepare and file ${c}’s VAT return: reconcile the VAT accounts, check any unusual lines, and submit it to SKAT before the deadline.`;
     if (s.includes('vat')) return `Reconcile ${c}’s VAT accounts against the calculation and resolve any differences before the return is filed.`;
@@ -681,7 +715,8 @@ export function TaskModal({ task, onClose, onHandToEva, onDone, onReopen }: { ta
     const st = TSTATUS[task.status];
     const prio = TPRIO[task.priority];
     const eva = isEva(task.status);
-    const stepsTitle = task.status === 'eva-running' ? 'What EVA is doing' : task.status === 'eva-scheduled' ? 'What EVA will do' : task.status === 'eva-done' ? 'What EVA did' : 'How EVA usually does it';
+    const people = !eva && isPeopleWork(task.title); // a person's task — EVA prepared it, it isn't handed over
+    const stepsTitle = people ? 'What EVA prepared for you' : task.status === 'eva-running' ? 'What EVA is doing' : task.status === 'eva-scheduled' ? 'What EVA will do' : task.status === 'eva-done' ? 'What EVA did' : 'How EVA usually does it';
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden" style={{ maxWidth: 540, boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
@@ -717,9 +752,9 @@ export function TaskModal({ task, onClose, onHandToEva, onDone, onReopen }: { ta
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t(stepsTitle)}</p>
                         <ol className="flex flex-col gap-1.5">
-                            {evaStepsFor(task.title).map((s, i) => (
+                            {(people ? evaPrepFor(task.title) : evaStepsFor(task.title)).map((s, i) => (
                                 <li key={i} className="flex items-start gap-2 text-sm" style={{ color: COLORS.text }}>
-                                    {task.status === 'eva-done'
+                                    {task.status === 'eva-done' || people
                                         ? <span className="flex items-center justify-center shrink-0 rounded-full mt-0.5" style={{ width: 16, height: 16, background: '#eef7ef', color: '#15803d', fontSize: 10 }}><Icon name="tick" /></span>
                                         : <span className="flex items-center justify-center shrink-0 rounded-full mt-0.5 text-[10px] font-semibold" style={{ width: 16, height: 16, background: '#f1f1f3', color: '#52525b' }}>{i + 1}</span>}
                                     {t(s)}
@@ -730,14 +765,14 @@ export function TaskModal({ task, onClose, onHandToEva, onDone, onReopen }: { ta
                 </div>
 
                 <div className="flex items-center justify-between gap-2 px-5 py-4" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>
-                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{eva ? t('Full trace · you can always see what EVA did') : t('EVA can take this on and hand you a draft to approve.')}</span>
+                    <span className="text-xs" style={{ color: COLORS.textMuted }}>{eva ? t('Full trace · you can always see what EVA did') : people ? t('EVA prepared this — the conversation and the call are yours.') : t('EVA can take this on and hand you a draft to approve.')}</span>
                     <div className="flex gap-2 shrink-0">
                         {task.status === 'done' ? <>
                             {onReopen && <Button onClick={onReopen}>{t('Reopen')}</Button>}
                             <Button onClick={onClose}>{t('Close')}</Button>
                         </> : <>
                         {!eva && onDone && <Button onClick={onDone}><Icon name="circle-tick" /> {t('Mark done')}</Button>}
-                        {!eva && onHandToEva ? <Button appearance="primary" onClick={onHandToEva}>{t('Hand to EVA')}</Button> : <Button onClick={onClose}>{t('Close')}</Button>}
+                        {!eva && !people && onHandToEva ? <Button appearance="primary" onClick={onHandToEva}>{t('Hand to EVA')}</Button> : <Button onClick={onClose}>{t('Close')}</Button>}
                         </>}
                     </div>
                 </div>
