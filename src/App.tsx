@@ -30,7 +30,8 @@ function decisionEntry(d: DecisionItem, live: boolean): LogEntry {
 const HOME_BG = `linear-gradient(180deg, #edf3fb 0px, #f4f0fb 260px, ${CANVAS} 380px)`;
 
 // The "done" confirmation: slides up, draws a check, a small burst — then gets out of the way.
-function DoneToast({ title, t, onUndo, onClose }: { title: string; t: (s: string) => string; onUndo: () => void; onClose: () => void }) {
+type Celebrate = { key: number; verb: string; title: string; sub: string; undo?: () => void };
+function DoneToast({ verb = 'Done', title, sub = 'Nice work — logged in Activity.', t, onUndo, onClose }: { verb?: string; title: string; sub?: string; t: (s: string) => string; onUndo?: () => void; onClose: () => void }) {
     const [leaving, setLeaving] = useState(false);
     useEffect(() => {
         const a = setTimeout(() => setLeaving(true), 3800), b = setTimeout(onClose, 4100);
@@ -50,11 +51,11 @@ function DoneToast({ title, t, onUndo, onClose }: { title: string; t: (s: string
                 </svg>
             </span>
             <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{t('Done')} · {title}</p>
-                <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('Nice work — logged in Activity.')}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{t(verb)} · {title}</p>
+                <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{t(sub)}</p>
             </div>
-            <button onClick={onUndo} className="text-sm font-medium rounded-lg px-2.5 py-1.5" style={{ color: '#4456c7' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f6')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>{t('Undo')}</button>
+            {onUndo && <button onClick={onUndo} className="text-sm font-medium rounded-lg px-2.5 py-1.5" style={{ color: '#4456c7' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f6')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>{t('Undo')}</button>}
             <button onClick={() => { setLeaving(true); setTimeout(onClose, 260); }} aria-label={t('Close')} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
         </div>
     );
@@ -68,7 +69,7 @@ import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
-import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab, type TStatus } from './views/TaskManagementView';
+import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
 import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
@@ -160,6 +161,17 @@ export default function App() {
     const resolveDecision = (id: string, taken: 'confirm' | 'alt', info: ResolveInfo = {}) => {
         const { backToYou = false, reason, fixed, overridden } = info;
         const d = dayDecisions.find((x) => x.id === id);
+        if (d && !d.done) {
+            // the same confirmation as a task done — with Undo that puts the draft back in your queue
+            const before = activity.find((e) => e.decisionId === id);
+            const undo = backToYou ? undefined : () => {
+                setDayDecisions((all) => all.map((x) => (x.id === id ? { ...x, done: false, taken: undefined } : x)));
+                if (before) setActivity((prev) => prev.map((e) => (e.decisionId === id ? before : e)));
+            };
+            setDoneToast({ key: Date.now(), title: d.label, undo,
+                verb: fixed ? 'Fixed' : reason ? 'Dismissed' : backToYou ? 'Taken back' : taken === 'alt' ? 'Done' : 'Approved',
+                sub: fixed ? 'EVA corrected the posting and logged it.' : reason ? 'EVA will remember why.' : backToYou ? 'It’s back on your To do.' : taken === 'alt' ? `You chose “${d.alt}” — logged in Activity.` : 'EVA takes it from here — logged in Activity.' });
+        }
         setDayDecisions((all) => all.map((x) => (x.id === id ? { ...x, done: true, taken } : x)));
         if (!d) return;
         const choice = taken === 'alt' ? d.alt : d.confirm;
@@ -232,7 +244,7 @@ export default function App() {
     // Board moves (mark done, reopen, hand to EVA) are written to the log as they happen —
     // whichever surface made them (Work, the overview's My tasks, the task modal).
     // Marked done (overview, Work, a modal): a confirmation with a small celebration, and Undo.
-    const [doneToast, setDoneToast] = useState<{ id: string; title: string; prev: TStatus; key: number } | null>(null);
+    const [doneToast, setDoneToast] = useState<Celebrate | null>(null);
     const prevTasks = useRef(tasks);
     useEffect(() => {
         const before = new Map(prevTasks.current.map((x) => [x.id, x]));
@@ -243,7 +255,7 @@ export default function App() {
             if (!was || was.status === x.status || x.accountant !== 'Tobias Holm Jensen') return;
             const base = { title: x.title, client: x.company, actor: 'you' as const, taskId: x.id };
             const id = `w-${x.id}-${Date.now()}`;
-            if (x.status === 'done') setDoneToast({ id: x.id, title: x.title, prev: was.status, key: Date.now() });
+            if (x.status === 'done') { const prev = was.status; setDoneToast({ key: Date.now(), verb: 'Done', title: x.title, sub: 'Nice work — logged in Activity.', undo: () => setTasks((all) => all.map((y) => (y.id === x.id ? { ...y, status: prev } : y))) }); }
             if (x.status === 'done') logged.push(workEntry({ ...base, id, event: 'done', desc: `You marked “${x.title}” done`, resolution: 'Done by you', reasoning: [`Moved to Done on the Tasks board (was due ${x.dueLabel.toLowerCase()}).`] }));
             else if (was.status === 'done') logged.push(workEntry({ ...base, id, event: 'reopened', desc: `You reopened “${x.title}”`, resolution: 'Reopened', reasoning: ['Moved back to To do on the Tasks board.'] }));
             else if (x.status === 'eva-running') logged.push(workEntry({ ...base, id, event: 'handed', desc: `You handed “${x.title}” to EVA`, resolution: 'Handed to EVA', reasoning: ['EVA drafts it and brings it back to you for review.'] }));
@@ -261,6 +273,7 @@ export default function App() {
             const was = before.get(x.id);
             if (!was || was.status !== 'needs' || x.status === 'needs') return;
             const usedEva = !!was.suggestion && !x.suggestion;
+            if (x.messages.length > was.messages.length) setDoneToast({ key: Date.now(), verb: 'Sent', title: `Reply to ${x.contact.split(' ')[0]}`, sub: usedEva && was.suggestion ? `EVA also: ${was.suggestion.result}` : 'Logged in Activity.' });
             logged.push(workEntry({ id: `w-${x.id}-${Date.now()}`, title: `Reply to ${x.contact.split(' ')[0]}`, client: x.client, actor: 'you', origin: 'inbox', skill: 'inbox', threadId: x.id, event: 'done',
                 desc: x.status === 'done' && !usedEva && x.messages.length === was.messages.length ? `You closed “${x.subject}”` : `You replied to ${x.contact} — ${x.subject}`,
                 resolution: usedEva ? 'Approved and sent by you' : 'Sent by you',
@@ -891,8 +904,8 @@ export default function App() {
                     />
                 )}
                 {view === 'customers' && <CustomersView />}
-                {doneToast && <DoneToast key={doneToast.key} title={t(doneToast.title)} t={t} onClose={() => setDoneToast(null)}
-                    onUndo={() => { const d = doneToast; setDoneToast(null); setTasks((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: d.prev } : x))); }} />}
+                {doneToast && <DoneToast key={doneToast.key} verb={doneToast.verb} title={t(doneToast.title)} sub={doneToast.sub} t={t} onClose={() => setDoneToast(null)}
+                    onUndo={doneToast.undo ? () => { const u = doneToast.undo!; setDoneToast(null); u(); } : undefined} />}
                 {(() => {
                     const tk = logTask ? tasks.find((x) => x.id === logTask) : undefined;
                     const d = logDecision ? dayDecisions.find((x) => x.id === logDecision) : undefined;

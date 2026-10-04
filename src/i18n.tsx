@@ -1938,4 +1938,12 @@ const DA: Record<string, string> = {
     'click to see them': 'klik for at se dem',
     'Show these clients': 'Vis disse kunder',
     'Nice work — logged in Activity.': 'Godt klaret — logget i Aktivitet.',
+    'Approved': 'Godkendt',
+    'Fixed': 'Rettet',
+    'Taken back': 'Taget tilbage',
+    'EVA corrected the posting and logged it.': 'EVA har rettet posteringen og logget det.',
+    'EVA will remember why.': 'EVA husker hvorfor.',
+    'It’s back on your To do.': 'Den er tilbage på din To do.',
+    'EVA takes it from here — logged in Activity.': 'EVA tager den herfra — logget i Aktivitet.',
+    'Logged in Activity.': 'Logget i Aktivitet.',
 };

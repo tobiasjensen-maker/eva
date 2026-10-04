@@ -275,4 +275,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - **Marking a task done** (overview, Work board, any task modal) shows a confirmation at the bottom: a check
   that draws itself with a small burst of EVA-coloured dots, "Done · <task> — logged in Activity", and Undo
   (restores the previous status). The card arriving in Done gets a soft green pop. Practice metric cards land too.
+  The same confirmation follows reviewing EVA's work: *Approved*, *Fixed*, *Dismissed* ("EVA will remember why"),
+  *Taken back* — with Undo that puts the draft back in the queue — and *Sent* for client replies (no Undo).
 
