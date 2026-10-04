@@ -2,13 +2,37 @@
 
 > **Live:** https://e-conomic.design/tobiasjensen-maker/agentic-platform/
 > **Hosted at:** e-conomic/eco-prototypes · prototypes/tobiasjensen-maker/agentic-platform/
-> **Published:** 2026-10-02
+> **Published:** 2026-10-04
 
 An interactive prototype of **EVA**, e-conomic's agentic accounting Virtual Assistant.
 It shows how an accountant/bookkeeper works *with* an AI agent that runs the recurring
 bookkeeping jobs, surfaces what needs a human, and can be extended with third-party systems.
 
 **Live:** https://e-conomic.design/tobiasjensen-maker/agentic-platform/
+
+## The vision (visiontype)
+
+*A visiontype is a clickable vision, not a spec: it shows where e-conomic could take the
+accounting office with agents, so we can react to something concrete.*
+
+**The accountant's day starts in one place — their portfolio — while EVA, a team of agents,
+runs the recurring work across every client:** bookkeeping, bank reconciliation, controlling,
+VAT, month-end close and payroll. People do what only people should: review EVA's drafts, make
+the judgement calls and advise their clients.
+
+What it shows:
+- **One review queue, ranked by EVA** — corrections, payroll exceptions and client replies, each
+  with EVA's suggestion and the facts; a fix is applied in one click and logged.
+- **Work as a board** — To do · In progress · Done — connected to a full activity log with trace.
+- **Operations end to end** — month-end per client, step by step; the books show what EVA booked
+  and why; payroll is run by agents.
+- **Practical advisory** — a 13-week cash forecast and a budget with a client view, shared to the
+  client from the Inbox.
+- **Trust by design** — rules before the LLM, company memory, learning from dismissed flags,
+  everything logged and reviewable.
+
+Mock data only. Builds on the learnings from Komma (controlling with "Fix it", liquidity,
+budgeting, company context, adoption).
 
 ## What it is
 

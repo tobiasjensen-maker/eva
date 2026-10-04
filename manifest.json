@@ -9,7 +9,8 @@
     "2026-09-17",
     "2026-09-25",
     "2026-09-28",
-    "2026-10-02"
+    "2026-10-02",
+    "2026-10-04"
   ],
   "components": {
     "kit": [
@@ -44,5 +45,11 @@
       "TasksIcon",
       "TasksWidget"
     ]
-  }
+  },
+  "description": "Visiontype: the accountant's day starts in their portfolio while EVA — a team of agents — runs the recurring work across every client (bookkeeping, reconciliation, controlling, VAT, month-end and payroll). People review EVA's drafts in one ranked queue, make the judgement calls and advise clients with a cash forecast and budget they can share. Everything is logged and traceable. Mock data only.",
+  "tags": [
+    "EVA",
+    "agents",
+    "visiontype"
+  ]
 }
