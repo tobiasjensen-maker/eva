@@ -126,7 +126,7 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
             <PageHeader title={t('Inbox')} showScope={false} maxWidth={1240}
                 right={<Button onClick={() => setSettings(true)}><Icon name="settings" /> {t('Client settings')}</Button>} />
             <div className="flex-1 min-h-0 mx-auto w-full px-8 pb-6" style={{ maxWidth: 1240 }}>
-                <div className="h-full flex rounded-xl bg-white overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="h-full flex rounded-xl bg-white overflow-hidden land" style={{ ['--d' as string]: '80ms', border: `1px solid ${COLORS.cardBorder}` }}>
                     {/* thread list */}
                     <div className="relative flex flex-col shrink-0" style={{ width: listW, borderRight: `1px solid ${COLORS.cardBorder}` }}>
                         <div onMouseDown={startResize} onDoubleClick={() => setListW(340)} title={t('Drag to resize')} className="absolute top-0 bottom-0 z-10 group" style={{ right: -4, width: 8, cursor: 'col-resize' }}>

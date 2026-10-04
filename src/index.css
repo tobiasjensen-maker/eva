@@ -85,3 +85,25 @@ select:focus-visible {
 .va-chart .recharts-cartesian-grid-horizontal line {
     stroke: #ececed;
 }
+
+/* Land softly: elements fade in and settle a few pixels into place on load, staggered via --d. */
+@keyframes land {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+.land {
+    animation: land 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--d, 0ms);
+}
+/* A container whose direct children land one after another (lists of cards, page sections). */
+.land-kids > * { animation: land 640ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 420ms; }
+.land-kids > *:nth-child(1) { animation-delay: 40ms; }
+.land-kids > *:nth-child(2) { animation-delay: 100ms; }
+.land-kids > *:nth-child(3) { animation-delay: 160ms; }
+.land-kids > *:nth-child(4) { animation-delay: 220ms; }
+.land-kids > *:nth-child(5) { animation-delay: 280ms; }
+.land-kids > *:nth-child(6) { animation-delay: 340ms; }
+.land-kids > *:nth-child(7) { animation-delay: 380ms; }
+@media (prefers-reduced-motion: reduce) {
+    .land, .land-kids > * { animation: none; }
+}

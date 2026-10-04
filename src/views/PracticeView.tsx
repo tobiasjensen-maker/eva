@@ -61,7 +61,7 @@ function Capacity({ team, setTeam }: { team: Member[]; setTeam: (m: Member[]) =>
         setApplied(true);
     }
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 land-kids">
             {!applied ? (
                 <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
                     <span className="mt-0.5"><Orb size={20} /></span>
@@ -120,7 +120,7 @@ function Profitability() {
     const rows = useMemo(() => [...CLIENTS].sort((a, b) => (worstFirst ? rateOf(a) - rateOf(b) : rateOf(b) - rateOf(a))), [worstFirst]);
     const below = CLIENTS.filter((c) => rateOf(c) < TARGET_RATE);
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 land-kids">
             <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: '#7c3aed0a', border: '1px solid #7c3aed26' }}>
                 <span className="mt-0.5"><Orb size={20} /></span>
                 <p className="text-sm flex-1" style={{ color: COLORS.text }}>
@@ -172,7 +172,7 @@ function Growth() {
     const [done, setDone] = useState<Set<string>>(new Set());
     const total = OPPORTUNITIES.reduce((s, o) => s + o.monthly, 0);
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 land-kids">
             <div>
                 <h2 className="text-lg font-semibold" style={{ color: COLORS.text }}>{t('Services your clients are ready for')}</h2>
                 <p className="text-sm mt-0.5 mb-3" style={{ color: COLORS.textMuted }}>{t('EVA matched every client’s books against what you offer — about {n} a month in new advisory and service revenue.').replace('{n}', kr(total))}</p>

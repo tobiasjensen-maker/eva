@@ -329,7 +329,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     <div className={bare ? 'h-full' : 'flex flex-col gap-6'}>
                         {/* What's planned and scheduled for EVA — specific tasks and the routines' next runs.
                             Hidden while a routine is open: its detail takes over the page. */}
-                        {!bare && <SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
+                        {!bare && <div className="land"><SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
                             {[
                                 ...evaScheduled.map((x) => ({ key: x.id, when: x.evaWhen ?? '', title: t(x.title), sub: x.company, via: t('Scheduled task'), task: x as Task | undefined })),
                                 ...PLANNED_RUNS.map((r) => ({ key: r.title, when: r.when, title: t(r.title), sub: t(r.scope), via: t('Routine'), task: undefined as Task | undefined })),
@@ -344,7 +344,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                     {r.task && <span className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See plan')}</span>}
                                 </div>
                             ))}
-                        </SectionCard>}
+                        </SectionCard></div>}
                         {routines}
                     </div>
                 )}
@@ -352,10 +352,10 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
                 {/* overview KPIs */}
                 <div className="grid grid-cols-4 gap-3 mb-6">
-                    {kpis.map((k) => {
+                    {kpis.map((k, i) => {
                         const on = k.accent && Number(k.value) > 0;
                         return (
-                            <div key={k.label} className="rounded-xl p-4" style={{ background: on ? `${k.accent}0d` : '#fff', border: `1px solid ${on ? `${k.accent}55` : COLORS.cardBorder}` }}>
+                            <div key={k.label} className="rounded-xl p-4 land" style={{ ['--d' as string]: `${60 + i * 50}ms`, background: on ? `${k.accent}0d` : '#fff', border: `1px solid ${on ? `${k.accent}55` : COLORS.cardBorder}` }}>
                                 <p className="text-xs" style={{ color: COLORS.textMuted }}>{k.label}</p>
                                 <p className="text-2xl font-semibold leading-tight mt-1" style={{ color: k.color }}>{k.value}</p>
                             </div>
@@ -364,10 +364,10 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </div>
 
                 {/* operations first: this month's close across your clients, end to end */}
-                <div className="mb-4"><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>
+                <div className="mb-4 land" style={{ ['--d' as string]: '260ms' }}><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>
 
                 {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
-                <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
                     <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />
                     <div className="flex flex-wrap items-center gap-1.5">
                         {(['todo', 'overdue', 'inprogress', 'done'] as WorkStatus[]).map((k) => {
@@ -387,7 +387,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </div>
 
                 {layout === 'board' ? (
-                    <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                    <div className="grid gap-4 items-start land" style={{ ['--d' as string]: '360ms', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
                         <BoardColumn s="todo" count={todo.length} dnd={dnd}>
                             {todo.map((it, i) => (
                                 <Fragment key={it.id}>

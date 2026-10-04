@@ -267,4 +267,9 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - Books status donut: on load each slice draws in with a soft ease-out, staggered, while the ring fades
   and turns a few degrees into place (the total is static; skipped for reduced motion / hidden tabs), hover a slice or legend item to focus it (centre shows count and
   share), click to open the month-end report filtered to that status (filter chips in the report).
+- **Land softly** (`index.css`): `.land` fades an element in and settles it ~10px into place (640ms,
+  ease-out, delay via `--d`); `.land-kids` does the same for a container's direct children, staggered.
+  Used on the overview (greeting → question → chips → cards → client list), Work (numbers, month-end,
+  toolbar, board), Inbox, page headers, Activity, Routines, Connectors, Practice and Insights. Off for
+  reduced motion. Keep modals out of `.land-kids` containers (they'd animate in late when opened).
 

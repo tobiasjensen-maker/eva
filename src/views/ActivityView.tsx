@@ -1065,7 +1065,7 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
         <div className={embedded ? '' : 'h-full overflow-y-auto'}>
             {!embedded && <PageHeader title={t('Activity')} onBack={onBack} backLabel={t('Routines')} showScope={false}
                 right={<PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />} />}
-            <div className={embedded ? 'pb-10' : 'px-8 pt-5 pb-10 mx-auto'} style={embedded ? undefined : { maxWidth: 1240 }}>
+            <div className={embedded ? 'pb-10 land-kids' : 'px-8 pt-5 pb-10 mx-auto land-kids'} style={embedded ? undefined : { maxWidth: 1240 }}>
                 {/* filter bar */}
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     {embedded && <PeriodPicker value={range} onChange={setRange} options={DATE_RANGES.map((r) => ({ ...r, label: t(r.label) }))} />}

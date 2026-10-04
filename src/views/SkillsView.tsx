@@ -572,7 +572,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     if (page === 'routines') {
         return (
             <>
-                    <div className="flex flex-col gap-6 pb-10">
+                    <div className="flex flex-col gap-6 pb-10 land-kids">
                         {/* Suggested routines, drawn from what EVA has been doing by hand */}
                         {suggestions.length > 0 && (
                             <SectionCard title={t('Suggested for you')} count={suggestions.length} sub={t('Based on what EVA has been doing by hand')}>
@@ -611,7 +611,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     return (
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Connectors')} showScope={false} right={<Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>} />
-            <div className="mx-auto px-8 pt-5 pb-7" style={{ maxWidth: 1240 }}>
+            <div className="mx-auto px-8 pt-5 pb-7 land-kids" style={{ maxWidth: 1240 }}>
                 <ConnectorsList
                     connStatus={connStatus}
                     onAdd={() => setSheet({ start: 'grid' })}

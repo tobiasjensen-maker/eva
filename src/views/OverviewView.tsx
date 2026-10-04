@@ -79,8 +79,8 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
             {/* no background of its own — the gradient is the screen's (see HOME_BG in App) */}
             <div className="px-8 pt-10 pb-9">
                 <div className="mx-auto text-center" style={{ maxWidth: 840 }}>
-                    <h1 className="text-3xl font-semibold" style={{ color: COLORS.text }}>{t('Good morning, {name}').replace('{name}', 'Tobias')}</h1>
-                    <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px]" style={{ maxWidth: 760, background: 'linear-gradient(90deg,#7c3aed,#ed9b2c)' /* EVA purple → e-conomic orange */ }}>
+                    <h1 className="text-3xl font-semibold land" style={{ color: COLORS.text }}>{t('Good morning, {name}').replace('{name}', 'Tobias')}</h1>
+                    <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px] land" style={{ ['--d' as string]: '70ms', maxWidth: 760, background: 'linear-gradient(90deg,#7c3aed,#ed9b2c)' /* EVA purple → e-conomic orange */ }}>
                         <div className="flex items-center gap-3 rounded-full bg-white pl-4 pr-2 py-2">
                             <Orb size={20} />
                             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Tell me where you’d like to start, or ask a question about your clients.')} className="flex-1 min-w-0 bg-transparent outline-none text-sm py-1" style={{ color: COLORS.text }} />
@@ -90,7 +90,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                             </button>
                         </div>
                     </form>
-                    <div className="flex flex-wrap justify-center gap-2 mt-3.5">
+                    <div className="flex flex-wrap justify-center gap-2 mt-3.5 land" style={{ ['--d' as string]: '140ms' }}>
                         {chips.map((c) => (
                             <button key={c} onClick={() => ask(c)} className="rounded-full px-3 py-1 text-[13px] whitespace-nowrap" style={{ background: '#fff', border: '1px solid #c9d6f5', color: '#2f55c7' }}
                                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f5f8ff')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>{c}</button>
@@ -107,7 +107,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                     <BooksWidget t={t} flags={decisions.filter((d) => !d.done && d.correction && d.accountant === ME).length} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />
                 </div>
 
-                <ClientList onSelect={setSel} />
+                <div className="land" style={{ ['--d' as string]: '440ms' }}><ClientList onSelect={setSel} /></div>
             </div>
 
             {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
@@ -115,9 +115,9 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     );
 }
 
-function Widget({ title, right, children, footer }: { title: string; right?: ReactNode; children: ReactNode; footer?: ReactNode }) {
+function Widget({ title, right, children, footer, delay = 0 }: { title: string; right?: ReactNode; children: ReactNode; footer?: ReactNode; delay?: number }) {
     return (
-        <Card className="flex flex-col overflow-hidden">
+        <Card className="flex flex-col overflow-hidden land" style={{ ['--d' as string]: `${delay}ms` }}>
             <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
                 <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{title}</p>
                 {right}
@@ -139,7 +139,7 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
     const scheduled = mine.filter((x) => x.status === 'eva-scheduled').length;
     return (
         <>
-        <Widget title={t('My tasks')} right={<CountBadge n={plate.length} />}
+        <Widget delay={220} title={t('My tasks')} right={<CountBadge n={plate.length} />}
             footer={<div className="flex items-center justify-between gap-2">
                 <span className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}><Orb size={12} /> {t('EVA: {r} in progress · {s} scheduled').replace('{r}', String(running)).replace('{s}', String(scheduled))}</span>
                 <button onClick={() => onGo('activity')} className="text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>
@@ -180,7 +180,7 @@ function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo }
     const [review, setReview] = useState<DecisionItem | null>(null);
     return (
         <>
-            <Widget title={t('Ready for your review')} right={<><span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span><CountBadge n={open.length + replies.length} /></>}
+            <Widget delay={290} title={t('Ready for your review')} right={<><span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span><CountBadge n={open.length + replies.length} /></>}
                 footer={<button onClick={() => onGo('activity')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>}>
                 {open.length + replies.length === 0 ? (
                     <div className="px-4 py-6 flex items-center gap-2.5">
@@ -218,7 +218,7 @@ function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenTh
     let acc = 0;
     return (
         <>
-        <Widget title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
+        <Widget delay={360} title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
             footer={<button onClick={() => setReport('all')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Month-end report')} →</button>}>
             <div className="flex flex-col items-center px-4 pb-4 pt-2">
                 <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ opacity: shown ? 1 : 0, transition: reduce ? undefined : 'opacity 500ms ease' }} role="img" aria-label={BOOKS_STATUS.map((b) => `${t(b.label)} ${b.count}`).join(', ')} onMouseLeave={() => setHover(null)}>
