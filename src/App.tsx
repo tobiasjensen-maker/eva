@@ -34,7 +34,7 @@ type Celebrate = { key: number; verb: string; title: string; sub: string; undo?:
 function DoneToast({ verb = 'Done', title, sub = 'Nice work — logged in Activity.', t, onUndo, onClose }: { verb?: string; title: string; sub?: string; t: (s: string) => string; onUndo?: () => void; onClose: () => void }) {
     const [leaving, setLeaving] = useState(false);
     useEffect(() => {
-        const a = setTimeout(() => setLeaving(true), 3800), b = setTimeout(onClose, 4200);
+        const a = setTimeout(() => setLeaving(true), 3800), b = setTimeout(onClose, 4240);
         return () => { clearTimeout(a); clearTimeout(b); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -56,7 +56,7 @@ function DoneToast({ verb = 'Done', title, sub = 'Nice work — logged in Activi
             </div>
             {onUndo && <button onClick={onUndo} className="text-sm font-medium rounded-lg px-2.5 py-1.5" style={{ color: '#4456c7' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f6')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>{t('Undo')}</button>}
-            <button onClick={() => { setLeaving(true); setTimeout(onClose, 380); }} aria-label={t('Close')} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
+            <button onClick={() => { setLeaving(true); setTimeout(onClose, 420); }} aria-label={t('Close')} className="rounded-md p-1" style={{ color: COLORS.textMuted }}><Icon name="close" /></button>
         </div>
     );
 }

@@ -110,13 +110,13 @@ select:focus-visible {
 
 /* Task done: a confirmation that slides up, a check that draws itself, and a small burst. */
 @keyframes done-in { from { opacity: 0; transform: translate(-50%, 18px) scale(0.97); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
-@keyframes done-out { to { opacity: 0; transform: translate(-50%, 140%); } }
+@keyframes done-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 140%); } }
 @keyframes check-ring { from { stroke-dashoffset: 76; } to { stroke-dashoffset: 0; } }
 @keyframes check-tick { from { stroke-dashoffset: 18; } to { stroke-dashoffset: 0; } }
 @keyframes burst { 0% { opacity: 0; transform: translate(0, 0) scale(0.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--bx), var(--by)) scale(1); } }
 @keyframes card-pop { 0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.35); } 45% { transform: scale(1.015); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0.12); } 100% { transform: none; box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); } }
-.done-toast { animation: done-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-.done-toast.leaving { animation: done-out 380ms cubic-bezier(0.55, 0, 1, 0.45) forwards; } /* flies down out of view */
+.done-toast { transform: translateX(-50%); animation: done-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; } /* centred; animations only move it vertically */
+.done-toast.leaving { animation: done-out 420ms cubic-bezier(0.4, 0, 1, 1) forwards; } /* straight down, fading as it goes */
 .done-ring { stroke-dasharray: 76; animation: check-ring 520ms cubic-bezier(0.65, 0, 0.35, 1) 120ms both; }
 .done-tick { stroke-dasharray: 18; animation: check-tick 320ms cubic-bezier(0.65, 0, 0.35, 1) 520ms both; }
 .done-dot { animation: burst 700ms cubic-bezier(0.22, 1, 0.36, 1) 560ms both; }
