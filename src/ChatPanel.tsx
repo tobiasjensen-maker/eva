@@ -120,8 +120,9 @@ const PANEL_HISTORY: Past[] = [
 ];
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false, storageKey,
 }: {
+    storageKey?: string; // keeps this page's conversation across a refresh (session storage)
     mobile?: boolean; // phones: a floating EVA button, and the chat opens full screen
     subtitle: string;
     intro: string;
@@ -141,9 +142,20 @@ export function ChatPanel({
     onPendingConsumed: () => void;
 }) {
     const { t } = useLang();
-    const [msgs, setMsgs] = useState<Msg[]>(() => seed?.length
-        ? seed.map((x) => ({ id: nid(), role: x.role, text: x.text, instant: true }))
-        : [{ id: 0, role: 'assistant', text: welcome ? welcome : t(intro), instant: true }]);
+    const saveKey = storageKey ? `va-chat-msgs:${storageKey}` : null;
+    const [msgs, setMsgs] = useState<Msg[]>(() => {
+        if (seed?.length) return seed.map((x) => ({ id: nid(), role: x.role, text: x.text, instant: true }));
+        // After a refresh: the conversation as it was, shown in full (not re-typed).
+        try {
+            const saved: Turn[] | null = saveKey && !welcome ? JSON.parse(sessionStorage.getItem(saveKey) ?? 'null') : null;
+            if (saved?.length) return saved.map((x) => ({ id: nid(), role: x.role, text: x.text, instant: true }));
+        } catch { /* storage unavailable — start fresh */ }
+        return [{ id: 0, role: 'assistant', text: welcome ? welcome : t(intro), instant: true }];
+    });
+    useEffect(() => {
+        if (!saveKey) return;
+        try { sessionStorage.setItem(saveKey, JSON.stringify(msgs.filter((m) => !m.thinking && m.text).map((m) => ({ role: m.role, text: m.text })))); } catch { /* ignore */ }
+    }, [msgs, saveKey]);
     // Consume the welcome once so it doesn't reappear on later remounts.
     useEffect(() => {
         if (welcome) onWelcomeConsumed?.();

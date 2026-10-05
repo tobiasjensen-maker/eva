@@ -301,15 +301,22 @@ export default function App() {
         });
     }, [activity]); // eslint-disable-line react-hooks/exhaustive-deps
     const mobile = useIsMobile();
-    const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1' || (typeof window !== 'undefined' && window.innerWidth < 768));
+    // Open/closed survives a refresh; first visit on a phone starts closed.
+    const [chatCollapsed, setChatCollapsed] = useState(() => {
+        const saved = localStorage.getItem('va-chat-collapsed');
+        return saved !== null ? saved === '1' : typeof window !== 'undefined' && window.innerWidth < 768;
+    });
     useEffect(() => {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
     }, [chatCollapsed]);
     const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null);
     // On the Portfolio overview the question box is the way in — the EVA panel starts
     // closed and opens with the answer when you ask (as in Intuit Accountant Suite).
+    // (Only when you navigate there — a refresh keeps the panel as it was.)
+    const prevView = useRef(view);
     useEffect(() => {
-        if (view === 'home') setChatCollapsed(true);
+        if (prevView.current !== view && view === 'home') setChatCollapsed(true);
+        prevView.current = view;
     }, [view]);
     const [insightsPro, setInsightsPro] = useState(() => localStorage.getItem('va-insights-pro') === '1');
     useEffect(() => {
@@ -951,6 +958,7 @@ export default function App() {
             {chatPanel && (
                 <ChatPanel
                     key={panelKey}
+                    storageKey={view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '')}
                     mobile={mobile}
                     subtitle={chatPanel.subtitle}
                     intro={chatPanel.intro}

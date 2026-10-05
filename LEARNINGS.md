@@ -289,4 +289,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   care: some dictionary lines hold several pairs, and keys with an apostrophe need double quotes.
 - The overview greeting follows local time: Good morning (5–12) / afternoon (12–18) / evening.
 - Work's metric cards were removed — the board and its filter chips carry the counts.
+- EVA panel survives a refresh: open/closed is kept (localStorage) and each page's conversation is kept in
+  sessionStorage (`va-chat-msgs:<page>`), restored in full. The overview only closes the panel when you navigate there.
 
