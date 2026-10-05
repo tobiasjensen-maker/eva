@@ -295,4 +295,5 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   survive a refresh (sessionStorage `va-chat-msgs:eva`, localStorage `va-chat-collapsed`).
 - Asking from the overview's question box hands the conversation to the EVA panel and moves the focus to
   the panel's input, so you can keep typing.
+- The profile picture in the side menu has no notification dot.
 

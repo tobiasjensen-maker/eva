@@ -823,7 +823,6 @@ export default function App() {
                     >
                         <span className="relative shrink-0">
                             <ProfileAvatar size={28} />
-                            <span className="absolute rounded-full" style={{ top: -2, right: -2, width: 8, height: 8, background: '#ef4444', border: `2px solid ${SIDEBAR_BG}` }} />
                         </span>
                         {!collapsed && (
                             <>
