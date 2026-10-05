@@ -121,7 +121,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     );
 }
 
-function Widget({ title, right, children, footer, delay = 0 }: { title: string; right?: ReactNode; children: ReactNode; footer?: ReactNode; delay?: number }) {
+function Widget({ title, right, children, footer, delay = 0, scroll = true }: { title: string; right?: ReactNode; children: ReactNode; footer?: ReactNode; delay?: number; scroll?: boolean }) {
     return (
         <Card className="flex flex-col overflow-hidden land" style={{ ['--d' as string]: `${delay}ms` }}>
             <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
@@ -129,7 +129,8 @@ function Widget({ title, right, children, footer, delay = 0 }: { title: string; 
                 {right}
             </div>
             {/* capped: long content scrolls inside the box instead of stretching the row */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" style={{ maxHeight: 300 }}>{children}</div>
+            {/* lists are capped and scroll inside; a fixed visual (the donut) doesn't */}
+            <div className={scroll ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain' : 'flex-1'} style={scroll ? { maxHeight: 300 } : undefined}>{children}</div>
             {footer && <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }}>{footer}</div>}
         </Card>
     );
@@ -224,7 +225,7 @@ function BooksWidget({ t, flags, decisions, threads, onResolveDecision, onOpenTh
     let acc = 0;
     return (
         <>
-        <Widget delay={360} title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
+        <Widget delay={360} scroll={false} title={t('Books status')} right={<span className="text-xs" style={{ color: COLORS.textMuted }}>{t('This month')}</span>}
             footer={<button onClick={() => setReport('all')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Month-end report')} →</button>}>
             <div className="flex flex-col items-center px-4 pb-4 pt-2">
                 <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ opacity: shown ? 1 : 0, transition: reduce ? undefined : 'opacity 500ms ease' }} role="img" aria-label={BOOKS_STATUS.map((b) => `${t(b.label)} ${b.count}`).join(', ')} onMouseLeave={() => setHover(null)}>

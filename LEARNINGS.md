@@ -210,7 +210,7 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
 - **EVA prioritises the queue** (`src/priority.ts`): each item gets High/Medium/Low and a one-line
   reason (deadlines and money first). The overview list and Work's In progress are sorted by it
   (your own drag order in Work wins once you reorder).
-- Overview boxes cap their content at 300px and scroll inside.
+- Overview list boxes cap their content at 300px and scroll inside; the Books status card doesn't (`scroll={false}`).
 - EVA chat panel: a message types out once; after that (or if you collapse mid-answer) it shows in
   full — reopening the panel no longer re-types everything. Suggestion pills show only before your
   first question. "Show as table" / "Excel" appear only on data overviews (answers listing 2+ clients).
