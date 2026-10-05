@@ -288,7 +288,7 @@ export function ChatPanel({
             <div className="flex items-center gap-2 px-4 shrink-0" style={{ minHeight: 62, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <Orb size={22} />
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>EVA</span>
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>· {t(subtitle)}</span>
+                {subtitle && <span className="text-xs" style={{ color: COLORS.textMuted }}>· {t(subtitle)}</span>}
                 <div className="ml-auto flex items-center gap-0.5">
                     {/* conversation options: new chat, history */}
                     <div className="relative">

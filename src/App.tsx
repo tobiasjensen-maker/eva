@@ -310,14 +310,6 @@ export default function App() {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
     }, [chatCollapsed]);
     const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null);
-    // On the Portfolio overview the question box is the way in — the EVA panel starts
-    // closed and opens with the answer when you ask (as in Intuit Accountant Suite).
-    // (Only when you navigate there — a refresh keeps the panel as it was.)
-    const prevView = useRef(view);
-    useEffect(() => {
-        if (prevView.current !== view && view === 'home') setChatCollapsed(true);
-        prevView.current = view;
-    }, [view]);
     const [insightsPro, setInsightsPro] = useState(() => localStorage.getItem('va-insights-pro') === '1');
     useEffect(() => {
         localStorage.setItem('va-insights-pro', insightsPro ? '1' : '0');
@@ -540,7 +532,11 @@ export default function App() {
               }
             : null;
     // Remount the panel (fresh conversation) when the page, the open artifact, or the language changes.
-    const panelKey = view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '') + lang + panelSeed;
+    // One EVA across every screen: the same panel, the same conversation, one intro — it
+    // doesn't reset or rename itself per page. (It still knows which page you're on when it answers.)
+    const panelKey = 'eva-' + lang + panelSeed;
+    const EVA_INTRO = "I'm EVA. Ask me about your day, your clients, your work or your practice — I'll take it from there.";
+    const EVA_CHIPS = ['Walk me through my day', 'What’s waiting on me?', 'Which of my clients need attention?'];
 
     function applyScope(s: string) {
         setScope(s);
@@ -958,18 +954,18 @@ export default function App() {
             {chatPanel && (
                 <ChatPanel
                     key={panelKey}
-                    storageKey={view + (view === 'spaces' ? (activeSpace?.id ?? 'list') : '')}
+                    storageKey="eva"
                     mobile={mobile}
-                    subtitle={chatPanel.subtitle}
-                    intro={chatPanel.intro}
-                    chips={chatPanel.chips}
-                    respond={chatPanel.respond}
+                    subtitle=""
+                    intro={EVA_INTRO}
+                    chips={EVA_CHIPS}
+                    respond={(q) => (EVA_CHIPS.includes(q) ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }) : chatPanel.respond(q))}
                     evaConfig={evaConfigured() ? evaConfig({ agreementNumber: liveAgreement?.number, companyName: ecoCompany, page: view }) : null}
                     evaSrc={evaIslandSrc()}
                     collapsed={chatCollapsed}
                     onToggleCollapsed={() => setChatCollapsed((c) => !c)}
                     onExpand={(turns) => { setChatCarry(turns); setPanelCarry(null); setChatReturn(view); goView('chat'); }}
-                    seed={panelCarry && panelCarry.view === view ? panelCarry.turns : null}
+                    seed={panelCarry ? panelCarry.turns : null}
                     welcome={welcome && view === 'activity' ? t(WELCOME_MSG) : null}
                     onWelcomeConsumed={() => setWelcome(false)}
                     pendingAsk={pendingAsk}

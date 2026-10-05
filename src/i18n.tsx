@@ -2306,4 +2306,6 @@ const DA: Record<string, string> = {
     'Investigate discrepancies': 'Undersøg afvigelser',
     'Suggest corrections': 'Foreslå rettelser',
     'Present report': 'Præsentér rapport',
+    "I'm EVA. Ask me about your day, your clients, your work or your practice — I'll take it from there.": 'Jeg er EVA. Spørg mig om din dag, dine kunder, dit arbejde eller din praksis — så tager jeg den derfra.',
+    'What’s waiting on me?': 'Hvad venter på mig?',
 };
