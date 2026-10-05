@@ -119,7 +119,7 @@ export function BudgetModal({ company, owner, onClose, onShare }: { company: str
                             <ul style={{ marginBottom: 0 }} className="mt-1.5 flex flex-col gap-0.5">{b.goals.map((g) => <li key={g} className="text-sm" style={{ color: COLORS.text }}>• {t(g)}</li>)}</ul>
                         </div>
 
-                        <div className="grid gap-4" style={{ gridTemplateColumns: '240px minmax(0, 1fr)' }}>
+                        <div className="grid gap-4 m-stack" style={{ gridTemplateColumns: '240px minmax(0, 1fr)' }}>
                             {/* assumptions */}
                             <div className="flex flex-col gap-2.5">
                                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Assumptions')}</p>
@@ -179,7 +179,7 @@ export function BudgetModal({ company, owner, onClose, onShare }: { company: str
                         <div className="flex flex-col gap-4">
                             <div className="rounded-lg px-3 py-2 text-xs flex items-center gap-2" style={{ background: '#f1f1f3', color: '#52525b' }}><Icon name="document-preview" /> {t('Read-only preview — this is what {name} sees when you share it.').replace('{name}', name)}</div>
                             <p className="text-xl font-semibold" style={{ color: COLORS.text }}>{t('Your plan for 2027')}</p>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-3 gap-3 m-stack">
                                 {[
                                     { l: 'Sales', v: big(y27.revenue), s: `${pct(y27.revenue, b.y2026.revenue) >= 0 ? '+' : ''}${pct(y27.revenue, b.y2026.revenue)}% ${t('vs this year')}` },
                                     { l: 'Costs', v: big(y27.cogs + y27.salaries + y27.other), s: `${t('of which salaries')} ${big(y27.salaries)}` },

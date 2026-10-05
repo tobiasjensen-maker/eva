@@ -146,7 +146,7 @@ export function LiquidityModal({ company, owner, onClose, onDiscuss }: { company
 
                 <div className="px-5 py-4 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 min-h-0">
                     {/* the answer first */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2 m-stack">
                         {[
                             { l: 'Cash today', v: kr(base.start), sub: '', bad: false },
                             { l: 'Lowest point', v: kr(lo.v), sub: `${t('Week')} ${weekNo(lo.i)} · ${weekDate(lo.i)}${scenario ? ` · ${t('was')} ${kr(baseLo.v)}` : ''}`, bad: lo.v < 0 },
@@ -191,7 +191,7 @@ export function LiquidityModal({ company, owner, onClose, onDiscuss }: { company
                         </div>
                     </div>
 
-                    <div className="grid gap-4 items-start" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
+                    <div className="grid gap-4 items-start m-stack" style={{ gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
                         {/* what moves the cash */}
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('What moves the cash')}</p>

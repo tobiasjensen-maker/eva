@@ -55,11 +55,11 @@ export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, 
                     </p>
                 </div>
                 <div className="hidden md:block rounded-full overflow-hidden" style={{ width: 180, height: 6, background: '#f1f1f3' }}><div style={{ width: `${(closed / total) * 100}%`, height: 6, background: '#16a34a' }} /></div>
-                <span onClick={(e) => { e.stopPropagation(); setReport(true); }} className="text-xs font-medium shrink-0" style={{ color: '#4456c7' }}>{t('Month-end report')} →</span>
+                <span onClick={(e) => { e.stopPropagation(); setReport(true); }} className="text-xs font-medium shrink-0 m-hide" style={{ color: '#4456c7' }}>{t('Month-end report')} →</span>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
             {open && (
-                <div className="grid gap-px anim-in" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', background: COLORS.cardBorder, borderTop: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="grid gap-px anim-in m-grid2" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', background: COLORS.cardBorder, borderTop: `1px solid ${COLORS.cardBorder}` }}>
                     {steps.map((s, i) => (
                         <div key={s.title} className="bg-white p-3 flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
@@ -233,7 +233,7 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
 
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{t('Month-end steps')}</p>
-                            <div className="grid gap-px rounded-lg overflow-hidden" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', background: COLORS.cardBorder, border: `1px solid ${COLORS.cardBorder}` }}>
+                            <div className="grid gap-px rounded-lg overflow-hidden m-grid2" style={{ gridTemplateColumns: 'repeat(4, minmax(0,1fr))', background: COLORS.cardBorder, border: `1px solid ${COLORS.cardBorder}` }}>
                                 {stepsFor(selRow).map((s, i) => {
                                     const on = openStep === i;
                                     return (
@@ -293,20 +293,20 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
                         })}
                     </div>
                     <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                        <div className="grid px-3 py-2 text-xs font-medium" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', background: '#fafafa', color: COLORS.textMuted }}>
-                            <span>{t('Client')}</span><span className="text-right">{t('Bank lines')}</span><span className="text-right">{t('Matched')}</span><span className="text-right">{t('Missing docs')}</span><span className="text-right">{t('Status')}</span><span />
+                        <div className="grid px-3 py-2 text-xs font-medium me-grid" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', background: '#fafafa', color: COLORS.textMuted }}>
+                            <span>{t('Client')}</span><span className="text-right m-hide">{t('Bank lines')}</span><span className="text-right m-hide">{t('Matched')}</span><span className="text-right">{t('Missing docs')}</span><span className="text-right">{t('Status')}</span><span />
                         </div>
                         {rows.filter((r) => filter === 'all' || statusOf(r) === filter).map((r) => {
                             const needsYou = leftFor(r).filter((i) => !i.done && i.who === 'You').length;
                             return (
-                                <button key={r.c.id} onClick={() => { setSel(r.c.name); setOpenStep(null); }} className="w-full grid items-center px-3 py-2 text-sm text-left" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', borderTop: `1px solid ${COLORS.cardBorder}` }}
+                                <button key={r.c.id} onClick={() => { setSel(r.c.name); setOpenStep(null); }} className="w-full grid items-center px-3 py-2 text-sm text-left me-grid" style={{ gridTemplateColumns: '1fr 80px 80px 100px 90px 18px', borderTop: `1px solid ${COLORS.cardBorder}` }}
                                     onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                                     <span className="flex items-center gap-2 min-w-0">
                                         <ClientAvatar name={r.c.name} size={20} /><span className="truncate" style={{ color: COLORS.text }}>{r.c.name}</span>
                                         {needsYou > 0 && <span className="shrink-0 rounded-full px-1.5 text-[10px] font-semibold" style={{ background: '#f3f0fb', color: '#6d28d9' }}>{needsYou} {t('for you')}</span>}
                                     </span>
-                                    <span className="text-right" style={{ color: COLORS.textMuted }}>{r.lines}</span>
-                                    <span className="text-right" style={{ color: COLORS.textMuted }}>{r.matched}</span>
+                                    <span className="text-right m-hide" style={{ color: COLORS.textMuted }}>{r.lines}</span>
+                                    <span className="text-right m-hide" style={{ color: COLORS.textMuted }}>{r.matched}</span>
                                     <span className="text-right" style={{ color: r.missing ? '#b9842b' : COLORS.textMuted, fontWeight: r.missing ? 500 : 400 }}>{r.missing || '—'}</span>
                                     <span className="text-right"><span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: tone[statusOf(r)][0], color: tone[statusOf(r)][1] }}>{t(label[statusOf(r)])}</span></span>
                                     <span className="text-right" style={{ color: '#b0b0b8' }}><Icon name="chevron-right" /></span>

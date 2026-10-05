@@ -296,13 +296,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const done = doneAll.slice(0, DONE_SHOWN);
     const counts = { todo: items.filter((i) => i.ws === 'todo').length, overdue: items.filter((i) => i.overdue).length, inprogress: items.filter((i) => i.ws === 'inprogress').length, done: items.filter((i) => i.ws === 'done').length };
 
-    const evaAll = scoped.filter((x) => isEva(x.status));
-    const kpis = [
-        { label: t('To do'), value: String(counts.todo), color: COLORS.text, accent: '' },
-        { label: t('Overdue'), value: String(counts.overdue), color: '#dc2626', accent: '#dc2626' },
-        { label: t('In progress'), value: String(counts.inprogress), color: PURPLE, accent: PURPLE },
-        { label: t('Handled by EVA'), value: String(evaAll.length), color: '#16a34a', accent: '' },
-    ];
     const openItem = (it: WorkItem) => { if (it.kind === 'task') setTrace(it.task); else if (it.kind === 'review') setReview(it.d); else if (it.kind === 'reply') onOpenThread?.(it.th); else onOpenActivity(it.entry.id); };
 
     // The list is grouped by status — the board's columns, as sections.
@@ -350,19 +343,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 )}
                 {tab === 'tasks' && (<>
 
-                {/* overview KPIs */}
-                <div className="grid grid-cols-4 gap-3 mb-6">
-                    {kpis.map((k, i) => {
-                        const on = k.accent && Number(k.value) > 0;
-                        return (
-                            <div key={k.label} className="rounded-xl p-4 land" style={{ ['--d' as string]: `${60 + i * 50}ms`, background: on ? `${k.accent}0d` : '#fff', border: `1px solid ${on ? `${k.accent}55` : COLORS.cardBorder}` }}>
-                                <p className="text-xs" style={{ color: COLORS.textMuted }}>{k.label}</p>
-                                <p className="text-2xl font-semibold leading-tight mt-1" style={{ color: k.color }}>{k.value}</p>
-                            </div>
-                        );
-                    })}
-                </div>
-
                 {/* operations first: this month's close across your clients, end to end */}
                 <div className="mb-4 land" style={{ ['--d' as string]: '260ms' }}><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>
 
@@ -387,7 +367,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </div>
 
                 {layout === 'board' ? (
-                    <div className="grid gap-4 items-start land" style={{ ['--d' as string]: '360ms', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                    <div className="grid gap-4 items-start land board-grid" style={{ ['--d' as string]: '360ms', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
                         <BoardColumn s="todo" count={todo.length} dnd={dnd}>
                             {todo.map((it, i) => (
                                 <Fragment key={it.id}>
@@ -586,7 +566,7 @@ function NewTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (t
                             ))}
                         </div>
                     </div>
-                    <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr)' }}>
+                    <div className="grid gap-3 m-stack" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr)' }}>
                         <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: COLORS.textMuted }}>{t('Client')}
                             <select value={company} onChange={(e) => setCompany(e.target.value)} className="w-full mt-1.5 rounded-lg px-2.5 py-2 text-sm bg-white normal-case font-normal tracking-normal" style={inputStyle}>
                                 {MY_CLIENT_NAMES.map((c) => <option key={c}>{c}</option>)}

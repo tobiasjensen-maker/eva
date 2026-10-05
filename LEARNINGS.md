@@ -277,4 +277,16 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   (restores the previous status). The card arriving in Done gets a soft green pop. Practice metric cards land too.
   The same confirmation follows reviewing EVA's work: *Approved*, *Fixed*, *Dismissed* ("EVA will remember why"),
   *Taken back* — with Undo that puts the draft back in the queue — and *Sent* for client replies (no Undo).
+- **Phones** (`useIsMobile`, <768px): bottom tab bar instead of the sidebar; EVA is a floating button
+  and opens full screen; page gutters 16px; 4-up grids go 2-up; modals use the full width; Work's board
+  swipes one column at a time; Inbox shows the list *or* the conversation (back button); the ledger
+  swaps its account sidebar for a picker; month-end tables drop the bank/matched columns. CSS hooks in
+  `index.css` (`.m-stack`, `.m-grid2`, `.m-hide`, `.board-grid`, `.me-grid`).
+- **Danish is complete** for everything reachable in the demo. `translate()` checks the dictionary, then
+  `PATTERNS` — sentence frames for text built from data ("In 3 days", "EVA drafted “…” — ready for your
+  review", ledger "Invoice — …", dates, weekdays). In dev, untranslated strings shown in Danish mode are
+  collected in `window.__missingDA` — click through in Danish and read it to find gaps. Add entries with
+  care: some dictionary lines hold several pairs, and keys with an apostrophe need double quotes.
+- The overview greeting follows local time: Good morning (5–12) / afternoon (12–18) / evening.
+- Work's metric cards were removed — the board and its filter chips carry the counts.
 

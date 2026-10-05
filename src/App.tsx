@@ -16,6 +16,7 @@ import {
     CountBadge,
     COUNT_DOT,
     ScopeContext,
+    useIsMobile,
 } from './ui';
 
 // An EVA draft waiting for review, as it appears in the activity log.
@@ -41,7 +42,7 @@ function DoneToast({ verb = 'Done', title, sub = 'Nice work — logged in Activi
     const dots = [['#ed9b2c', -26, -20], ['#16a34a', 24, -24], ['#7c3aed', 30, 6], ['#ed9b2c', -30, 10], ['#16a34a', -6, -32], ['#7c3aed', 8, 28]] as const;
     return (
         <div role="status" aria-live="polite" className={`done-toast fixed z-[60] flex items-center gap-3 rounded-2xl bg-white pl-3 pr-2 py-2.5 ${leaving ? 'leaving' : ''}`}
-            style={{ left: '50%', bottom: 28, minWidth: 340, maxWidth: 520, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', border: '1px solid #e9e9ec' }}>
+            style={{ left: '50%', bottom: window.innerWidth < 768 ? 84 : 28, minWidth: Math.min(340, window.innerWidth - 24), maxWidth: 'min(520px, calc(100vw - 24px))', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', border: '1px solid #e9e9ec' }}>
             <span className="relative shrink-0" style={{ width: 32, height: 32 }}>
                 {dots.map(([c, x, y], i) => <span key={i} className="done-dot absolute rounded-full" style={{ left: 13, top: 13, width: 6, height: 6, background: c, ['--bx' as string]: `${x}px`, ['--by' as string]: `${y}px` }} />)}
                 <svg width="32" height="32" viewBox="0 0 28 28" aria-hidden>
@@ -299,7 +300,8 @@ export default function App() {
             if (d && !d.done) resolveDecision(d.id, e.resolution === 'Dismissed' || e.resolution === d.alt ? 'alt' : 'confirm', { reason: e.feedback });
         });
     }, [activity]); // eslint-disable-line react-hooks/exhaustive-deps
-    const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1');
+    const mobile = useIsMobile();
+    const [chatCollapsed, setChatCollapsed] = useState(() => localStorage.getItem('va-chat-collapsed') === '1' || (typeof window !== 'undefined' && window.innerWidth < 768));
     useEffect(() => {
         localStorage.setItem('va-chat-collapsed', chatCollapsed ? '1' : '0');
     }, [chatCollapsed]);
@@ -593,8 +595,11 @@ export default function App() {
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className="flex" style={{ zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
-            {/* Left sidebar — floating */}
+        <div className={`flex ${mobile ? 'flex-col' : ''}`} style={mobile
+            ? { width: '100%', height: '100%', background: view === 'home' ? HOME_BG : CANVAS }
+            : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
+            {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
+            {!mobile && (
             <aside
                 className="flex flex-col shrink-0 rounded-2xl"
                 style={{
@@ -832,10 +837,11 @@ export default function App() {
                     </SidebarTooltip>
                 </div>
             </aside>
+            )}
 
             {/* Main content — floating */}
             <main
-                className="flex-grow overflow-hidden rounded-2xl"
+                className={`flex-grow overflow-hidden min-h-0 ${mobile ? '' : 'rounded-2xl'}`}
                 style={{ background: view === 'chat' ? '#fff' : view === 'home' ? 'transparent' : CANVAS }}
             >
                 {view === 'chat' && (
@@ -916,16 +922,36 @@ export default function App() {
                             onDone={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'done' } : x))); close(); }}
                             onReopen={() => { setTasks((prev) => prev.map((x) => (x.id === tk.id ? { ...x, status: 'todo' } : x))); close(); }} />}
                         {d && <DecisionReview d={d} t={t} onClose={close} onResolve={(taken, info) => { resolveDecision(d.id, taken, info); close(); }} />}
-                        {(() => { const th = replyOpen ? threads.find((x) => x.id === replyOpen) : undefined; return th ? <ReplyReview th={th} t={t} onClose={() => setReplyOpen(null)} onSend={(text, withAction) => sendReply(th.id, text, withAction)} /> : null; })()}
+                        {(() => { const th = replyOpen ? threads.find((x) => x.id === replyOpen) : undefined; return th ? <ReplyReview key={th.id} th={th} t={t} onClose={() => setReplyOpen(null)} onSend={(text, withAction) => sendReply(th.id, text, withAction)} /> : null; })()}
                     </>;
                 })()}
                 {view === 'connectors' && <SkillsView page="connectors" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>
 
+            {/* Phones: the five places as a bottom tab bar */}
+            {mobile && (
+                <nav className="shrink-0 flex items-stretch justify-around" style={{ background: SIDEBAR_BG, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                    {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
+                        const active = view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
+                        const n = badgeFor[id] ?? 0;
+                        return (
+                            <button key={id} onClick={() => goView(id)} className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-w-0"
+                                style={{ color: active ? '#fff' : 'rgba(255,255,255,0.6)' }} aria-current={active ? 'page' : undefined}>
+                                <span className="relative flex items-center"><RIcon active={active} />
+                                    {n > 0 && <span className="absolute rounded-full" style={{ top: -3, right: -5, width: 8, height: 8, background: COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />}
+                                </span>
+                                <span className="text-[10px] font-medium truncate max-w-full px-1">{t(id === 'home' ? 'Overview' : railLabel)}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+            )}
+
             {chatPanel && (
                 <ChatPanel
                     key={panelKey}
+                    mobile={mobile}
                     subtitle={chatPanel.subtitle}
                     intro={chatPanel.intro}
                     chips={chatPanel.chips}

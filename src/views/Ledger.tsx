@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { ClientAvatar, Orb, SegmentedTabs, COLORS } from '../ui';
+import { ClientAvatar, Orb, SegmentedTabs, COLORS, useIsMobile } from '../ui';
 import { useLang } from '../i18n';
 import { CLIENTS, ME, MY_PORTFOLIO, OWNER, type Thread } from '../practice';
 import type { DecisionItem, ResolveInfo } from '../day';
@@ -142,6 +142,7 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
     onOpenInsights?: () => void;
 }) {
     const { t } = useLang();
+    const mobile = useIsMobile();
     const lines = useMemo(() => linesFor(company, decisions, threads), [company, decisions, threads]);
     // open on the narrowest period that shows what EVA wants you to see
     const [period, setPeriod] = useState<Period>(() => {
@@ -187,7 +188,7 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 1180, height: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
                 {/* header */}
-                <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                <div className="flex flex-wrap items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <ClientAvatar name={company} size={32} />
                     <div className="min-w-0 flex-1">
                         <p className="text-base font-semibold" style={{ color: COLORS.text }}>{t('Books')} · {company}</p>
@@ -209,7 +210,7 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
 
                 <div className="flex-1 min-h-0 flex mt-3">
                     {/* chart of accounts */}
-                    <div className="shrink-0 overflow-y-auto overscroll-contain pb-4" style={{ width: 300, borderRight: `1px solid ${COLORS.cardBorder}` }}>
+                    <div className="shrink-0 overflow-y-auto overscroll-contain pb-4 m-hide" style={{ width: 300, borderRight: `1px solid ${COLORS.cardBorder}` }}>
                         <button onClick={() => setSel(null)} className="w-full flex items-center gap-2 px-5 py-2 text-left text-sm" style={{ background: sel === null ? '#f3f0fb' : 'transparent', color: sel === null ? '#6d28d9' : COLORS.text, fontWeight: sel === null ? 600 : 400 }}>
                             <Icon name="list" /> <span className="flex-1">{t('All postings')}</span>
                         </button>
@@ -234,7 +235,16 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
 
                     {/* postings */}
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <div className="flex items-center gap-3 px-5 pb-3 shrink-0">
+                        {/* phones: pick the account here instead of the sidebar */}
+                        {mobile && (
+                            <div className="px-5 pb-2 shrink-0">
+                                <select value={sel ?? ''} onChange={(e) => setSel(e.target.value || null)} className="w-full rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
+                                    <option value="">{t('All postings')}</option>
+                                    {GROUPS.map((g) => <optgroup key={g} label={t(g)}>{visibleAccounts.filter((a) => a.group === g).map((a) => <option key={a.no} value={a.no}>{a.no} · {t(a.name)} — {kr(bal(a.no))}</option>)}</optgroup>)}
+                                </select>
+                            </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-3 px-5 pb-3 shrink-0">
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{sel ? accName(sel) : t('All postings')}</p>
                                 <p className="text-xs" style={{ color: COLORS.textMuted }}>

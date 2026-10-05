@@ -89,7 +89,7 @@ export function ReplyReview({ th, t, onClose, onSend }: { th: Thread; t: (s: str
                         <div className="flex flex-col gap-2">
                             {recent.map((m, i) => (
                                 <div key={i} className={`rounded-xl px-3 py-2 text-sm ${m.from === 'client' ? 'self-start' : 'self-end'}`} style={{ maxWidth: '88%', background: m.from === 'client' ? '#f4f4f6' : m.from === 'eva' ? '#f7f4fd' : '#eef2ff', color: COLORS.text }}>
-                                    <p className="text-[11px] mb-0.5" style={{ color: COLORS.textMuted }}>{m.who} · {t(m.at)}</p>
+                                    <p className="text-[11px] mb-0.5" style={{ color: COLORS.textMuted }}>{t(m.who)} · {t(m.at)}</p>
                                     {t(m.text)}
                                 </div>
                             ))}

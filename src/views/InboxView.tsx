@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Button, Icon, Switch } from '@economic/taco';
-import { ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS, useIsMobile } from '../ui';
 import { useLang } from '../i18n';
 import { CLIENTS, ME, OWNER, type Thread, type ThreadStatus } from '../practice';
 import { LiquidityModal } from './Liquidity';
@@ -26,6 +26,9 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
     const draft = drafts[selId] ?? '';
     const setDraft = (v: string) => setDrafts((d) => ({ ...d, [selId]: v }));
     const [settings, setSettings] = useState(false);
+    // Phones: one pane at a time — the thread list, or the open conversation (with a back button).
+    const mobile = useIsMobile();
+    const [showThread, setShowThread] = useState(false);
     // Attachments waiting to be sent, per conversation (a forecast or budget shared from a client).
     const [attach, setAttach] = useState<Record<string, Attachment>>({});
 
@@ -37,6 +40,7 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
         const id = th?.id ?? `share-${Date.now()}`;
         if (!th) setThreads((all) => [{ id, client: compose.client, contact: OWNER[compose.client] ?? 'Owner', subject: compose.subject, status: 'waiting', at: 'Now', messages: [] }, ...all]);
         setSelId(id);
+        setShowThread(true);
         setTab(th && th.status !== 'done' ? th.status : 'all');
         setDrafts((d) => ({ ...d, [id]: compose.text }));
         setAttach((a) => ({ ...a, [id]: compose.attachment }));
@@ -48,7 +52,7 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
     useEffect(() => {
         if (!focusClient) return;
         const th = threads.find((x) => x.client === focusClient);
-        if (th) { setSelId(th.id); setTab(th.status === 'done' ? 'all' : th.status); }
+        if (th) { setSelId(th.id); setTab(th.status === 'done' ? 'all' : th.status); setShowThread(true); }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focusClient]);
 
@@ -128,10 +132,10 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
             <div className="flex-1 min-h-0 mx-auto w-full px-8 pb-6" style={{ maxWidth: 1240 }}>
                 <div className="h-full flex rounded-xl bg-white overflow-hidden land" style={{ ['--d' as string]: '80ms', border: `1px solid ${COLORS.cardBorder}` }}>
                     {/* thread list */}
-                    <div className="relative flex flex-col shrink-0" style={{ width: listW, borderRight: `1px solid ${COLORS.cardBorder}` }}>
-                        <div onMouseDown={startResize} onDoubleClick={() => setListW(340)} title={t('Drag to resize')} className="absolute top-0 bottom-0 z-10 group" style={{ right: -4, width: 8, cursor: 'col-resize' }}>
+                    <div className="relative flex flex-col shrink-0" style={mobile ? { width: '100%', display: showThread ? 'none' : 'flex' } : { width: listW, borderRight: `1px solid ${COLORS.cardBorder}` }}>
+                        {!mobile && <div onMouseDown={startResize} onDoubleClick={() => setListW(340)} title={t('Drag to resize')} className="absolute top-0 bottom-0 z-10 group" style={{ right: -4, width: 8, cursor: 'col-resize' }}>
                             <div className="mx-auto h-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: 2, background: '#7c3aed' }} />
-                        </div>
+                        </div>}
                         <div className="p-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                             <SegmentedTabs value={tab} onChange={(v) => setTab(v as ThreadStatus | 'all')} options={TAB.map((x) => ({ value: x.key, label: x.key === 'all' ? t(x.label) : <>{t(x.label)} <CountBadge n={count(x.key as ThreadStatus)} showZero /></> }))} />
                         </div>
@@ -140,7 +144,7 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
                                 const on = sel?.id === x.id;
                                 const last = x.messages[x.messages.length - 1];
                                 return (
-                                    <button key={x.id} onClick={() => setSelId(x.id)} className="w-full text-left flex items-start gap-2.5 px-3.5 py-3" style={{ background: on ? '#f4f4f6' : 'transparent', borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                    <button key={x.id} onClick={() => { setSelId(x.id); setShowThread(true); }} className="w-full text-left flex items-start gap-2.5 px-3.5 py-3" style={{ background: on ? '#f4f4f6' : 'transparent', borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                         <ClientAvatar name={x.contact} size={30} />
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2">
@@ -159,9 +163,10 @@ export default function InboxView({ threads, setThreads, focusClient, compose, o
                     </div>
 
                     {/* conversation */}
-                    {sel && (
+                    {sel && (!mobile || showThread) && (
                         <div className="flex-1 min-w-0 flex flex-col">
                             <div className="px-5 py-3.5 flex items-center gap-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                {mobile && <button onClick={() => setShowThread(false)} aria-label={t('All conversations')} className="rounded-md p-1 -ml-2" style={{ color: COLORS.textMuted }}><Icon name="arrow-left" /></button>}
                                 <div className="min-w-0 flex-1">
                                     <p className="text-base font-semibold truncate" style={{ color: COLORS.text }}>{t(sel.subject)}</p>
                                     <p className="text-xs" style={{ color: COLORS.textMuted }}>{sel.client} · {sel.contact}</p>

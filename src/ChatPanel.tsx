@@ -120,8 +120,9 @@ const PANEL_HISTORY: Past[] = [
 ];
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false,
 }: {
+    mobile?: boolean; // phones: a floating EVA button, and the chat opens full screen
     subtitle: string;
     intro: string;
     chips: string[];
@@ -231,6 +232,14 @@ export function ChatPanel({
     const settle = (id: number) => setMsgs((m) => m.map((x) => (x.id === id ? { ...x, instant: true } : x)));
 
     // Collapsed: a slim floating rail with the EVA mark, like the collapsed sidebar.
+    if (collapsed && mobile) {
+        return (
+            <button onClick={onToggleCollapsed} aria-label="Open EVA" className="fixed z-40 flex items-center justify-center rounded-full bg-white"
+                style={{ right: 16, bottom: 'calc(76px + env(safe-area-inset-bottom))', width: 52, height: 52, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', border: `1px solid ${SIDEBAR_BORDER}` }}>
+                <Orb size={26} />
+            </button>
+        );
+    }
     if (collapsed) {
         return (
             <aside
@@ -252,18 +261,18 @@ export function ChatPanel({
 
     return (
         <aside
-            className="shrink-0 flex flex-col rounded-2xl overflow-hidden relative"
-            style={{ width, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
+            className={mobile ? 'fixed inset-0 z-[55] flex flex-col overflow-hidden anim-in' : 'shrink-0 flex flex-col rounded-2xl overflow-hidden relative'}
+            style={mobile ? { background: '#fff', paddingBottom: 'env(safe-area-inset-bottom)' } : { width, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
         >
-            {/* drag the left edge to widen the panel */}
-            <div
+            {/* drag the left edge to widen the panel (desktop) */}
+            {!mobile && <div
                 onMouseDown={startResize}
                 title={t('Drag to resize')}
                 className="absolute top-0 left-0 h-full z-20 group"
                 style={{ width: 8, cursor: 'col-resize' }}
             >
                 <span className="absolute top-1/2 -translate-y-1/2 left-0.5 rounded-full" style={{ width: 3, height: 34, background: COLORS.cardBorder }} />
-            </div>
+            </div>}
             <div className="flex items-center gap-2 px-4 shrink-0" style={{ minHeight: 62, borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                 <Orb size={22} />
                 <span className="text-sm font-semibold" style={{ color: COLORS.text }}>EVA</span>

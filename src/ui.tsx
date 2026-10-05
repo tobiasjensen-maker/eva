@@ -843,3 +843,16 @@ export function MicIcon() {
         </svg>
     );
 }
+
+// Phone-sized screens get the mobile shell (bottom tabs, full-screen EVA, stacked layouts).
+export function useIsMobile(bp = 767) {
+    const q = `(max-width: ${bp}px)`;
+    const [m, setM] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(q).matches);
+    useEffect(() => {
+        const mq = window.matchMedia(q);
+        const on = () => setM(mq.matches);
+        mq.addEventListener('change', on);
+        return () => mq.removeEventListener('change', on);
+    }, [q]);
+    return m;
+}

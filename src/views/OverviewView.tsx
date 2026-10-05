@@ -20,6 +20,9 @@ import type { Dispatch, SetStateAction } from 'react';
 // expertise, and the whole portfolio. Asking a question hands off to the EVA panel.
 
 // EVA's answers to questions asked from the overview (shown in the EVA panel).
+// Morning before noon, afternoon until 18:00, evening after (and through the night).
+const greetingFor = (h: number) => (h >= 5 && h < 12 ? 'Good morning, {name}' : h >= 12 && h < 18 ? 'Good afternoon, {name}' : 'Good evening, {name}');
+
 export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: number; replies: number }): string {
     const s = q.toLowerCase();
     const da = lang === 'da';
@@ -69,6 +72,9 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
 }) {
     const { t } = useLang();
     const [q, setQ] = useState('');
+    // The greeting follows the user's local time (and keeps up if the page stays open).
+    const [hour, setHour] = useState(() => new Date().getHours());
+    useEffect(() => { const id = setInterval(() => setHour(new Date().getHours()), 60_000); return () => clearInterval(id); }, []);
     const [sel, setSel] = useState<Client | null>(null);
     const chips = [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
     const ask = (text: string) => { if (text.trim()) { onAsk(text.trim()); setQ(''); } };
@@ -79,7 +85,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
             {/* no background of its own — the gradient is the screen's (see HOME_BG in App) */}
             <div className="px-8 pt-10 pb-9">
                 <div className="mx-auto text-center" style={{ maxWidth: 840 }}>
-                    <h1 className="text-3xl font-semibold land" style={{ color: COLORS.text }}>{t('Good morning, {name}').replace('{name}', 'Tobias')}</h1>
+                    <h1 className="text-3xl font-semibold land" style={{ color: COLORS.text }}>{t(greetingFor(hour)).replace('{name}', 'Tobias')}</h1>
                     <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="mt-5 mx-auto rounded-full p-[2px] land" style={{ ['--d' as string]: '70ms', maxWidth: 760, background: 'linear-gradient(90deg,#7c3aed,#ed9b2c)' /* EVA purple → e-conomic orange */ }}>
                         <div className="flex items-center gap-3 rounded-full bg-white pl-4 pr-2 py-2">
                             <Orb size={20} />
