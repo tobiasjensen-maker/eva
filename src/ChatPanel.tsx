@@ -229,13 +229,21 @@ export function ChatPanel({
         requestAnimationFrame(() => taRef.current?.focus());
     }
 
-    // External "Ask EVA about this" requests from the main content.
+    // External "Ask EVA about this" requests from the main content (e.g. the overview's question box).
+    // The conversation continues here, so the panel's input takes the focus once it's open.
+    const wantFocus = useRef(false);
     useEffect(() => {
         if (!pendingAsk) return;
         deliver(pendingAsk.user, pendingAsk.answer);
         onPendingConsumed();
+        wantFocus.current = true;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingAsk]);
+    useEffect(() => {
+        if (!wantFocus.current || collapsed || !taRef.current) return;
+        wantFocus.current = false;
+        taRef.current.focus({ preventScroll: true });
+    });
 
     // Collapsing mid-answer: show it in full next time rather than typing it out again.
     useEffect(() => {

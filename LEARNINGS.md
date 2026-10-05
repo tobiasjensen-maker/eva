@@ -293,4 +293,6 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   one intro, one set of suggestions, and the same conversation as you move between pages (it stays open or
   closed as you left it). Answers still use the page you're on. The conversation and open/closed state also
   survive a refresh (sessionStorage `va-chat-msgs:eva`, localStorage `va-chat-collapsed`).
+- Asking from the overview's question box hands the conversation to the EVA panel and moves the focus to
+  the panel's input, so you can keep typing.
 
