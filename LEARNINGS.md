@@ -371,6 +371,6 @@ Mock data, mock agreement. The kit's `href="#"` links are swallowed so they can'
   canvas with the right-hand rounded corners (shadow clipped at the seam); only e-conomic around it is dimmed.
   It **grows out of the panel**: a clip-path reveal sweeps the plane left from the panel's edge (rounded leading
   edge, content slides in after), and it retracts the same way on close (`eva-universe-in` / `-out`).
-- **Shrink** (same button), the panel's **X** or account menu → *Back to e-conomic* closes the
-  universe — EVA stays docked and open (a second collapse closes the panel). Survives a refresh.
+- **Shrink ⤡** (same button) or account menu → *Back to e-conomic* closes the universe and keeps EVA docked.
+  The panel's **X** closes EVA altogether — the universe retracts, then the panel goes. Survives a refresh.
 - Link: `?scope=ax#/economic`.

@@ -397,10 +397,10 @@ export default function App() {
     // Close the universe back to e-conomic — the EVA panel stays open (route set now, so the shell never unmounts).
     // It retracts into the panel first (eva-universe-out), then goes.
     const [ecoClosing, setEcoClosing] = useState(false);
-    const closeUniverse = () => {
+    const closeUniverse = (alsoPanel = false) => {
         if (ecoClosing) return;
         setEcoClosing(true);
-        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); setRoute('economic'); navigate('economic'); }, 400);
+        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setRoute('economic'); navigate('economic'); }, 400);
     };
     const embedded = ecoUniverse && !mobile;
     useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
@@ -1097,8 +1097,8 @@ export default function App() {
                             return EVA_CHIPS.includes(q) || !chatPanel ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }) : chatPanel.respond(q);
                         }}
                         collapsed={false}
-                        // with the universe open, the first close goes back to e-conomic and keeps EVA docked
-                        onToggleCollapsed={() => { if (ecoUniverse) closeUniverse(); else setEcoPanel(false); }}
+                        // X closes EVA altogether — the universe retracts, then the panel goes (shrink ⤡ keeps the panel)
+                        onToggleCollapsed={() => { if (ecoUniverse) closeUniverse(true); else setEcoPanel(false); }}
                         expanded={embedded}
                         docked={embedded}
                         onExpand={() => {
