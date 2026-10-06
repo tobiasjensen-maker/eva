@@ -56,6 +56,8 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   the payroll lines in EVA's answers — `isPayroll()`; the ledger shows plain *Salaries*.
 - **Work layout:** the list only (no Board / List toggle), with just *For review* and *Done* — no
   *In progress* (that's Vision: work being done right now by you or by EVA).
+- **Connectors:** e-conomic only. *Add connector* opens an empty state with a field to request the system
+  you'd want (`ConnectorRequest`) instead of the partner directory.
 - **Client overview:** just No., Client and Books — no Services column, no industry under the name.
 - **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
   *What did EVA do overnight?* instead of the advisory prompts.

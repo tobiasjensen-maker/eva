@@ -2318,4 +2318,9 @@ const DA: Record<string, string> = {
     'For review': 'Til gennemgang',
     'You’re working on this': 'Du arbejder på den',
     'Search by name or client number…': 'Søg på navn eller kundenummer…',
+    'No connectors available yet': 'Ingen forbindelser tilgængelige endnu',
+    'EVA works with e-conomic for now. Tell us which system you’d like it to connect to — it helps us decide what to build next.': 'EVA arbejder med e-conomic indtil videre. Fortæl os, hvilket system du gerne vil forbinde den til — det hjælper os med at beslutte, hvad vi bygger næste gang.',
+    'e.g. Zenegy, Shopify, HubSpot…': 'fx Zenegy, Shopify, HubSpot…',
+    'Request': 'Anmod',
+    'Thanks — we’ve noted {name}.': 'Tak — vi har noteret {name}.',
 };

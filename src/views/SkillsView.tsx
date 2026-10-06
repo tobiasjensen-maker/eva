@@ -705,7 +705,8 @@ function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, o
     onSimulateLost: (id: string) => void;
 }) {
     const { t } = useLang();
-    const rows = CAPABILITIES.filter((c) => c.native || c.id in connStatus);
+    const { ax } = useScopeMode(); // AX: e-conomic only — partner connectors are Vision
+    const rows = CAPABILITIES.filter((c) => c.native || (!ax && c.id in connStatus));
     const metaLine = (c: Capability) =>
         t('{s} skills · {a} areas').replace('{s}', String(skillCount(c))).replace('{a}', String(c.areas.length));
     return (
@@ -758,6 +759,35 @@ function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, o
             >
                 <Icon name="circle-plus" style={{ color: COLORS.textMuted }} /> {t('Add a connector')}
             </button>
+        </div>
+    );
+}
+
+// AX: no partner connectors to add yet — an empty state that asks which system you'd want.
+function ConnectorRequest() {
+    const { t } = useLang();
+    const [name, setName] = useState('');
+    const [sent, setSent] = useState<string[]>([]);
+    const send = () => { const v = name.trim(); if (!v) return; setSent((prev) => [...prev, v]); setName(''); };
+    return (
+        <div className="flex flex-col items-center text-center py-4">
+            <span className="flex items-center justify-center rounded-full mb-3" style={{ width: 48, height: 48, background: '#f4f4f6', color: COLORS.textMuted }}><Icon name="connection-revoke" /></span>
+            <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('No connectors available yet')}</p>
+            <p className="text-sm mt-1" style={{ maxWidth: 380, color: COLORS.textMuted }}>{t('EVA works with e-conomic for now. Tell us which system you’d like it to connect to — it helps us decide what to build next.')}</p>
+            <form className="mt-5 w-full flex gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
+                <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t('e.g. Zenegy, Shopify, HubSpot…')}
+                    className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                <Button appearance="primary" type="submit" disabled={!name.trim()}>{t('Request')}</Button>
+            </form>
+            {sent.length > 0 && (
+                <div className="mt-4 w-full flex flex-col gap-1.5 text-left">
+                    {sent.map((n, i) => (
+                        <p key={`${n}-${i}`} className="flex items-center gap-2 text-sm rounded-lg px-3 py-2" style={{ background: '#eef7ef', color: '#15803d' }}>
+                            <Icon name="circle-tick" /> {t('Thanks — we’ve noted {name}.').replace('{name}', n)}
+                        </p>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -1044,6 +1074,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
     onClose: () => void;
 }) {
     const { t } = useLang();
+    const { ax } = useScopeMode(); // AX: no partner directory yet — collect what people want instead
     const host = CAPABILITIES.find((c) => c.id === 'economic')!;
     const homeIsGrid = start === 'grid';
     const [view, setView] = useState<'grid' | 'detail' | 'consent'>(start === 'reconnect' ? 'consent' : start);
@@ -1078,7 +1109,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
-            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(880px, 94vw)', height: 'min(760px, 92vh)', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: ax && view === 'grid' ? 'min(520px, 94vw)' : 'min(880px, 94vw)', height: ax && view === 'grid' ? 'auto' : 'min(760px, 92vh)', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
                 {/* header / breadcrumb */}
                 <header className="flex items-center gap-2 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     {view === 'grid' && <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Add a connector')}</h2>}
@@ -1095,7 +1126,8 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
 
                 {/* body */}
                 <div className="flex-1 overflow-y-auto p-5" style={{ minHeight: 0 }}>
-                    {view === 'grid' && (
+                    {view === 'grid' && ax && <ConnectorRequest />}
+                    {view === 'grid' && !ax && (
                         <>
                             <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search connectors…')} />
                             {filtered.length === 0 ? (
