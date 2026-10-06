@@ -188,7 +188,8 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
     // Rendered at the top of the page (portal), so it covers everything wherever it's opened from —
     // e.g. inside Work's month-end card, whose load animation would otherwise trap it.
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+        // z-[70]: portaled to <body>, so it must clear the e-conomic overlay (60/61) too
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 760, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     {selRow && <button onClick={() => setSel(null)} className="rounded-md p-1 mt-0.5" style={{ color: COLORS.textMuted }} title={t('All clients')}><Icon name="arrow-left" /></button>}

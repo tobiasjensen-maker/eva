@@ -2361,4 +2361,6 @@ const DA: Record<string, string> = {
     'Daily cash journal': 'Daglig kassekladde',
     'Close full screen': 'Luk fuld skærm',
     'Show all clients': 'Vis alle kunder',
+    'Prototype': 'Prototype',
+    'Version': 'Version',
 };

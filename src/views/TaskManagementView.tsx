@@ -158,15 +158,15 @@ export type WorkTab = 'tasks' | 'activity' | 'routines';
 
 // The active routines' next runs — shown with EVA's scheduled tasks on the Routines tab.
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClearClient }: {
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClientChange }: {
     tab: WorkTab;
     onTab: (t: WorkTab) => void;
     activityLog: ReactNode;   // the Activity tab (the embedded activity log)
     routines: ReactNode;      // the Routines tab (routine configuration)
     bare?: boolean;           // a routine is open — its detail takes the whole page
     onNewRoutine: () => void; // the header's New routine (opens the builder in the Routines tab)
-    clientFilter?: string | null; // show one client's work only (from the overview's client list)
-    onClearClient?: () => void;
+    clientFilter?: string | null; // show one client's work only (the agreement selector, or a client in the overview)
+    onClientChange?: (name: string | null) => void;
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
@@ -210,6 +210,9 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const all = scoped.filter(matchQ);
 
     // Ready for your review — the shared decisions, scoped like everything else here.
+    // open items for your review per client — shown in the agreement selector
+    const reviewByClient: Record<string, number> = {};
+    decisions.forEach((d) => { if (!d.done && d.accountant === ME) reviewByClient[d.company] = (reviewByClient[d.company] ?? 0) + 1; });
     const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && forClient(d.company) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
 
     // --- the work, as one set of items: To do · In progress (Vision) · For review · Done ---
@@ -310,7 +313,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     title={t('Work')}
                     showScope={false}
                     badge={<SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
-                    right={tab === 'tasks' ? (ax ? undefined : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
+                    right={tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
                         : tab === 'routines' ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
             )}
@@ -330,13 +333,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
                     {!ax && <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {/* one client's work (from the overview) — remove to see everything again */}
-                        {clientFilter && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-1.5 py-0.5 text-xs font-medium mr-1" style={{ background: '#eef2ff', color: '#3341a8', border: '1px solid #c9d0f5' }}>
-                                <ClientAvatar name={clientFilter} size={18} /> {clientFilter}
-                                <button onClick={onClearClient} aria-label={t('Show all clients')} title={t('Show all clients')} className="rounded-full flex items-center" style={{ color: '#4456c7' }}><Icon name="close" /></button>
-                            </span>
-                        )}
                         {((ax ? ['review', 'done'] : ['todo', 'overdue', 'inprogress', 'review', 'done']) as WorkStatus[]).map((k) => {
                             const on = statusF.has(k); const m = WORK_STATUS[k];
                             return (
@@ -345,7 +341,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 </button>
                             );
                         })}
-                        {(statusF.size > 0 || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setQ(''); onClearClient?.(); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                        {(statusF.size > 0 || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                     </div>
                     <div className="relative ml-auto" style={{ width: 240 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
@@ -408,6 +404,58 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
             }} />}
             {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
             {trace && <TaskModal task={trace} onClose={() => setTrace(null)} onHandToEva={() => { handToEva(trace.id); setTrace(null); }} onDone={() => { setStatus(trace.id, 'done'); setTrace(null); }} />}
+        </div>
+    );
+}
+
+// ---- Agreement selector (AX, Work's top-right) ----------------------------------------------
+// Pick whose work you see — like e-conomic's agreement selector: the client, its number, a searchable list.
+function AgreementSelector({ value, onChange, counts }: { value: string | null; onChange: (name: string | null) => void; counts: Record<string, number> }) {
+    const { t } = useLang();
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState('');
+    const cur = value ? MY_PORTFOLIO.find((c) => c.name === value) : undefined;
+    const ql = q.trim().toLowerCase();
+    const list = MY_PORTFOLIO.filter((c) => !ql || c.name.toLowerCase().includes(ql) || c.no.toLowerCase().includes(ql));
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const pick = (n: string | null) => { onChange(n); setOpen(false); setQ(''); };
+    const row = (key: string, sel: boolean, onClick: () => void, lead: ReactNode, name: string, sub: string, n: number) => (
+        <button key={key} onClick={onClick} className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-sm" style={{ color: COLORS.text, background: sel ? '#f4f5fb' : 'transparent' }}
+            onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = '#f7f7f8'; }} onMouseLeave={(e) => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
+            {lead}
+            <span className="flex-1 min-w-0"><span className="block truncate font-medium">{name}</span><span className="block text-xs" style={{ color: COLORS.textMuted }}>{sub}</span></span>
+            {n > 0 && <CountBadge n={n} />}
+            {sel && <Icon name="tick" style={{ color: '#16a34a' }} />}
+        </button>
+    );
+    return (
+        <div className="relative">
+            <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 rounded-lg pl-1.5 pr-2 py-1 text-sm bg-white" style={{ border: `1px solid ${open ? '#c9d0f5' : COLORS.cardBorder}`, color: COLORS.text, minWidth: 210 }}>
+                {cur ? <ClientAvatar name={cur.name} size={24} /> : <span className="flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>}
+                <span className="flex-1 min-w-0 text-left leading-tight">
+                    <span className="block truncate font-medium">{cur ? cur.name : t('All clients')}</span>
+                    <span className="block text-[11px]" style={{ color: COLORS.textMuted }}>{cur ? `${t('Client')} ${cur.no}` : `${MY_PORTFOLIO.length} ${t('agreements')}`}</span>
+                </span>
+                <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: COLORS.textMuted }} />
+            </button>
+            {open && (
+                <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+                    <div className="absolute right-0 z-40 rounded-xl bg-white overflow-hidden anim-in" style={{ top: 'calc(100% + 6px)', width: 300, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                        <div className="p-2" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
+                                <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search by name or client number…')} className="w-full rounded-lg pl-8 pr-2 py-1.5 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                            </div>
+                        </div>
+                        {!ql && row('all', !value, () => pick(null), <span className="flex items-center justify-center rounded-md shrink-0" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>, t('All clients'), `${MY_PORTFOLIO.length} ${t('agreements')}`, total)}
+                        <div style={{ maxHeight: 300, overflowY: 'auto', borderTop: ql ? undefined : `1px solid ${COLORS.cardBorder}` }}>
+                            {list.map((c) => row(c.id, value === c.name, () => pick(c.name), <ClientAvatar name={c.name} size={24} />, c.name, `${t('Client')} ${c.no}`, counts[c.name] ?? 0))}
+                            {list.length === 0 && <p className="text-xs px-3 py-4 text-center" style={{ color: COLORS.textMuted }}>{t('No clients match')}</p>}
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

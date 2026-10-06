@@ -650,8 +650,8 @@ export default function App() {
             : embedded
             // the EVA universe over e-conomic: a rounded container left of the docked EVA panel
             // (right edge meets the docked panel, which carries on the same canvas — one plane; the shadow is
-            // clipped on that side so no seam shows between them)
-            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 'var(--eco-panel-w, 420px)', zIndex: 61, borderRadius: '20px 0 0 20px', overflow: 'hidden', boxShadow: '0 24px 64px rgba(15, 14, 40, 0.35)', clipPath: 'inset(-80px 0 -80px -80px)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
+            // cast left only, so no seam shows. No lasting clip-path: it would cut modal backdrops off at the panel.)
+            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 'var(--eco-panel-w, 420px)', zIndex: 61, borderRadius: '20px 0 0 20px', overflow: 'hidden', boxShadow: '-28px 0 56px -14px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
             : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
             {!mobile && (
@@ -824,7 +824,7 @@ export default function App() {
                                     <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t('Scope')}</span>
                                     <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
                                         {(['vision', 'ax'] as ScopeMode[]).map((m) => (
-                                            <button key={m} onClick={() => setScopeMode(m)} className="rounded-md text-xs font-semibold" title={t(m === 'ax' ? 'Agent management and period closing — what we build first' : 'The full product vision')}
+                                            <button key={m} onClick={() => { setScopeMode(m); if (m === 'ax') { setAccountOpen(false); navigate('economic'); } }} className="rounded-md text-xs font-semibold" title={t(m === 'ax' ? 'Agent management and period closing — what we build first' : 'The full product vision')}
                                                 style={{ padding: '3px 9px', background: scopeMode === m ? '#fff' : 'transparent', color: scopeMode === m ? COLORS.text : COLORS.textMuted, boxShadow: scopeMode === m ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
                                                 {m === 'ax' ? 'AX' : t('Vision')}
                                             </button>
@@ -982,7 +982,7 @@ export default function App() {
                         tab={WORK_TAB_OF[view]}
                         onTab={(tb) => goView(WORK_VIEW_OF[tb])}
                         clientFilter={workClient}
-                        onClearClient={() => setWorkClient(null)}
+                        onClientChange={setWorkClient}
                         bare={view === 'skills' && routineOpen}
                         onNewRoutine={() => setNewRoutineTick((n) => n + 1)}
                         tasks={tasksShown}
@@ -1098,6 +1098,12 @@ export default function App() {
                 flagged={ecoFlagged}
                 universe={embedded}
                 closing={ecoClosing}
+                // the gear: back to the Vision (leaves e-conomic for the full product) and the language
+                settings={{
+                    scope: scopeMode, lang,
+                    onScope: (m) => { if (m === 'vision') { setEcoUniverse(false); setScopeMode('vision'); goView('home'); } else setScopeMode('ax'); },
+                    onLang: setLang,
+                }}
                 panel={
                     <ChatPanel
                         key={'eco-' + lang}

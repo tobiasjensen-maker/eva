@@ -62,10 +62,12 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   own — flush to the container's top, left and bottom with a hairline divider (in the overlay it takes the
   overlay's rounded corners), mirroring the docked EVA panel on the right.
 - **Profile / account menu:** gone from the sidebar — AX is the EVA overlay on e-conomic, whose header owns the
-  profile. Switch scope with `?scope=vision` / `?scope=ax`.
+  profile. The **gear** in e-conomic's header holds the prototype settings: *Version* Vision | AX (Vision leaves
+  e-conomic for the full product; Vision's account menu → AX lands back in e-conomic) and *Language* EN | DA.
 - **Portfolio overview:** just the client list — no greeting, question box or cards, no *Add client*. A client
-  opens **Work › Tasks filtered to that client** (a removable client chip in the toolbar; dropped when you leave
-  Work) instead of the client drawer.
+  opens **Work › Tasks filtered to that client** instead of the client drawer. Work's top-right has an
+  **agreement selector** (avatar, name, client no.; searchable, review counts, *All clients*) — dropped when you
+  leave Work.
 - **Client overview:** just No., Client and Books — no Services column, no industry under the name.
 - **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
   *What did EVA do overnight?* instead of the advisory prompts.
@@ -381,3 +383,9 @@ Mock data, mock agreement. The kit's `href="#"` links are swallowed so they can'
 - **Shrink ⤡** (same button) or account menu → *Back to e-conomic* closes the universe and keeps EVA docked.
   The panel's **X** closes EVA altogether — the universe retracts, then the panel goes. Survives a refresh.
 - Link: `?scope=ax#/economic`.
+
+## Modals over the e-conomic overlay
+
+The universe container must not keep a `clip-path` (it would cut modal backdrops off at the EVA panel) — the
+reveal animation isn't held (`backwards`) and the seam is hidden with a left-cast shadow instead. Portaled
+modals (the month-end report) sit at `z-[70]`, above the overlay (60/61).

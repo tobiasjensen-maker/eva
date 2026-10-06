@@ -95,18 +95,50 @@ const DIM_ON_WHITE = '#9998a6';
 // Mock agreement (fictional).
 const AGREEMENT = { number: 612448, name: 'Holm Revision ApS', userId: 'THJ', isAdministrator: true, imageSrc: agreementAvatar };
 
-export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, universe, closing = false }: {
+export interface ProtoSettings { scope: 'vision' | 'ax'; onScope: (s: 'vision' | 'ax') => void; lang: 'en' | 'da'; onLang: (l: 'en' | 'da') => void }
+
+// Prototype settings behind the header's gear — the way back to the Vision, and the language.
+function ProtoMenu({ at, s, onClose }: { at: DOMRect; s: ProtoSettings; onClose: () => void }) {
+    const { t } = useLang();
+    const seg = <T extends string>(opts: { v: T; l: string }[], cur: T, on: (v: T) => void) => (
+        <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
+            {opts.map((o) => (
+                <button key={o.v} onClick={() => on(o.v)} className="rounded-md text-xs font-semibold" style={{ padding: '3px 10px', background: cur === o.v ? '#fff' : 'transparent', color: cur === o.v ? '#18181b' : '#6b6b76', boxShadow: cur === o.v ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{o.l}</button>
+            ))}
+        </div>
+    );
+    return (
+        <>
+            <div className="fixed inset-0 z-[80]" onClick={onClose} />
+            <div className="fixed z-[81] rounded-xl bg-white py-1.5 anim-in" style={{ top: at.bottom + 8, right: Math.max(8, window.innerWidth - at.right - 8), width: 260, border: '1px solid #e9e9ec', boxShadow: '0 12px 32px rgba(0,0,0,0.18)' }}>
+                <p className="px-3 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#6b6b76' }}>{t('Prototype')}</p>
+                <div className="flex items-center gap-3 px-3 py-2">
+                    <span className="flex-1 text-sm" style={{ color: '#18181b' }}>{t('Version')}</span>
+                    {seg([{ v: 'vision', l: 'Vision' }, { v: 'ax', l: 'AX' }], s.scope, (v) => { onClose(); s.onScope(v); })}
+                </div>
+                <div className="flex items-center gap-3 px-3 py-2">
+                    <span className="flex-1 text-sm" style={{ color: '#18181b' }}>{t('Language')}</span>
+                    {seg([{ v: 'en', l: 'EN' }, { v: 'da', l: 'DA' }], s.lang, s.onLang)}
+                </div>
+            </div>
+        </>
+    );
+}
+
+export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, universe, closing = false, settings }: {
     panel: ReactNode;          // the EVA side panel (shown when open)
     panelOpen: boolean;
     onTogglePanel: () => void;
     flagged: boolean;          // EVA has checked the journal — mark what it found
     universe: boolean;         // the EVA universe is open on top — dim e-conomic under it
     closing?: boolean;         // the universe is retracting into the panel
+    settings: ProtoSettings;   // behind the gear: Vision | AX, language
 }) {
     const { t } = useLang();
     const [hint, setHint] = useState(true); // a one-time nudge towards the EVA button
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [agreementOpen, setAgreementOpen] = useState(false);
+    const [settingsAt, setSettingsAt] = useState<DOMRect | null>(null);
     // The universe container sits left of the panel — share the panel's live width (it's resizable).
     const panelRef = useRef<HTMLDivElement>(null);
     useLayoutEffect(() => {
@@ -182,7 +214,7 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
                         <Header.Button icon="market" aria-label="Apps" />
                         <Header.Button icon="inbox" aria-label="Indbakke" />
                         <Header.Button icon="question-mark-bold" aria-label="Hjælp" />
-                        <Header.Button icon="settings-solid" aria-label="Indstillinger" />
+                        <Header.Button icon="settings-solid" aria-label="Indstillinger" onClick={(e: { currentTarget: HTMLElement }) => setSettingsAt(e.currentTarget.getBoundingClientRect())} />
                     </Header.SecondaryNavigation>
                     <Header.AgreementSelector
                         agreements={[AGREEMENT]}
@@ -250,7 +282,8 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
                 </div>
             </div>
 
-            {/* EVA, docked on the right, full height — it stays put when the universe opens */}
+            {settingsAt && <ProtoMenu at={settingsAt} s={settings} onClose={() => setSettingsAt(null)} />}
+
             {/* On its own, EVA is a rounded card docked on the right. With the universe open it becomes the right
                 side of that one surface — flush to its edges, inside its rounded corners. The panel keeps its
                 place either way: only the (covered) left padding changes. */}
