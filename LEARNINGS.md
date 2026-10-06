@@ -49,12 +49,21 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   report; advisory and Inbox activity (`AX_HIDDEN_SKILLS`); people's advisory tasks (calls, meetings,
   advice, workshops — `axHidesTask`; sign-off stays); in the client drawer the cash forecast, budget,
   talking points, benchmarks, "why flagged" and the conversation link; the ledger's Insights link.
+- **"My tasks" and client figures:** no My tasks card on the overview (it shows *Ready for your review* and
+  *Books status*); Work has no To do column or New task button; the client list drops Fee, Revenue,
+  "EVA does" and "Needs you"; the client drawer has no KPI tiles.
+- **Payroll:** the payroll routine, its activity, the October payroll decision, the scheduled payroll run,
+  the payroll lines in EVA's answers — `isPayroll()`; the ledger shows plain *Salaries*.
+- **Work layout:** the list only (no Board / List toggle).
 - **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
   *What did EVA do overnight?* instead of the advisory prompts.
 
-AX keeps: the Portfolio overview (tasks, review queue, Books status, client list), Work (board, review
-modals with Fix it, Activity, Routines incl. payroll, month-end flow and report), the books, Connectors,
-EVA everywhere, mobile and Danish.
+AX keeps: the Portfolio overview (review queue, Books status, client list), Work (task list, review
+modals with Fix it, Activity, Routines, month-end flow and report), the books, Connectors, EVA everywhere,
+mobile and Danish.
+
+Screens in AX get filtered lists (`decisionsShown`, `tasksShown`, `skillsShown` in App.tsx); the actions still
+update the full state, so switching scope never loses work.
 
 **When you add something:** if it's part of agent management or period closing, do nothing — it's in
 both. If it's Vision-only (advice, client conversations, practice management), gate it with

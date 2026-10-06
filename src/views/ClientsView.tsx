@@ -94,6 +94,7 @@ export function ExpertiseCard({ onOpen }: { onOpen?: (c: Client) => void }) {
 // whole office lives under Practice). Selecting a client is left to the host page.
 export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
     const { t } = useLang();
+    const { ax } = useScopeMode(); // AX: no fee / EVA % / needs-you columns
     const [q, setQ] = useState('');
     const [books, setBooks] = useState<Books | 'any'>('any');
     const [page, setPage] = useState(1);
@@ -124,10 +125,10 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
 
                 <Card className="overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm" style={{ minWidth: 820 }}>
+                        <table className="w-full text-sm" style={{ minWidth: ax ? 560 : 820 }}>
                             <thead>
                                 <tr style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                                    {['No.', 'Client', 'Services', 'Books', 'EVA', 'Needs you', 'Fee / mo'].map((h) => (
+                                    {(ax ? ['No.', 'Client', 'Services', 'Books'] : ['No.', 'Client', 'Services', 'Books', 'EVA', 'Needs you', 'Fee / mo']).map((h) => (
                                         <th key={h} className="text-left text-xs font-medium px-4 py-2.5 whitespace-nowrap" style={{ color: COLORS.textMuted }}>{t(h)}</th>
                                     ))}
                                 </tr>
@@ -155,9 +156,11 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ background: b.bg, color: b.fg }}>{t(b.label)}</span></td>
+                                            {!ax && <>
                                             <td className="px-4 py-3 text-xs font-medium" style={{ color: '#15803d' }}>{c.eva}%</td>
                                             <td className="px-4 py-3 text-xs" style={{ color: c.open ? '#b9842b' : COLORS.textMuted, fontWeight: c.open ? 600 : 400 }}>{c.open || '—'}</td>
                                             <td className="px-4 py-3 text-xs whitespace-nowrap" style={{ color: COLORS.text }}>{kr(c.fee)}</td>
+                                            </>}
                                         </tr>
                                     );
                                 })}
@@ -212,7 +215,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                 </div>
 
                 <div className="px-6 py-5 flex flex-col gap-6">
-                    <div className="grid grid-cols-4 gap-2">
+                    {!ax && <div className="grid grid-cols-4 gap-2">
                         {[
                             { l: 'Fee / mo', v: kr(c.fee) },
                             { l: 'Revenue', v: `${c.trend > 0 ? '+' : ''}${c.trend}%` },
@@ -224,7 +227,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                                 <p className="text-sm font-semibold mt-0.5" style={{ color: COLORS.text }}>{k.v}</p>
                             </div>
                         ))}
-                    </div>
+                    </div>}
 
                     {/* Vision only: practical advisory (cash, plan, talking points, benchmarks) — AX keeps the books and EVA's context */}
                     {!ax && (<>

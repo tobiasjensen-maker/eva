@@ -1,4 +1,5 @@
 import { useState, useEffect, type Dispatch, type SetStateAction, type ReactNode } from 'react';
+import { AX_HIDDEN_SKILLS, useScopeMode } from '../edition';
 import { Button, Icon } from '@economic/taco';
 import { CountBadge, Card, ClientAvatar, Orb, PageHeader, PeriodPicker, COLORS, CANVAS } from '../ui';
 import { WorkTag, SectionCard as ListCard, type WorkStatus } from './workStatus';
@@ -1051,7 +1052,8 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
     const anyFilter = statusF.size > 0 || skillF !== 'all' || clientF !== 'all' || !!q;
 
     const selectStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text };
-    const skills = Object.keys(SKILL_INFO);
+    const { ax } = useScopeMode();
+    const skills = Object.keys(SKILL_INFO).filter((k) => !(ax && AX_HIDDEN_SKILLS.has(k)));
 
     const rowProps = (e: LogEntry) => ({
         open: A.expanded === e.id, acting: A.acting === e.id,

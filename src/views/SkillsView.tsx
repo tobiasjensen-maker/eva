@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, Fragment, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useScopeMode } from '../edition';
 import { Button, Icon, Switch } from '@economic/taco';
 import { CountBadge, Card, Dot, EmojiTile, PageHeader, StickyFooter, asset, COLORS } from '../ui';
 import { ReviewItemCard, type ReviewCardData } from '../ReviewItemCard';
@@ -465,7 +466,8 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     const customFlows: LocalFlow[] = skills
         .filter((s) => s.id.startsWith('custom-') && s.state !== 'locked')
         .map((s) => ({ skill: s, seed: { starter: 'schedule', conditions: [], steps: [] } }));
-    const flows = [...localFlows, ...customFlows];
+    const { ax } = useScopeMode(); // AX: no payroll routine
+    const flows = [...localFlows, ...customFlows].filter((f) => !(ax && f.skill.id === 't-payroll'));
     const allFlows = flows.map((f) => f.skill);
 
     // Suggestions EVA surfaces — hide any whose routine is already set up.

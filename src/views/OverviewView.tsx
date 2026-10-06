@@ -24,12 +24,18 @@ import type { Dispatch, SetStateAction } from 'react';
 // Morning before noon, afternoon until 18:00, evening after (and through the night).
 const greetingFor = (h: number) => (h >= 5 && h < 12 ? 'Good morning, {name}' : h >= 12 && h < 18 ? 'Good afternoon, {name}' : 'Good evening, {name}');
 
-export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: number; replies: number }): string {
+export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: number; replies: number; ax?: boolean }): string {
     const s = q.toLowerCase();
     const da = lang === 'da';
     const mine = CLIENTS.filter((c) => c.accountant === ME);
     const names = (list: typeof mine) => list.map((c) => c.name).join(', ');
     const worth = mine.filter((c) => c.signal);
+    if (ctx.ax && /walk|my day|start|today|dag|i dag|gennem/.test(s))
+        return da ? `Her er din tirsdag: ${ctx.decisions} ting fra EVA er klar til din gennemgang, og 33 af 40 kunder er lukket for september — resten venter på 58 bilag, som jeg rykker for. Skal vi starte med gennemgangene?`
+            : `Here’s your Tuesday: ${ctx.decisions} item${ctx.decisions === 1 ? '' : 's'} from EVA ${ctx.decisions === 1 ? 'is' : 'are'} ready for your review, and 33 of 40 clients are closed for September — the rest are waiting on 58 documents I’m chasing. Shall we start with the reviews?`;
+    if (ctx.ax && /overnight|did eva|i nat/.test(s))
+        return da ? 'I nat afstemte jeg bankerne for alle 40 kunder, bogførte 96 kladder og kontrollerede 1.342 posteringer. Det, der venter på dig, står i Klar til din gennemgang — og det hele står i Aktivitet.'
+            : 'Overnight I reconciled the banks for all 40 clients, posted 96 drafts and checked 1,342 postings. What needs you is in Ready for your review — and it’s all in Activity.';
     if (/walk|my day|start|today|dag|i dag|gennem/.test(s))
         return da
             ? `Her er din tirsdag: ${ctx.decisions} beslutninger klar til gennemgang, ${ctx.replies} kundesamtaler med udkast til svar, og dine opgaver står i Mine opgaver. ${worth.length} af dine kunder er værd at bruge tid på — Café Solsikkes likviditet haster mest. Jeg har også lavet oktoberlønnen for 14 kunder — én undtagelse venter på dig. Skal vi starte med gennemgangene?`
@@ -118,7 +124,8 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
             <div className="mx-auto px-8 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
                 {/* the day at a glance */}
                 <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
-                    <TasksWidget t={t} tasks={tasks} setTasks={setTasks} onAddDecision={onAddDecision} onGo={onGo} />
+                    {/* AX has no "my tasks" — the accountant reviews EVA's work and closes the period */}
+                    {!ax && <TasksWidget t={t} tasks={tasks} setTasks={setTasks} onAddDecision={onAddDecision} onGo={onGo} />}
                     <NeedsYouWidget t={t} decisions={decisions} threads={threads} onOpenThread={onOpenThread} onResolve={onResolveDecision} onGo={onGo} />
                     <BooksWidget t={t} flags={decisions.filter((d) => !d.done && d.correction && d.accountant === ME).length} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />
                 </div>

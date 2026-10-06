@@ -72,7 +72,7 @@ import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
-import { AX_HIDDEN_SKILLS, AX_HIDDEN_VIEWS, ScopeModeContext, initialScope, type Scope as ScopeMode } from './edition';
+import { AX_HIDDEN_SKILLS, AX_HIDDEN_VIEWS, ScopeModeContext, initialScope, isPayroll, type Scope as ScopeMode } from './edition';
 import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
@@ -188,8 +188,6 @@ export default function App() {
                 resolution: backToYou ? 'Taken back by you' : fixed ? 'Fixed by you' : reason ? 'Dismissed by you' : taken === 'alt' ? `You chose “${choice}”` : 'Approved by you' }),
         } : e)));
     };
-    // The logged-in accountant's open decisions — the Work badge and the overview count.
-    const openDecisions = dayDecisions.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen').length;
     // A task handed to EVA in Work comes back as a decision in the same shared list.
     const addDecision = (d: DecisionItem) => {
         setDayDecisions((all) => [d, ...all]);
@@ -212,6 +210,11 @@ export default function App() {
     // Vision (the full product) vs AX (what we build first: agent management + period closing).
     const [scopeMode, setScopeModeState] = useState<ScopeMode>(initialScope);
     const ax = scopeMode === 'ax';
+    // The logged-in accountant's open decisions — the Work badge and the overview count.
+    // AX leaves payroll out — screens get these filtered lists; actions still update the full state.
+    const decisionsShown = ax ? dayDecisions.filter((d) => !isPayroll(d.label)) : dayDecisions;
+    const tasksShown = ax ? tasks.filter((x) => !isPayroll(x.title)) : tasks;
+    const openDecisions = decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen').length;
     const setScopeMode = (m: ScopeMode) => {
         setScopeModeState(m);
         try {
@@ -226,6 +229,8 @@ export default function App() {
     const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions + (ax ? 0 : needsReply) };
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
+    // AX: no payroll routine
+    const skillsShown = ax ? skills.filter((sk) => sk.id !== 'payroll') : skills;
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
     const [activeSpace, setActiveSpace] = useState<Space | null>(null);
     // The activity log — EVA's own work plus everything done on the Tasks board.
@@ -481,7 +486,7 @@ export default function App() {
                   subtitle: 'portfolio assistant',
                   intro: "I'm EVA. Ask me about your day, one of your clients, or who in your portfolio is ready for an advisory conversation.",
                   chips: ['Walk me through my day', 'Which of my clients need attention?', 'Who are my least profitable clients?'],
-                  respond: (q: string) => overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }),
+                  respond: (q: string) => overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax }),
               }
         : view === 'inbox'
             ? {
@@ -552,7 +557,7 @@ export default function App() {
     const panelKey = 'eva-' + lang + panelSeed;
     const EVA_INTRO = "I'm EVA. Ask me about your day, your clients, your work or your practice — I'll take it from there.";
     const EVA_CHIPS = ax ? ['Walk me through my day', 'What’s left to close September?', 'What did EVA do overnight?'] : ['Walk me through my day', 'What’s waiting on me?', 'Which of my clients need attention?'];
-    const activityShown = ax ? activityAll.filter((e) => !AX_HIDDEN_SKILLS.has(e.skill)) : activityAll;
+    const activityShown = ax ? activityAll.filter((e) => !AX_HIDDEN_SKILLS.has(e.skill) && !isPayroll(e.title ?? e.desc)) : activityAll;
 
     function applyScope(s: string) {
         setScope(s);
@@ -882,7 +887,7 @@ export default function App() {
                 {view === 'chat' && (
                     <ChatView
                         key={chatKey}
-                        skills={skills}
+                        skills={skillsShown}
                         spaces={spaces}
                         onEnableSkill={enableSkill}
                         onNavigate={goView}
@@ -903,16 +908,16 @@ export default function App() {
                 {view === 'practice' && <PracticeView />}
                 {view === 'home' && (
                     <OverviewView
-                        tasks={tasks}
+                        tasks={tasksShown}
                         setTasks={setTasks}
                         onAddDecision={addDecision}
-                        decisions={dayDecisions}
+                        decisions={decisionsShown}
                         threads={threads}
                         onOpenThread={openReply}
                         onResolveDecision={resolveDecision}
                         onGo={goView}
                         // The question box hands off to the EVA panel, answer included.
-                        onAsk={(q) => { setPendingAsk({ user: q, answer: overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }) }); setChatCollapsed(false); }}
+                        onAsk={(q) => { setPendingAsk({ user: q, answer: overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax }) }); setChatCollapsed(false); }}
                         onMessage={(client) => { setInboxFocus(client); goView('inbox'); }}
                         onShare={(d) => { setCompose(d); goView('inbox'); }}
                         onOpenBooks={(name) => {
@@ -931,9 +936,9 @@ export default function App() {
                         onTab={(tb) => goView(WORK_VIEW_OF[tb])}
                         bare={view === 'skills' && routineOpen}
                         onNewRoutine={() => setNewRoutineTick((n) => n + 1)}
-                        tasks={tasks}
+                        tasks={tasksShown}
                         setTasks={setTasks}
-                        decisions={dayDecisions}
+                        decisions={decisionsShown}
                         onResolveDecision={resolveDecision}
                         onAddDecision={addDecision}
                         activity={activityShown}
@@ -941,7 +946,7 @@ export default function App() {
                         onOpenThread={openReply}
                         onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
                         activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activityShown} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
-                        routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
+                        routines={<SkillsView page="routines" skills={skillsShown} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}
                 {view === 'customers' && <CustomersView />}
@@ -960,7 +965,7 @@ export default function App() {
                         {(() => { const th = replyOpen ? threads.find((x) => x.id === replyOpen) : undefined; return th ? <ReplyReview key={th.id} th={th} t={t} onClose={() => setReplyOpen(null)} onSend={(text, withAction) => sendReply(th.id, text, withAction)} /> : null; })()}
                     </>;
                 })()}
-                {view === 'connectors' && <SkillsView page="connectors" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}
+                {view === 'connectors' && <SkillsView page="connectors" skills={skillsShown} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>
 
@@ -991,7 +996,7 @@ export default function App() {
                     subtitle=""
                     intro={EVA_INTRO}
                     chips={EVA_CHIPS}
-                    respond={(q) => (EVA_CHIPS.includes(q) ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply }) : chatPanel.respond(q))}
+                    respond={(q) => (EVA_CHIPS.includes(q) ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax }) : chatPanel.respond(q))}
                     evaConfig={evaConfigured() ? evaConfig({ agreementNumber: liveAgreement?.number, companyName: ecoCompany, page: view }) : null}
                     evaSrc={evaIslandSrc()}
                     collapsed={chatCollapsed}

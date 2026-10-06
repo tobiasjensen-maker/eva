@@ -5,6 +5,7 @@ import { useLang } from '../i18n';
 import { CLIENTS, ME, MY_PORTFOLIO, OWNER, type Thread } from '../practice';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
+import { useScopeMode } from '../edition';
 import { downloadCsv } from '../exportCsv';
 
 // ---- The books: a client's general ledger --------------------------------------------------
@@ -44,7 +45,7 @@ const r100 = (n: number) => Math.round(n / 100) * 100;
 const CUSTOMERS = ['Holm & Co', 'Nørgaard A/S', 'Vesterbro Tømrer', 'Lund Gruppen', 'Fenger ApS', 'Bakke Handel'];
 const SUPPLIERS = ['Dansk Engros', 'Nordic Supply', 'Jysk Grossist', 'Kontorland', 'Brdr. Hansen'];
 
-function linesFor(company: string, decisions: DecisionItem[], threads: Thread[]): Line[] {
+function linesFor(company: string, decisions: DecisionItem[], threads: Thread[], ax = false): Line[] {
     const rand = rng(company);
     const fee = CLIENTS.find((c) => c.name === company)?.fee ?? MY_PORTFOLIO.find((c) => c.name === company)?.fee ?? 6000;
     const monthly = fee * 26; // revenue per month, roughly
@@ -83,7 +84,7 @@ function linesFor(company: string, decisions: DecisionItem[], threads: Thread[])
         add(`2026-${mm}-15`, 'Software subscriptions', [['4510', sw, 'I25'], ['7310', sw * 0.25], ['6810', -sw * 1.25]], 'Bank import');
         const sal = r100(fee * 7.5);
         // payroll is run by EVA's payroll routine, then booked from the run
-        add(`2026-${mm}-${m === 2 ? '27' : '28'}`, `Payroll — ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'][m - 1]} (EVA payroll run)`, [['3010', sal], ['6810', -sal]]);
+        add(`2026-${mm}-${m === 2 ? '27' : '28'}`, ax ? 'Salaries' : `Payroll — ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'][m - 1]} (EVA payroll run)`, [['3010', sal], ['6810', -sal]]);
     }
 
     // ---- the postings EVA has had something to say about ----
@@ -143,7 +144,8 @@ export function LedgerModal({ company, decisions, threads, onResolveDecision, on
 }) {
     const { t } = useLang();
     const mobile = useIsMobile();
-    const lines = useMemo(() => linesFor(company, decisions, threads), [company, decisions, threads]);
+    const { ax } = useScopeMode();
+    const lines = useMemo(() => linesFor(company, decisions, threads, ax), [company, decisions, threads, ax]);
     // open on the narrowest period that shows what EVA wants you to see
     const [period, setPeriod] = useState<Period>(() => {
         const f = lines.find((l) => l.flag || l.waiting);

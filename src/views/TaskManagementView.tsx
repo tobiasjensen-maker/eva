@@ -5,7 +5,7 @@ import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
 import { MonthEndCard } from './MonthEnd';
-import { axHidesTask, useScopeMode } from '../edition';
+import { axHidesTask, isPayroll, useScopeMode } from '../edition';
 import { clientName, type LogEntry } from './ActivityView';
 import { MY_PORTFOLIO, TEAM, type Thread } from '../practice';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread, type Priority } from '../priority';
@@ -190,6 +190,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const { t } = useLang();
     const { ax } = useScopeMode(); // AX: no client replies or advisory tasks
     const [layout, setLayout] = useState<Layout>('board');
+    const view: Layout = ax ? 'list' : layout; // AX: the list only
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
     const [trace, setTrace] = useState<Task | null>(null);
@@ -302,7 +303,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
     // The list is grouped by status — the board's columns, as sections.
     const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] = [
-        { key: 'todo', title: <WorkTag s="todo" />, items: todo },
+        ...(ax ? [] : [{ key: 'todo', title: <WorkTag s="todo" />, items: todo }]), // AX: no tasks of your own
         { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress },
         { key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 },
     ];
@@ -314,7 +315,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     title={t('Work')}
                     showScope={false}
                     badge={<SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
-                    right={tab === 'tasks' ? <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>
+                    right={tab === 'tasks' ? (ax ? undefined : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
                         : tab === 'routines' ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
             )}
@@ -327,7 +328,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                         {!bare && <div className="land"><SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
                             {[
                                 ...evaScheduled.map((x) => ({ key: x.id, when: x.evaWhen ?? '', title: t(x.title), sub: x.company, via: t('Scheduled task'), task: x as Task | undefined })),
-                                ...PLANNED_RUNS.map((r) => ({ key: r.title, when: r.when, title: t(r.title), sub: t(r.scope), via: t('Routine'), task: undefined as Task | undefined })),
+                                ...PLANNED_RUNS.filter((r) => !(ax && isPayroll(r.title))).map((r) => ({ key: r.title, when: r.when, title: t(r.title), sub: t(r.scope), via: t('Routine'), task: undefined as Task | undefined })),
                             ].sort((a, b) => whenRank(a.when) - whenRank(b.when)).map((r, i, arr) => (
                                 <div key={r.key} onClick={r.task ? () => setTrace(r.task!) : undefined} className={`flex items-center gap-3 p-4 ${r.task ? 'cursor-pointer' : ''}`} style={i === arr.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                                     <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE, width: 150 }}><Icon name="time" /> {t(r.when)}</span>
@@ -350,9 +351,9 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
                 {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
                 <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
-                    <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />
+                    {!ax && <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {(['todo', 'overdue', 'inprogress', 'done'] as WorkStatus[]).map((k) => {
+                        {((ax ? ['inprogress', 'done'] : ['todo', 'overdue', 'inprogress', 'done']) as WorkStatus[]).map((k) => {
                             const on = statusF.has(k); const m = WORK_STATUS[k];
                             return (
                                 <button key={k} onClick={() => toggleStatusF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
@@ -368,8 +369,9 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     </div>
                 </div>
 
-                {layout === 'board' ? (
-                    <div className="grid gap-4 items-start land board-grid" style={{ ['--d' as string]: '360ms', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                {view === 'board' ? (
+                    <div className="grid gap-4 items-start land board-grid" style={{ ['--d' as string]: '360ms', gridTemplateColumns: `repeat(${ax ? 2 : 3}, minmax(0, 1fr))` }}>
+                        {!ax && (
                         <BoardColumn s="todo" count={todo.length} dnd={dnd}>
                             {todo.map((it, i) => (
                                 <Fragment key={it.id}>
@@ -379,6 +381,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 </Fragment>
                             ))}
                         </BoardColumn>
+                        )}
                         <BoardColumn s="inprogress" count={inprogress.length} dnd={dnd}>
                             {inprogress.map((it, i) => <WorkCard key={it.id} it={it} col="inprogress" nextId={inprogress[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />)}
                         </BoardColumn>

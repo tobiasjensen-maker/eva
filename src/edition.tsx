@@ -18,7 +18,7 @@ export const useScopeMode = () => useContext(ScopeModeContext);
 export const AX_HIDDEN_VIEWS: ViewId[] = ['inbox', 'practice', 'insights', 'spaces', 'customers'];
 
 // Activity skills that are advisory (Vision-only).
-export const AX_HIDDEN_SKILLS = new Set(['monitor', 'advisory', 'regulations', 'inbox']);
+export const AX_HIDDEN_SKILLS = new Set(['monitor', 'advisory', 'regulations', 'inbox', 'payroll']);
 
 export function initialScope(): Scope {
     try {
@@ -32,3 +32,6 @@ export function initialScope(): Scope {
 
 // People's tasks that are advisory or relationship work (Vision-only). Professional sign-off stays in AX.
 export const axHidesTask = (title: string) => /call|meeting|advice|workshop|plan\b|hiring/i.test(title) && !/sign off/i.test(title);
+
+// Payroll is Vision-only (tasks, routine, scheduled runs, the payroll exception).
+export const isPayroll = (text: string) => /payroll|salar(y|ies) run/i.test(text);
