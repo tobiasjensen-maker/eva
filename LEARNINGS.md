@@ -342,3 +342,8 @@ To do (+ Overdue) · **In progress** · **For review** · Done. *For review* is 
 waiting on you (both scopes). *In progress* (Vision only) is work being done now — tasks you've started
 (`in-progress`) and tasks EVA is running (`eva-running`). Dragging a card onto For review hands it to
 EVA: it shows in In progress while EVA drafts, then comes back as a For review item.
+
+## Routines are the schedule
+
+There's no separate "Scheduled for EVA" list: each routine in *Your routines* shows its next run (`NEXT_RUN`
+in SkillsView, or its trigger for routines you build), sorted by when it runs. One schedule, one source.

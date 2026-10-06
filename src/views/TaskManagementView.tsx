@@ -5,7 +5,7 @@ import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
 import { MonthEndCard } from './MonthEnd';
-import { axHidesTask, isPayroll, useScopeMode } from '../edition';
+import { axHidesTask, useScopeMode } from '../edition';
 import { clientName, type LogEntry } from './ActivityView';
 import { MY_PORTFOLIO, TEAM, type Thread } from '../practice';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread, type Priority } from '../priority';
@@ -157,18 +157,6 @@ const PURPLE = '#7c3aed';
 export type WorkTab = 'tasks' | 'activity' | 'routines';
 
 // The active routines' next runs — shown with EVA's scheduled tasks on the Routines tab.
-const PLANNED_RUNS: { when: string; title: string; scope: string }[] = [
-    { when: 'Tonight at 22:00', title: 'AI bank reconciliation', scope: 'All 40 of your clients' },
-    { when: 'Every hour', title: 'Smart voucher creation', scope: 'New receipts and bills as they arrive' },
-    { when: 'Tomorrow at 07:00', title: 'Supplier invoice processor', scope: '14 invoices waiting across 6 clients' },
-    { when: '10 Oct at 06:00', title: 'VAT return auto-filing', scope: '12 clients due this quarter' },
-    { when: '28 Oct at 06:00', title: 'Payroll run — October', scope: '14 clients · 116 employees · paid 30 Oct' },
-];
-// Order "when" labels in time: continuous first, then tonight, tomorrow, weekdays, dates.
-const whenRank = (w: string) => {
-    const day = /^Every/.test(w) ? 0 : /^Tonight/.test(w) ? 1 : /^Tomorrow/.test(w) ? 2 : /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(w) ? 3 : 4;
-    return day * 10000 + Number((w.match(/(\d{2}):(\d{2})/) ?? ['', '0', '0']).slice(1).join(''));
-};
 
 export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine }: {
     tab: WorkTab;
@@ -220,7 +208,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
     // Ready for your review — the shared decisions, scoped like everything else here.
     const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
-    const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
 
     // --- the work, as one set of items: To do · In progress (Vision) · For review · Done ---
     // Done is read from the activity log — the one record of what happened today, by you
@@ -327,24 +314,6 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 {tab === 'activity' && activityLog}
                 {tab === 'routines' && (
                     <div className={bare ? 'h-full' : 'flex flex-col gap-6'}>
-                        {/* What's planned and scheduled for EVA — specific tasks and the routines' next runs.
-                            Hidden while a routine is open: its detail takes over the page. */}
-                        {!bare && <div className="land"><SectionCard title={<span className="flex items-center gap-2"><Orb size={18} /><span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Scheduled for EVA')}</span></span>} count={evaScheduled.length + PLANNED_RUNS.length}>
-                            {[
-                                ...evaScheduled.map((x) => ({ key: x.id, when: x.evaWhen ?? '', title: t(x.title), sub: x.company, via: t('Scheduled task'), task: x as Task | undefined })),
-                                ...PLANNED_RUNS.filter((r) => !(ax && isPayroll(r.title))).map((r) => ({ key: r.title, when: r.when, title: t(r.title), sub: t(r.scope), via: t('Routine'), task: undefined as Task | undefined })),
-                            ].sort((a, b) => whenRank(a.when) - whenRank(b.when)).map((r, i, arr) => (
-                                <div key={r.key} onClick={r.task ? () => setTrace(r.task!) : undefined} className={`flex items-center gap-3 p-4 ${r.task ? 'cursor-pointer' : ''}`} style={i === arr.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium shrink-0" style={{ color: PURPLE, width: 150 }}><Icon name="time" /> {t(r.when)}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{r.title}</p>
-                                        <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{r.sub}</p>
-                                    </div>
-                                    <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: r.task ? '#f3f0fb' : '#f1f1f3', color: r.task ? PURPLE : '#52525b' }}>{r.via}</span>
-                                    {r.task && <span className="text-xs font-medium shrink-0 flex items-center gap-1" style={{ color: '#4456c7' }}><Icon name="search" /> {t('See plan')}</span>}
-                                </div>
-                            ))}
-                        </SectionCard></div>}
                         {routines}
                     </div>
                 )}

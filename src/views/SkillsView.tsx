@@ -437,6 +437,21 @@ function flowFromTemplate(tpl: FlowTemplate, id: string, stat: string): LocalFlo
     };
 }
 
+// Each routine's next run — shown on its row, so "what's scheduled for EVA" and "your routines" are one list.
+const NEXT_RUN: Record<string, { when: string; scope: string }> = {
+    't-voucher': { when: 'Every hour', scope: 'New receipts and bills as they arrive' },
+    't-recon': { when: 'Tonight at 22:00', scope: 'All 40 of your clients' },
+    't-supplier': { when: 'Tomorrow at 07:00', scope: '14 invoices waiting across 6 clients' },
+    't-vatfile': { when: '10 Oct at 06:00', scope: '12 clients due this quarter' },
+    't-payroll': { when: '28 Oct at 06:00', scope: '14 clients · 116 employees · paid 30 Oct' },
+};
+// Order "when" labels in time: continuous first, then tonight, tomorrow, weekdays, dates; event-triggered last.
+const whenRank = (w?: string) => {
+    if (!w) return 99999;
+    const day = /^Every/.test(w) ? 0 : /^Tonight/.test(w) ? 1 : /^Tomorrow/.test(w) ? 2 : /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(w) ? 3 : 4;
+    return day * 10000 + Number((w.match(/(\d{2}):(\d{2})/) ?? ['', '0', '0']).slice(1).join(''));
+};
+
 // Doc-based flows that ship already installed and running (keep their template ids so perf maps).
 const PREINSTALLED_FLOW_IDS = ['t-voucher', 't-recon', 't-supplier', 't-vatfile', 't-payroll'];
 function preinstalledFlows(): LocalFlow[] {
@@ -591,10 +606,11 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
                             </Card>
                         ) : (
                             <SectionCard title={t('Your routines')} count={allFlows.length}>
-                                {flows.map((f, i) => (
+                                {[...flows].sort((a, b) => whenRank(NEXT_RUN[a.skill.id]?.when) - whenRank(NEXT_RUN[b.skill.id]?.when)).map((f, i) => (
                                     <RoutineRow
                                         key={f.skill.id}
                                         skill={f.skill}
+                                        next={NEXT_RUN[f.skill.id] ?? { when: FLOW_STARTERS.find((st) => st.id === f.seed.starter)?.label ?? '' }}
                                         trial={trials.has(f.skill.id)}
                                         capLabel={f.capId ? CAPABILITIES.find((c) => c.id === f.capId)?.name ?? '' : 'e-conomic'}
                                         last={i === flows.length - 1}
@@ -1176,7 +1192,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
 }
 
 // A routine row inside the "Your routines" container — matches the Cockpit rows.
-function RoutineRow({ skill, trial, capLabel, last, onOpen }: { skill: Skill; trial?: boolean; capLabel?: string; last?: boolean; onOpen: () => void }) {
+function RoutineRow({ skill, next, trial, capLabel, last, onOpen }: { skill: Skill; next?: { when: string; scope?: string }; trial?: boolean; capLabel?: string; last?: boolean; onOpen: () => void }) {
     const { t, lang } = useLang();
     const nf = (n: number) => n.toLocaleString(lang === 'da' ? 'da-DK' : 'en-US');
     const active = skill.state === 'active';
@@ -1190,6 +1206,12 @@ function RoutineRow({ skill, trial, capLabel, last, onOpen }: { skill: Skill; tr
             <EmojiTile emoji={skill.emoji} size={36} />
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: COLORS.text }}>{t(skill.title)}</p>
+                {next?.when && (
+                    <p className="text-xs mt-0.5 truncate flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                        <span className="inline-flex items-center gap-1 font-medium shrink-0" style={{ color: '#7c3aed' }}><Icon name="time" /> {t(next.when)}</span>
+                        {next.scope && <span className="truncate">· {t(next.scope)}</span>}
+                    </p>
+                )}
                 <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{perfLine}</p>
             </div>
             {capLabel && (
