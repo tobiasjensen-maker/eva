@@ -2315,4 +2315,7 @@ const DA: Record<string, string> = {
     'The full product vision': 'Hele produktvisionen',
     'What’s left to close September?': 'Hvad mangler for at lukke september?',
     'What did EVA do overnight?': 'Hvad lavede EVA i nat?',
+    'For review': 'Til gennemgang',
+    'You’re working on this': 'Du arbejder på den',
+    'Search by name or client number…': 'Søg på navn eller kundenummer…',
 };

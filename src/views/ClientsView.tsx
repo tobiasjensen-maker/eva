@@ -118,17 +118,17 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="relative flex-1" style={{ minWidth: 220 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
-                        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search by name, client number or industry…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t(ax ? 'Search by name or client number…' : 'Search by name, client number or industry…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
                     </div>
                     <SegmentedTabs value={books} onChange={(v) => setBooks(v as Books | 'any')} options={[{ value: 'any', label: t('Any status') }, { value: 'closed', label: t('Closed') }, { value: 'todo', label: t('To do') }, { value: 'blocked', label: t('Blocked') }]} />
                 </div>
 
                 <Card className="overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm" style={{ minWidth: ax ? 560 : 820 }}>
+                        <table className="w-full text-sm" style={{ minWidth: ax ? 420 : 820 }}>
                             <thead>
                                 <tr style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: '#fafafa' }}>
-                                    {(ax ? ['No.', 'Client', 'Services', 'Books'] : ['No.', 'Client', 'Services', 'Books', 'EVA', 'Needs you', 'Fee / mo']).map((h) => (
+                                    {(ax ? ['No.', 'Client', 'Books'] : ['No.', 'Client', 'Services', 'Books', 'EVA', 'Needs you', 'Fee / mo']).map((h) => (
                                         <th key={h} className="text-left text-xs font-medium px-4 py-2.5 whitespace-nowrap" style={{ color: COLORS.textMuted }}>{t(h)}</th>
                                     ))}
                                 </tr>
@@ -145,16 +145,16 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                                                     <ClientAvatar name={c.name} size={26} />
                                                     <div className="min-w-0">
                                                         <p className="font-medium truncate" style={{ color: COLORS.text }}>{c.name}</p>
-                                                        <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(c.industry)}</p>
+                                                        {!ax && <p className="text-xs" style={{ color: COLORS.textMuted }}>{t(c.industry)}</p>}
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3">
+                                            {!ax && <td className="px-4 py-3">
                                                 <div className="flex items-center gap-1 whitespace-nowrap" title={c.services.map((s) => t(s)).join(', ')}>
                                                     {c.services.slice(0, 2).map((s) => <span key={s} className="rounded px-1.5 py-0.5 text-xs" style={{ background: '#f1f1f3', color: '#52525b' }}>{t(s)}</span>)}
                                                     {c.services.length > 2 && <span className="text-xs" style={{ color: COLORS.textMuted }}>+{c.services.length - 2}</span>}
                                                 </div>
-                                            </td>
+                                            </td>}
                                             <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={{ background: b.bg, color: b.fg }}>{t(b.label)}</span></td>
                                             {!ax && <>
                                             <td className="px-4 py-3 text-xs font-medium" style={{ color: '#15803d' }}>{c.eva}%</td>

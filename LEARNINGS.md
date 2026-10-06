@@ -54,7 +54,9 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   "EVA does" and "Needs you"; the client drawer has no KPI tiles.
 - **Payroll:** the payroll routine, its activity, the October payroll decision, the scheduled payroll run,
   the payroll lines in EVA's answers — `isPayroll()`; the ledger shows plain *Salaries*.
-- **Work layout:** the list only (no Board / List toggle).
+- **Work layout:** the list only (no Board / List toggle), with just *For review* and *Done* — no
+  *In progress* (that's Vision: work being done right now by you or by EVA).
+- **Client overview:** just No., Client and Books — no Services column, no industry under the name.
 - **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
   *What did EVA do overnight?* instead of the advisory prompts.
 
@@ -333,3 +335,10 @@ After Mads's Komma walkthrough we added what Komma had validated, in EVA's struc
   the panel's input, so you can keep typing.
 - The profile picture in the side menu has no notification dot.
 
+
+## Work statuses (`src/views/workStatus.tsx`)
+
+To do (+ Overdue) · **In progress** · **For review** · Done. *For review* is EVA's drafts and replies
+waiting on you (both scopes). *In progress* (Vision only) is work being done now — tasks you've started
+(`in-progress`) and tasks EVA is running (`eva-running`). Dragging a card onto For review hands it to
+EVA: it shows in In progress while EVA drafts, then comes back as a For review item.

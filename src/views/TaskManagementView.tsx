@@ -127,17 +127,17 @@ function evaFlagFor(title: string): string {
 export { WORK_STATUS, WorkTag, type WorkStatus } from './workStatus';
 import { WORK_STATUS, WorkTag, SectionCard, type WorkStatus } from './workStatus';
 // A human task's tags: To do (+ Overdue) or Done.
-export const workTagsFor = (task: Task): WorkStatus[] => (task.status === 'done' || task.status === 'eva-done' ? ['done'] : task.bucket === 'overdue' ? ['todo', 'overdue'] : ['todo']);
+export const workTagsFor = (task: Task): WorkStatus[] => (task.status === 'done' || task.status === 'eva-done' ? ['done'] : task.status === 'in-progress' || task.status === 'eva-running' ? ['inprogress'] : task.bucket === 'overdue' ? ['todo', 'overdue'] : ['todo']);
 
 type Layout = 'board' | 'list';
 // One item of work, whatever its source: a task with you, an EVA draft to review, or something done.
 type WorkItem =
-    | { kind: 'task'; id: string; ws: 'todo' | 'inprogress' | 'done'; overdue: boolean; company: string; title: string; task: Task; }
-    | { kind: 'review'; id: string; ws: 'inprogress'; overdue: false; company: string; title: string; d: DecisionItem }
-    | { kind: 'reply'; id: string; ws: 'inprogress'; overdue: false; company: string; title: string; th: Thread }
+    | { kind: 'task'; id: string; ws: 'todo' | 'inprogress' | 'review' | 'done'; overdue: boolean; company: string; title: string; task: Task; }
+    | { kind: 'review'; id: string; ws: 'review'; overdue: false; company: string; title: string; d: DecisionItem }
+    | { kind: 'reply'; id: string; ws: 'review'; overdue: false; company: string; title: string; th: Thread }
     | { kind: 'logged'; id: string; ws: 'done'; overdue: false; company: string; title: string; entry: LogEntry; task?: Task };
 const DONE_SHOWN = 5; // Done shows the latest few; the full history is the Activity tab
-type Col = 'todo' | 'inprogress' | 'done';
+type Col = 'todo' | 'inprogress' | 'review' | 'done';
 // Drag-and-drop wiring shared by board cards and list rows.
 type Dnd = {
     dragId: string | null;
@@ -183,7 +183,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     onResolveDecision: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void;
     activity: LogEntry[]; // the activity log — Done is today's completed work from it
     onOpenActivity: (entryId: string) => void;
-    threads?: Thread[];               // client conversations — those waiting on you are In progress too
+    threads?: Thread[];               // client conversations — those waiting on you are For review too
     onOpenThread?: (th: Thread) => void;
     onAddDecision: (d: DecisionItem) => void;
 }) {
@@ -222,7 +222,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
     const evaScheduled = all.filter((x) => x.status === 'eva-scheduled');
 
-    // --- the work, as one set of items: To do · In progress · Done ---
+    // --- the work, as one set of items: To do · In progress (Vision) · For review · Done ---
     // Done is read from the activity log — the one record of what happened today, by you
     // (on this board) and by EVA. Reopening or handing off isn't "done", so those stay out.
     const doneLog = activity
@@ -231,12 +231,15 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         .filter((e) => !ql || t(e.title ?? e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql))
         .sort((a, b) => (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
     const items: WorkItem[] = [
-        ...all.filter((x) => x.status === 'eva-running' && handing.has(x.id)).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'inprogress', overdue: false, company: x.company, title: t(x.title), task: x })),
-        ...all.filter((x) => !isEva(x.status) && x.status !== 'done' && !(ax && axHidesTask(x.title))).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'todo', overdue: x.bucket === 'overdue', company: x.company, title: t(x.title), task: x })),
-        ...evaReview.map((d): WorkItem => ({ kind: 'review', id: d.id, ws: 'inprogress', overdue: false, company: d.company, title: t(d.label), d })),
+        // EVA at work: in Vision every running task is In progress; AX has no such column, so a task
+        // you just handed over waits in For review until EVA's draft arrives.
+        ...all.filter((x) => x.status === 'eva-running' && (!ax || handing.has(x.id))).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: ax ? 'review' : 'inprogress', overdue: false, company: x.company, title: t(x.title), task: x })),
+        // your own work: To do, or In progress once you've started it (Vision)
+        ...all.filter((x) => !isEva(x.status) && x.status !== 'done' && !(ax && axHidesTask(x.title))).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: !ax && x.status === 'in-progress' ? 'inprogress' : 'todo', overdue: x.bucket === 'overdue' && !(!ax && x.status === 'in-progress'), company: x.company, title: t(x.title), task: x })),
+        ...evaReview.map((d): WorkItem => ({ kind: 'review', id: d.id, ws: 'review', overdue: false, company: d.company, title: t(d.label), d })),
         // client replies EVA drafted in the Inbox — the same review queue
         ...threads.filter((x) => !ax && x.status === 'needs' && (!ql || t(x.subject).toLowerCase().includes(ql) || x.client.toLowerCase().includes(ql) || x.contact.toLowerCase().includes(ql)))
-            .map((x): WorkItem => ({ kind: 'reply', id: `reply-${x.id}`, ws: 'inprogress', overdue: false, company: x.client, title: `${t('Reply to {name}').replace('{name}', x.contact.split(' ')[0])} — ${t(x.subject)}`, th: x })),
+            .map((x): WorkItem => ({ kind: 'reply', id: `reply-${x.id}`, ws: 'review', overdue: false, company: x.client, title: `${t('Reply to {name}').replace('{name}', x.contact.split(' ')[0])} — ${t(x.subject)}`, th: x })),
         ...doneLog.map((e): WorkItem => ({ kind: 'logged', id: e.id, ws: 'done', overdue: false, company: clientName(e.client), title: t(e.title ?? e.desc), entry: e, task: e.taskId ? tasks.find((x) => x.id === e.taskId) : undefined })),
     ];
     const passes = (it: WorkItem) => statusF.size === 0 || statusF.has(it.ws) || (it.overdue && statusF.has('overdue'));
@@ -248,13 +251,14 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         return list.map((it, i) => ({ it, i })).sort((a, b) => rank(a.it.id) - rank(b.it.id) || a.i - b.i).map((x) => x.it);
     };
     const todo = ordered('todo', visible.filter((it) => it.ws === 'todo')).sort((a, b) => Number(b.overdue) - Number(a.overdue));
-    // In progress is EVA's ranked queue (most urgent first) until you reorder it yourself.
-    const inprogress = ordered('inprogress', visible.filter((it) => it.ws === 'inprogress').sort((a, b) => PRIO_RANK[(prioOf(a) ?? LOWEST).level] - PRIO_RANK[(prioOf(b) ?? LOWEST).level]));
+    const inprogress = ordered('inprogress', visible.filter((it) => it.ws === 'inprogress'));
+    // For review is EVA's ranked queue (most urgent first) until you reorder it yourself.
+    const forReview = ordered('review', visible.filter((it) => it.ws === 'review').sort((a, b) => PRIO_RANK[(prioOf(a) ?? LOWEST).level] - PRIO_RANK[(prioOf(b) ?? LOWEST).level]));
     const doneAll = ordered('done', visible.filter((it) => it.ws === 'done'));
-    const colItems: Record<Col, WorkItem[]> = { todo, inprogress, done: doneAll };
+    const colItems: Record<Col, WorkItem[]> = { todo, inprogress, review: forReview, done: doneAll };
 
-    // Moving a card is doing the work: To do ⇄ Done marks it; onto In progress hands it
-    // to EVA to draft; an EVA draft goes to Done only through review, or back to you.
+    // Moving a card is doing the work: To do ⇄ In progress ⇄ Done marks it; onto For review hands
+    // it to EVA to draft; an EVA draft goes to Done only through review, or back to you.
     function move(id: string, to: Col, beforeId: string | null) {
         const it = items.find((x) => x.id === id);
         if (!it || (it.kind === 'logged' && !it.task)) return;
@@ -269,22 +273,22 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
             else {
                 onResolveDecision(it.d.id, 'alt', { backToYou: true });
                 const backId = `back-${it.d.id}`;
-                setTasks((prev) => [{ id: backId, title: it.d.label, company: it.d.company, accountant: ME, status: 'todo', bucket: 'today', dueLabel: 'Today', priority: 'high' }, ...prev]);
-                setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? backId : x)) }));
+                setTasks((prev) => [{ id: backId, title: it.d.label, company: it.d.company, accountant: ME, status: to === 'inprogress' ? 'in-progress' : 'todo', bucket: 'today', dueLabel: 'Today', priority: 'high' }, ...prev]);
+                setOrder((prev) => ({ ...prev, [to]: (prev[to] ?? ids).map((x) => (x === id ? backId : x)) }));
             }
             return;
         }
         const task = it.task!;
         const tid = task.id;
-        if (to === 'inprogress' && isPeopleWork(task.title)) { setTrace(task); return; } // a person's task: not EVA's to take — open it instead
+        if (to === 'review' && isPeopleWork(task.title)) { setTrace(task); return; } // a person's task: not EVA's to take — open it instead
         if (to === 'done') patch(tid, { status: 'done' });
-        else if (to === 'todo') { patch(tid, { status: 'todo' }); setOrder((prev) => ({ ...prev, todo: (prev.todo ?? ids).map((x) => (x === id ? tid : x)) })); }
+        else if (to === 'todo' || to === 'inprogress') { patch(tid, { status: to === 'todo' ? 'todo' : 'in-progress' }); setOrder((prev) => ({ ...prev, [to]: (prev[to] ?? ids).map((x) => (x === id ? tid : x)) })); }
         else {
             setHanding((prev) => new Set(prev).add(tid));
-            if (id !== tid) setOrder((prev) => ({ ...prev, inprogress: (prev.inprogress ?? ids).map((x) => (x === id ? tid : x)) }));
+            if (id !== tid) setOrder((prev) => ({ ...prev, review: (prev.review ?? ids).map((x) => (x === id ? tid : x)) }));
             handTaskToEva(task, setTasks, (d) => {
                 onAddDecision(d);
-                setOrder((prev) => ({ ...prev, inprogress: (prev.inprogress ?? []).map((x) => (x === tid ? d.id : x)) }));
+                setOrder((prev) => ({ ...prev, review: (prev.review ?? []).map((x) => (x === tid ? d.id : x)) }));
             });
         }
     }
@@ -297,14 +301,14 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         drop: (col) => { if (dragId) move(dragId, col, over?.col === col ? over.beforeId : null); setDragId(null); setOver(null); },
     };
     const done = doneAll.slice(0, DONE_SHOWN);
-    const counts = { todo: items.filter((i) => i.ws === 'todo').length, overdue: items.filter((i) => i.overdue).length, inprogress: items.filter((i) => i.ws === 'inprogress').length, done: items.filter((i) => i.ws === 'done').length };
+    const counts = { todo: items.filter((i) => i.ws === 'todo').length, overdue: items.filter((i) => i.overdue).length, inprogress: items.filter((i) => i.ws === 'inprogress').length, review: items.filter((i) => i.ws === 'review').length, done: items.filter((i) => i.ws === 'done').length };
 
     const openItem = (it: WorkItem) => { if (it.kind === 'task') setTrace(it.task); else if (it.kind === 'review') setReview(it.d); else if (it.kind === 'reply') onOpenThread?.(it.th); else onOpenActivity(it.entry.id); };
 
     // The list is grouped by status — the board's columns, as sections.
     const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] = [
-        ...(ax ? [] : [{ key: 'todo', title: <WorkTag s="todo" />, items: todo }]), // AX: no tasks of your own
-        { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress },
+        ...(ax ? [] : [{ key: 'todo', title: <WorkTag s="todo" />, items: todo }, { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress }]), // AX: no tasks of your own
+        { key: 'review', title: <WorkTag s="review" />, items: forReview },
         { key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 },
     ];
 
@@ -353,7 +357,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
                     {!ax && <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {((ax ? ['inprogress', 'done'] : ['todo', 'overdue', 'inprogress', 'done']) as WorkStatus[]).map((k) => {
+                        {((ax ? ['review', 'done'] : ['todo', 'overdue', 'inprogress', 'review', 'done']) as WorkStatus[]).map((k) => {
                             const on = statusF.has(k); const m = WORK_STATUS[k];
                             return (
                                 <button key={k} onClick={() => toggleStatusF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
@@ -370,7 +374,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 </div>
 
                 {view === 'board' ? (
-                    <div className="grid gap-4 items-start land board-grid" style={{ ['--d' as string]: '360ms', gridTemplateColumns: `repeat(${ax ? 2 : 3}, minmax(0, 1fr))` }}>
+                    <div className="grid gap-4 items-start land board-grid" style={{ ['--d' as string]: '360ms', gridTemplateColumns: `repeat(${ax ? 2 : 4}, minmax(0, 1fr))` }}>
                         {!ax && (
                         <BoardColumn s="todo" count={todo.length} dnd={dnd}>
                             {todo.map((it, i) => (
@@ -382,15 +386,20 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             ))}
                         </BoardColumn>
                         )}
+                        {!ax && (
                         <BoardColumn s="inprogress" count={inprogress.length} dnd={dnd}>
                             {inprogress.map((it, i) => <WorkCard key={it.id} it={it} col="inprogress" nextId={inprogress[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />)}
+                        </BoardColumn>
+                        )}
+                        <BoardColumn s="review" count={forReview.length} dnd={dnd}>
+                            {forReview.map((it, i) => <WorkCard key={it.id} it={it} col="review" nextId={forReview[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />)}
                         </BoardColumn>
                         <BoardColumn s="done" count={doneAll.length} dnd={dnd} footer={<button onClick={() => onTab('activity')} className="text-xs font-medium w-full text-left px-1 pt-1" style={{ color: '#4456c7' }}>{t('See all in the activity log')} →</button>}>
                             {done.map((it, i) => <WorkCard key={it.id} it={it} col="done" nextId={done[i + 1]?.id ?? null} dnd={dnd} onOpen={() => openItem(it)} />)}
                         </BoardColumn>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-4 land" style={{ ['--d' as string]: '360ms' }}>
                         {listGroups.filter((g) => g.items.length > 0 || g.footer || true).map((g) => {
                             // By status, each group is a column you can drag rows into, like the board.
                             const col = g.key as Col;
@@ -467,8 +476,8 @@ const itemSub = (it: WorkItem, t: (s: string) => string): ReactNode =>
     it.kind === 'review' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA drafted this')}</span> · {t(it.d.question)}</>
     : it.kind === 'reply' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t(it.th.suggestion ? 'EVA drafted a reply' : 'Waiting for your reply')}</span>{it.th.suggestion ? <> · {t(it.th.suggestion.action)}</> : null}</>
     : it.kind === 'logged' ? <>{it.entry.origin === 'tasks' && it.entry.resolution ? t(it.entry.resolution) : t(it.entry.actor === 'you' ? 'Done by you' : 'Done by EVA')} · {it.entry.time}</>
-    : it.ws === 'inprogress' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA is drafting this…')}</span></>
-    : <><span style={{ color: dueColor(it.task.bucket), fontWeight: 500 }}>{t(it.task.dueLabel)}</span>{it.task.status === 'waiting' ? <> · {t('Waiting on client')}</> : null}</>;
+    : it.task.status === 'eva-running' ? <><span style={{ color: PURPLE, fontWeight: 500 }}>{t('EVA is drafting this…')}</span></>
+    : <><span style={{ color: dueColor(it.task.bucket), fontWeight: 500 }}>{t(it.task.dueLabel)}</span>{it.task.status === 'waiting' ? <> · {t('Waiting on client')}</> : it.ws === 'inprogress' ? <> · {t('You’re working on this')}</> : null}</>;
 
 // EVA's priority for the items waiting on your review.
 const LOWEST: Priority = { level: 'low', why: '' };

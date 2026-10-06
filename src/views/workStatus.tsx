@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { Card, CountBadge, COLORS } from '../ui';
 import { useLang } from '../i18n';
 
-// The three work statuses shown everywhere tasks appear: To do (sub-status Overdue),
-// In progress (EVA drafts ready for your review) and Done.
-export type WorkStatus = 'todo' | 'overdue' | 'inprogress' | 'done';
+// The work statuses shown everywhere tasks appear: To do (sub-status Overdue), In progress (being
+// worked on now, by you or by EVA — Vision only), For review (EVA's drafts waiting on you) and Done.
+export type WorkStatus = 'todo' | 'overdue' | 'inprogress' | 'review' | 'done';
 export const WORK_STATUS: Record<WorkStatus, { label: string; bg: string; fg: string; dot: string }> = {
     todo: { label: 'To do', bg: '#f1f1f3', fg: '#52525b', dot: '#a8a8b0' },
     overdue: { label: 'Overdue', bg: '#fdecec', fg: '#c0392b', dot: '#dc2626' },
-    inprogress: { label: 'In progress', bg: '#f3f0fb', fg: '#6d28d9', dot: '#7c3aed' },
+    inprogress: { label: 'In progress', bg: '#eef4fb', fg: '#2f6fb0', dot: '#4c6ef5' },
+    review: { label: 'For review', bg: '#f3f0fb', fg: '#6d28d9', dot: '#7c3aed' },
     done: { label: 'Done', bg: '#e9f7ef', fg: '#15803d', dot: '#16a34a' },
 };
 export function WorkTag({ s, label }: { s: WorkStatus; label?: string }) {

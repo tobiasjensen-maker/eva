@@ -206,7 +206,7 @@ export default function App() {
     const [compose, setCompose] = useState<ShareDraft | null>(null);
     const needsReply = threads.filter((x) => x.status === 'needs').length;
     // Menu counts — one subtle badge style for every item.
-    // Work's badge is its In progress queue: EVA's drafts to review + client replies drafted in the Inbox.
+    // Work's badge is its For review queue: EVA's drafts to review + client replies drafted in the Inbox.
     // Vision (the full product) vs AX (what we build first: agent management + period closing).
     const [scopeMode, setScopeModeState] = useState<ScopeMode>(initialScope);
     const ax = scopeMode === 'ax';

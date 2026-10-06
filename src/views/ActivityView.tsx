@@ -255,10 +255,10 @@ const STATUS_STYLE: Record<ActivityStatus, { bg: string; fg: string; label: stri
     waiting: { bg: '#eef2ff', fg: '#4456c7', label: 'Waiting', icon: 'time' },
 };
 
-// The log uses the Tasks board's tags: done work is Done, EVA work awaiting you is In progress.
+// The log uses the Tasks board's tags: done work is Done, EVA work awaiting you is For review.
 const LOG_TAG: Record<ActivityStatus, { s: WorkStatus; label: string }> = {
     completed: { s: 'done', label: 'Done' },
-    'needs-review': { s: 'inprogress', label: 'In progress' },
+    'needs-review': { s: 'review', label: 'For review' },
     waiting: { s: 'todo', label: 'Waiting' },
     failed: { s: 'overdue', label: 'Failed' },
 };
@@ -1090,7 +1090,7 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                     {FEED_STATUSES.map((s) => {
                         const on = statusF.has(s.key);
                         const tg = LOG_TAG[s.key];
-                        const m = { todo: ['#f1f1f3', '#52525b', '#a8a8b0'], overdue: ['#fdecec', '#c0392b', '#dc2626'], inprogress: ['#f3f0fb', '#6d28d9', '#7c3aed'], done: ['#e9f7ef', '#15803d', '#16a34a'] }[tg.s];
+                        const m = { todo: ['#f1f1f3', '#52525b', '#a8a8b0'], overdue: ['#fdecec', '#c0392b', '#dc2626'], inprogress: ['#eef4fb', '#2f6fb0', '#4c6ef5'], review: ['#f3f0fb', '#6d28d9', '#7c3aed'], done: ['#e9f7ef', '#15803d', '#16a34a'] }[tg.s];
                         return (
                             <button key={s.key} onClick={() => toggleStatus(s.key)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
                                 style={{ border: `1px solid ${on ? m[1] : COLORS.cardBorder}`, background: on ? m[0] : '#fff', color: on ? m[1] : COLORS.textMuted }}>
