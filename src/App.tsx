@@ -404,7 +404,7 @@ export default function App() {
     const closeUniverse = (alsoPanel = false) => {
         if (ecoClosing) return;
         setEcoClosing(true);
-        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setRoute('economic'); navigate('economic'); }, 400);
+        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setRoute('economic'); navigate('economic'); }, 240);
     };
     const embedded = ecoUniverse && !mobile;
     useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
