@@ -113,7 +113,7 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
             <div>
                 <div className="flex items-center gap-2 mb-3">
                     <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('My clients')}</h2>
-                    <Button><Icon name="circle-plus" /> {t('Add client')}</Button>
+                    {!ax && <Button><Icon name="circle-plus" /> {t('Add client')}</Button>}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="relative flex-1" style={{ minWidth: 220 }}>

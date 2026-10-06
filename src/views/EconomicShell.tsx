@@ -1,11 +1,15 @@
-import { useState, type ReactNode } from 'react';
-import { Button, Icon } from '@economic/taco';
-import { NodeMark, Orb, COLORS } from '../ui';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Button, Group, Header, Heading, Icon, IconButton, Menu, Navigation2, Table3, Tooltip, type IconName } from '@economic/taco';
+import { Orb } from '../ui';
 import { useLang } from '../i18n';
+import agreementAvatar from '../assets/agreement-avatar.svg';
 
 // ---- AX entry: EVA as an overlay on the e-conomic people use today ---------------------------
+// Built from the prototype kit's e-conomic pieces (e-conomic/prototype-kit, web track): the AppShell's
+// Header + Regnskab side nav and the Journals (Kassekladde) template's Table3 — ported to taco 6.
 // A stand-in for e-conomic's Accounting › Daily journal. EVA opens from the top bar as a side
-// panel over the journal; expanding it leaves e-conomic for the EVA universe (the AX app).
+// panel docked on the right; expanding it opens the EVA universe (the AX app) in a rounded
+// container over e-conomic's top menu and content — the panel itself stays where it is.
 
 export interface JournalRow { no: number; type: 'supplier' | 'customer'; doc: boolean; date: string; text: string; amount: number; account: string; contra: string; vat: string }
 
@@ -44,133 +48,201 @@ export function journalAnswer(q: string, lang: 'en' | 'da'): string | null {
         : 'I checked all 15 entries. 10 look right. 6 need a look before you post — they’re marked in the journal:\n\n• 11 Phone bill is on 6310 Rent — it should probably be 6340 Phone & internet.\n• 15 Electricity August belongs to August — I can make an accrual.\n• 6 Lunch meeting: only 25% of the VAT is deductible.\n• 3, 8 and 13 have no document — I’ve found them and can attach them.\n\nShall I fix these and post the rest? Open me in full screen ⤢ to see the same across all your clients.';
 }
 
-const kr = (n: number) => `${n.toLocaleString('da-DK')} kr`;
-const TOP_NAV = ['Home', 'Sales', 'Expenses', 'Accounting', 'Reports', 'Projects'];
-const SIDE_NAV: { group: string; open: boolean; items: string[] }[] = [
-    { group: 'Journals', open: true, items: ['Daily cash journal', 'Payroll journal', 'Open entries'] },
-    { group: 'Bookkeeping', open: true, items: ['Accounts', 'Chart of accounts', 'Trial balance'] },
-    { group: 'VAT & duties', open: true, items: ['VAT statement', 'EU sales without VAT'] },
-    { group: 'Period closing', open: false, items: [] },
-    { group: 'Automation', open: true, items: ['Workflows'] },
-];
-const NAVY = '#23233f';
+// ─── Kit: Journals template (adapted) ─────────────────────────────────────────────
+type EntryType = 'supplierInvoice' | 'manualCustomerInvoice';
+interface DraftEntry { entryId: number; entryType: EntryType; formattedDate: string; hasDoc: boolean; voucherNumber: number; text: string; amount: number; account: string; vatCode: string; contraAccount: string; flag?: string }
 
-export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, leaving }: {
+const dkk = new Intl.NumberFormat('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const TYPE_ICON: Record<EntryType, IconName> = { supplierInvoice: 'entry-type-supplier-invoice', manualCustomerInvoice: 'entry-type-manual-customer-invoice' };
+const TYPE_COLOR: Record<EntryType, string> = { supplierInvoice: 'text-yellow-500', manualCustomerInvoice: 'text-green-500' };
+const TYPE_LABEL: Record<EntryType, string> = { supplierInvoice: 'Leverandørfaktura', manualCustomerInvoice: 'Kundefaktura' };
+
+// ─── Kit: AppShell — Regnskab side nav ────────────────────────────────────────────
+function RegnskabNav() {
+    return (
+        <Navigation2>
+            <Navigation2.Section>
+                <Navigation2.Group heading="Kassekladder" defaultExpanded>
+                    <Navigation2.Link href="#" active>Daglig</Navigation2.Link>
+                    <Navigation2.Link href="#">Indbetalinger</Navigation2.Link>
+                    <Navigation2.Link href="#">Lønninger</Navigation2.Link>
+                    <Navigation2.Link href="#">Personalegoder</Navigation2.Link>
+                </Navigation2.Group>
+                <Navigation2.Group heading="Søgning og lister" defaultExpanded>
+                    <Navigation2.Link href="#">Kontoplan</Navigation2.Link>
+                    <Navigation2.Link href="#">Leverandører</Navigation2.Link>
+                    <Navigation2.Link href="#">Anlægskartotek</Navigation2.Link>
+                    <Navigation2.Link href="#">Posteringer (find bilag)</Navigation2.Link>
+                    <Navigation2.Link href="#">Periodiseringer</Navigation2.Link>
+                </Navigation2.Group>
+                <Navigation2.Group heading="Bilagsanmodning" defaultExpanded>
+                    <Navigation2.Link href="#">Anmod om bilag</Navigation2.Link>
+                    <Navigation2.Link href="#">Bilag til gennemgang</Navigation2.Link>
+                </Navigation2.Group>
+                <Navigation2.Group heading="Bank" defaultExpanded>
+                    <Navigation2.Link href="#">Bankafstemning</Navigation2.Link>
+                    <Navigation2.Link href="#">Betalinger</Navigation2.Link>
+                    <Navigation2.Link href="#">Bankopsætning</Navigation2.Link>
+                </Navigation2.Group>
+            </Navigation2.Section>
+        </Navigation2>
+    );
+}
+
+// Mock agreement (fictional).
+const AGREEMENT = { number: 612448, name: 'Holm Revision ApS', userId: 'THJ', isAdministrator: true, imageSrc: agreementAvatar };
+
+export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, universe }: {
     panel: ReactNode;          // the EVA side panel (shown when open)
     panelOpen: boolean;
     onTogglePanel: () => void;
     flagged: boolean;          // EVA has checked the journal — mark what it found
-    leaving: boolean;          // expanding into the EVA universe
+    universe: boolean;         // the EVA universe is open on top — dim e-conomic under it
 }) {
     const { t } = useLang();
     const [hint, setHint] = useState(true); // a one-time nudge towards the EVA button
-    const cols = ['Type', 'Voucher', 'Attachment', 'Date', 'Text', 'Amount', 'Account', 'Contra account', 'VAT', 'Voucher balance', 'Currency', 'Project'];
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [agreementOpen, setAgreementOpen] = useState(false);
+    // The universe container sits left of the panel — share the panel's live width (it's resizable).
+    const panelRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const el = panelRef.current;
+        const root = document.documentElement;
+        if (!el) { root.style.setProperty('--eco-panel-w', '0px'); return; }
+        const ro = new ResizeObserver(() => root.style.setProperty('--eco-panel-w', `${el.offsetWidth}px`));
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [panelOpen]);
+
+    const data: DraftEntry[] = JOURNAL.map((r) => ({
+        entryId: r.no, entryType: r.type === 'supplier' ? 'supplierInvoice' : 'manualCustomerInvoice', formattedDate: r.date.replace(/\./g, '-'), hasDoc: r.doc,
+        voucherNumber: r.no, text: r.text, amount: r.amount, account: r.account, vatCode: r.vat, contraAccount: r.contra, flag: flagged ? JOURNAL_FLAGS[r.no] : undefined,
+    }));
+    const balance = JOURNAL.reduce((s, r) => s + (r.type === 'customer' ? r.amount : -r.amount), 0);
+
+    const toolbarLeft = (
+        <Group>
+            <Button appearance="primary">Ny postering</Button>
+            <Button>Ny postering fra Inbox</Button>
+            <Button>Bogfør posteringer</Button>
+            <Menu trigger={<Button>Mere <Icon name="chevron-down" /></Button>}>
+                <Menu.Content>
+                    <Menu.Item>Eksportér til Excel</Menu.Item>
+                    <Menu.Item>Importér posteringer</Menu.Item>
+                </Menu.Content>
+            </Menu>
+        </Group>
+    );
+    const toolbarRight = (
+        <Group>
+            <IconButton appearance="default" icon="document-create-entry" aria-label="Træk bilag fra Inbox" tooltip="Træk og slip bilag fra Inbox" />
+            <IconButton appearance="default" icon="export-to-excel" aria-label="Eksportér til Excel" tooltip="Eksportér til Excel" />
+        </Group>
+    );
+
     return (
-        <div className={`fixed inset-0 z-[60] flex flex-col ${leaving ? 'eco-leave' : 'eco-enter'}`} style={{ background: '#fff', fontFamily: 'inherit' }}>
-            {/* top bar */}
-            <header className="flex items-center gap-1 px-4 shrink-0" style={{ height: 52, background: NAVY, color: '#fff' }}>
-                <span className="mr-3"><NodeMark size={26} /></span>
-                {TOP_NAV.map((n) => (
-                    <span key={n} className="rounded-md px-3 py-1.5 text-sm" style={{ background: n === 'Accounting' ? 'rgba(255,255,255,0.14)' : 'transparent', fontWeight: n === 'Accounting' ? 600 : 400 }}>{t(n)}</span>
-                ))}
-                <div className="ml-auto flex items-center gap-3.5" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                    <Icon name="search" />
-                    <Icon name="inbox" />
-                    <Icon name="bell-solid" />
-                    {/* EVA — the way in */}
-                    <span className="relative">
-                        <button onClick={() => { setHint(false); onTogglePanel(); }} className={`flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-sm font-semibold ${hint && !panelOpen ? 'eva-pulse' : ''}`}
-                            style={{ background: panelOpen ? '#fff' : 'rgba(255,255,255,0.12)', color: panelOpen ? NAVY : '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
-                            <Orb size={22} /> EVA
-                        </button>
-                        {hint && !panelOpen && (
-                            <span className="absolute right-0 top-full mt-2.5 rounded-lg px-3 py-2 text-xs whitespace-nowrap anim-in" style={{ background: '#fff', color: COLORS.text, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}>
-                                {t('New: EVA can check this journal for you')}
-                            </span>
-                        )}
-                    </span>
-                    <span className="flex items-center justify-center rounded-full" style={{ width: 26, height: 26, background: '#16a34a' }}><Icon name="question-mark-bold" /></span>
-                    <span className="flex items-center justify-center rounded-full" style={{ width: 26, height: 26, background: '#ed9b2c' }}><Icon name="settings" /></span>
-                    <span className="flex items-center gap-2 pl-3 ml-1" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)' }}>
-                        <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.2)' }}><Icon name="person-solid" /></span>
-                        <span className="leading-tight">
-                            <span className="block text-xs font-medium">Tobias Holm Jensen</span>
-                            <span className="block text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Holm Revision ApS · 612448</span>
+        // the kit's nav links are href="#" stand-ins — keep them from wiping the prototype's hash route
+        <div className="fixed inset-0 z-[60] flex eco-enter" style={{ background: '#fff' }} onClickCapture={(e) => { if ((e.target as HTMLElement).closest('a[href="#"]')) e.preventDefault(); }}>
+            {/* e-conomic: top menu + content (the EVA universe covers this part when open) */}
+            <div className="flex-1 min-w-0 flex flex-col relative">
+                {universe && <div className="absolute inset-0 z-20 eco-dim" style={{ background: 'rgba(28, 27, 58, 0.45)' }} />}
+                {/* Kit: AppShell header */}
+                <Header>
+                    <Header.MenuButton onClick={() => setSidebarOpen((v) => !v)} />
+                    <Header.Logo />
+                    <Header.PrimaryNavigation>
+                        {['Hjem', 'Salg', 'Regnskab', 'Rapporter'].map((l) => (
+                            <Header.Link key={l} href="#" aria-current={l === 'Regnskab' ? 'page' : undefined}>{l}</Header.Link>
+                        ))}
+                    </Header.PrimaryNavigation>
+                    <Header.SecondaryNavigation>
+                        {/* EVA — the way in */}
+                        <span className="relative flex items-center mr-1">
+                            <button onClick={() => { setHint(false); onTogglePanel(); }} className={`flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-sm font-semibold ${hint && !panelOpen ? 'eva-pulse' : ''}`}
+                                style={{ background: panelOpen ? '#fff' : 'rgba(255,255,255,0.12)', color: panelOpen ? '#23233f' : '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
+                                <Orb size={22} /> EVA
+                            </button>
+                            {hint && !panelOpen && (
+                                <span className="absolute right-0 top-full mt-2.5 z-30 rounded-lg px-3 py-2 text-xs whitespace-nowrap anim-in" style={{ background: '#fff', color: '#1c1b3a', boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}>
+                                    {t('New: EVA can check this journal for you')}
+                                </span>
+                            )}
                         </span>
-                        <Icon name="chevron-down" />
-                    </span>
+                        <Header.Button icon="search-bold" aria-label="Søg" />
+                        <Header.Button icon="bell-solid" aria-label="Notifikationer" />
+                        <Header.Button icon="market" aria-label="Apps" />
+                        <Header.Button icon="inbox" aria-label="Indbakke" />
+                        <Header.Button icon="question-mark-bold" aria-label="Hjælp" />
+                        <Header.Button icon="settings-solid" aria-label="Indstillinger" />
+                    </Header.SecondaryNavigation>
+                    <Header.AgreementSelector
+                        agreements={[AGREEMENT]}
+                        currentAgreement={AGREEMENT}
+                        fallbackImageSrc={agreementAvatar}
+                        filterAgreement={(a, f) => f(a)}
+                        filterClientAgreement={(a, _s, f) => f(a)}
+                        onChangeAgreement={() => {}}
+                        onLogout={() => {}}
+                        open={agreementOpen}
+                        setOpen={setAgreementOpen}
+                    />
+                </Header>
+
+                <div className="flex flex-1 min-h-0 w-full">
+                    {sidebarOpen && <div className="shrink-0 w-[256px] overflow-y-auto border-r border-gray-100 bg-white"><RegnskabNav /></div>}
+
+                    {/* Kit: Journals template — balance line + Table3 */}
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white">
+                        <div className="flex items-end justify-between px-4 pt-3 pb-2">
+                            <Heading level={1} size="lg">Daglig</Heading>
+                            <div className="flex gap-8 text-right">
+                                <div><p className="text-sm text-gray-500">Saldo</p><p className="text-lg font-bold">{dkk.format(balance)}</p></div>
+                                <div><p className="text-sm text-gray-500">Bankkonto</p><p className="text-lg font-bold">{dkk.format(132940)}</p></div>
+                            </div>
+                        </div>
+                        <div id="journal__feed" className="flex-1 min-h-0 min-w-0 flex flex-col px-4 py-2 overflow-hidden">
+                            <Table3<DraftEntry>
+                                id="draft-entries-table"
+                                data={data}
+                                rowIdentityAccessor="entryId"
+                                preset="complex"
+                                enableSearch
+                                enableFooter
+                                enableRowSelection
+                                enableColumnOrdering={false}
+                                enableColumnHiding
+                                enableFiltering={false}
+                                enablePrinting
+                                defaultSettings={{ rowHeight: 'short', fontSize: 'small' }}
+                                toolbarLeft={toolbarLeft}
+                                toolbarRight={toolbarRight}>
+                                <Table3.Column<DraftEntry> accessor="entryType" header="Type" align="left" defaultWidth={56} minWidth={56}
+                                    renderer={({ value }) => <Tooltip title={TYPE_LABEL[value]}><Icon name={TYPE_ICON[value]} className={TYPE_COLOR[value]} /></Tooltip>} />
+                                <Table3.Column<DraftEntry> accessor="formattedDate" header="Dato" align="left" defaultWidth={96} />
+                                <Table3.Column<DraftEntry> accessor="hasDoc" header="Bilag" align="left" defaultWidth={64}
+                                    renderer={({ value }) => <IconButton appearance="discrete" icon={value ? 'document-preview' : 'circle-plus'} aria-label={value ? 'Vis bilag' : 'Tilføj bilag'} />} />
+                                <Table3.Column<DraftEntry> accessor="voucherNumber" header="Bilagsnr." align="left" defaultWidth={80} dataType="number" />
+                                <Table3.Column<DraftEntry> accessor="text" header="Tekst" align="left" defaultWidth={flagged ? 380 : 240}
+                                    renderer={({ value, row }) => row.flag ? (
+                                        // EVA's finding, inline — the marker also tints the whole row (index.css)
+                                        <span className="eco-flag-cell flex items-center gap-2 min-w-0">
+                                            <span className="truncate">{value}</span>
+                                            <span className="flex items-center gap-1 shrink-0 rounded-full px-1.5 py-px text-[11px] font-medium" style={{ background: '#fdf1dc', color: '#92710f' }}><Orb size={11} /> {t(row.flag)}</span>
+                                        </span>
+                                    ) : <span className="truncate">{value}</span>} />
+                                <Table3.Column<DraftEntry> accessor="amount" header="Beløb" dataType="amount" defaultWidth={110}
+                                    renderer={({ value }) => <span className="truncate">{dkk.format(value)}</span>} />
+                                <Table3.Column<DraftEntry> accessor="account" header="Konto" align="left" defaultWidth={170} />
+                                <Table3.Column<DraftEntry> accessor="vatCode" header="Moms" align="left" defaultWidth={70} />
+                                <Table3.Column<DraftEntry> accessor="contraAccount" header="Modkonto" align="left" defaultWidth={150} />
+                            </Table3>
+                        </div>
+                    </div>
                 </div>
-            </header>
-
-            <div className="flex flex-1 min-h-0">
-                {/* left menu */}
-                <aside className="shrink-0 overflow-y-auto py-3 px-2.5" style={{ width: 230, background: '#fafafa', borderRight: `1px solid ${COLORS.cardBorder}` }}>
-                    {SIDE_NAV.map((g) => (
-                        <div key={g.group} className="mb-1">
-                            <p className="flex items-center gap-1.5 px-2 py-1.5 text-sm font-semibold" style={{ color: COLORS.text }}>
-                                <span style={{ fontSize: 9, width: 10, display: 'inline-block' }}>{g.open ? '▼' : '▶'}</span>{t(g.group)}
-                            </p>
-                            {g.items.map((it) => (
-                                <p key={it} className="rounded-md px-2 py-1.5 ml-3.5 text-sm" style={{ background: it === 'Daily cash journal' ? '#e8ecf8' : 'transparent', color: COLORS.text }}>{t(it)}</p>
-                            ))}
-                        </div>
-                    ))}
-                </aside>
-
-                {/* the journal */}
-                <main className="flex-1 min-w-0 flex flex-col px-6 pt-5 pb-4">
-                    <h1 className="text-xl font-semibold mb-3" style={{ color: COLORS.text }}>{t('Daily cash journal')}</h1>
-                    <div className="flex items-center gap-2 mb-3">
-                        <Button appearance="primary">{t('New entry')}</Button>
-                        <Button>{t('Post entries')}</Button>
-                        <Button>{t('More')} <Icon name="chevron-down" /></Button>
-                        <div className="ml-auto flex items-center gap-2" style={{ color: COLORS.textMuted }}>
-                            <Button><Icon name="edit" /></Button>
-                            <Button><Icon name="filter" /> {t('Filters')}</Button>
-                            <Button><Icon name="print" /></Button>
-                            <Button><Icon name="sliders" /></Button>
-                            <span className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}`, width: 180 }}><Icon name="search" /> {t('Search…')}</span>
-                        </div>
-                    </div>
-                    <div className="flex-1 min-h-0 overflow-auto rounded-md" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
-                        <table className="w-full text-sm" style={{ minWidth: 1080 }}>
-                            <thead className="sticky top-0 bg-white z-10">
-                                <tr style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                    {cols.map((c) => <th key={c} className={`px-3 py-2.5 font-semibold whitespace-nowrap ${c === 'Amount' ? 'text-right' : 'text-left'}`} style={{ color: COLORS.text }}>{t(c)}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {JOURNAL.map((r) => {
-                                    const flag = flagged ? JOURNAL_FLAGS[r.no] : undefined;
-                                    return (
-                                        <tr key={r.no} className={flag ? 'eco-flag' : ''} style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: flag ? '#fffaf0' : undefined, boxShadow: flag ? 'inset 3px 0 0 #ed9b2c' : undefined }}>
-                                            <td className="px-3 py-3" style={{ color: r.type === 'supplier' ? '#ed9b2c' : '#4456c7' }}><Icon name={r.type === 'supplier' ? 'entry-type-supplier-invoice' : 'entry-type-customer-invoice'} /></td>
-                                            <td className="px-3 py-3" style={{ color: COLORS.text }}>{r.no}</td>
-                                            <td className="px-3 py-3" style={{ color: r.doc ? '#4456c7' : '#ed9b2c' }}><Icon name={r.doc ? 'document-preview' : 'circle-plus'} /></td>
-                                            <td className="px-3 py-3 whitespace-nowrap" style={{ color: COLORS.text }}>{r.date}</td>
-                                            <td className="px-3 py-3" style={{ color: COLORS.text, minWidth: 220 }}>
-                                                {r.text}
-                                                {flag && <span className="flex items-center gap-1.5 mt-1 text-xs font-medium" style={{ color: '#92710f' }}><Orb size={12} /> {t(flag)}</span>}
-                                            </td>
-                                            <td className="px-3 py-3 text-right whitespace-nowrap" style={{ color: COLORS.text }}>{kr(r.amount)}</td>
-                                            <td className="px-3 py-3 whitespace-nowrap" style={{ color: COLORS.text }}>{r.account}</td>
-                                            <td className="px-3 py-3 whitespace-nowrap" style={{ color: COLORS.text }}>{r.contra}</td>
-                                            <td className="px-3 py-3" style={{ color: COLORS.text }}>{r.vat}</td>
-                                            <td className="px-3 py-3" />
-                                            <td className="px-3 py-3" />
-                                            <td className="px-3 py-3" />
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                    <p className="text-sm font-semibold pt-2.5" style={{ color: COLORS.text }}>{t('Records')}: {JOURNAL.length}</p>
-                </main>
-
-                {/* EVA, docked on the right — over today's e-conomic */}
-                {panelOpen && <div className="shrink-0 flex p-2 eco-panel-in" style={{ background: '#f4f4f6', borderLeft: `1px solid ${COLORS.cardBorder}` }}>{panel}</div>}
             </div>
+
+            {/* EVA, docked on the right, full height — it stays put when the universe opens */}
+            {panelOpen && <div ref={panelRef} className="shrink-0 flex p-2.5 eco-panel-in" style={{ background: universe ? '#e4e4ea' : '#f4f4f6', borderLeft: universe ? 'none' : '1px solid #e9e9ec', transition: 'background .3s ease' }}>{panel}</div>}
         </div>
     );
 }

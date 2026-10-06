@@ -120,7 +120,7 @@ const PANEL_HISTORY: Past[] = [
 ];
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false, storageKey,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, expanded = false, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false, storageKey,
 }: {
     storageKey?: string; // keeps this page's conversation across a refresh (session storage)
     mobile?: boolean; // phones: a floating EVA button, and the chat opens full screen
@@ -134,6 +134,7 @@ export function ChatPanel({
     collapsed: boolean;
     onToggleCollapsed: () => void;
     onExpand?: (turns: Turn[]) => void; // open the full-window chat, taking the conversation along
+    expanded?: boolean; // the full view is open next to this panel — the button closes it again
     seed?: Turn[] | null; // a conversation to continue (e.g. coming back from the full-window chat)
     // A one-off welcome brief seeded as the first message (e.g. right after onboarding).
     welcome?: string | null;
@@ -334,13 +335,13 @@ export function ChatPanel({
                     {onExpand && (
                         <button
                             onClick={() => onExpand(turnsOf(msgs))}
-                            title={t('Open in full window')}
+                            title={t(expanded ? 'Close full screen' : 'Open in full window')}
                             className="rounded-md p-1"
                             style={{ color: COLORS.textMuted }}
                             onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                            <Icon name="expand-view" />
+                            <Icon name={expanded ? 'modal-shrink' : 'expand-view'} />
                         </button>
                     )}
                     <button

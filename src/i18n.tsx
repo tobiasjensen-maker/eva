@@ -2359,4 +2359,5 @@ const DA: Record<string, string> = {
     'Check this journal before I post it': 'Tjek kladden, før jeg bogfører',
     'Back to e-conomic': 'Tilbage til e-conomic',
     'Daily cash journal': 'Daglig kassekladde',
+    'Close full screen': 'Luk fuld skærm',
 };

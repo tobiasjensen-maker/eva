@@ -58,6 +58,7 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   *In progress* (that's Vision: work being done right now by you or by EVA).
 - **Connectors:** e-conomic only. *Add connector* opens an empty state with a field to request the system
   you'd want (`ConnectorRequest`) instead of the partner directory.
+- **Portfolio overview:** just the client list — no greeting, question box or cards, no *Add client*.
 - **Client overview:** just No., Client and Books — no Services column, no industry under the name.
 - **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
   *What did EVA do overnight?* instead of the advisory prompts.
@@ -352,10 +353,16 @@ in SkillsView, or its trigger for routines you build), sorted by when it runs. O
 
 ## AX entry: EVA on top of today's e-conomic (`#/economic`, `src/views/EconomicShell.tsx`)
 
-A stand-in for Accounting › Daily cash journal (top bar, left menu, journal table — mock data, mock user).
-The way in is the **EVA** button in the top bar (pulses once with a hint). EVA opens as a side panel over the
-journal — the same `ChatPanel` as everywhere, with journal-aware chips. *Check this journal* marks 6 rows in
-the table with what EVA found (wrong account, accrual, partial VAT, missing documents). **Expand ⤢** lifts
-e-conomic away (fade + slight zoom) into the EVA universe (the AX overview) — the conversation comes along
-into the panel there, if you started one. Back: account menu → *Back to e-conomic* (AX).
-Link: `?scope=ax#/economic`.
+The "old e-conomic" is built from the **prototype kit** (`e-conomic/prototype-kit`, web track): the AppShell's
+taco `Header` + `AgreementSelector` and Regnskab `Navigation2` side nav, and the Journals (Kassekladde)
+template's `Table3` — ported from taco 14 to this prototype's taco 6 (`LegacyButton` → `Button`, no `Text`).
+Mock data, mock agreement. The kit's `href="#"` links are swallowed so they can't wipe the hash route.
+
+- **EVA button** in the header (pulses once with a hint) docks EVA on the right, **full height** — the same
+  `ChatPanel` as everywhere, with journal-aware chips. *Check this journal* marks 6 rows (wrong account,
+  accrual, partial VAT, missing documents) — inline in Tekst, and the row tints via `tr:has(.eco-flag-cell)`.
+- **Expand ⤢** opens the **EVA universe** (the AX app) as a rounded container over e-conomic's top menu and
+  content, left of the panel — the panel itself stays put with the conversation (`--eco-panel-w` keeps the
+  container next to it as it resizes). In the universe that panel *is* EVA: the app's own panel is hidden.
+- **Shrink** (same button) or account menu → *Back to e-conomic* closes the universe. Survives a refresh.
+- Link: `?scope=ax#/economic`.

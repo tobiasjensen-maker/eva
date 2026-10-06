@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from '@economic/taco';
-import { Card, CountBadge, Orb, MicIcon, COLORS } from '../ui';
+import { Card, CountBadge, Orb, MicIcon, PageHeader, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Books, type Client, type Thread } from '../practice';
@@ -94,6 +94,17 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
         ? [t('Walk me through my day'), t('What’s left to close September?'), t('What did EVA do overnight?')]
         : [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
     const ask = (text: string) => { if (text.trim()) { onAsk(text.trim()); setQ(''); } };
+
+    // AX: the portfolio overview is just the client overview — no greeting, question box or cards.
+    if (ax) return (
+        <div className="h-full overflow-y-auto">
+            <PageHeader title={t('Portfolio overview')} showScope={false} />
+            <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1240 }}>
+                <div className="land"><ClientList onSelect={setSel} /></div>
+            </div>
+            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
+        </div>
+    );
 
     return (
         <div className="h-full overflow-y-auto">

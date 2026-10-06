@@ -388,9 +388,14 @@ export default function App() {
     }
     const [welcome, setWelcome] = useState(false);
     // AX: EVA as an overlay on today's e-conomic (#/economic) — side panel first, then full screen.
-    const [ecoPanel, setEcoPanel] = useState(false);
+    // The universe is the EVA app shown in a rounded container next to the docked panel (kept across a refresh).
+    const ssGet = (k: string) => { try { return sessionStorage.getItem(k) === '1'; } catch { return false; } };
+    const [ecoPanel, setEcoPanel] = useState(() => ssGet('va-eco-panel'));
+    const [ecoUniverse, setEcoUniverse] = useState(() => ssGet('va-eco-universe'));
     const [ecoFlagged, setEcoFlagged] = useState(false);
-    const [ecoLeaving, setEcoLeaving] = useState(false);
+    const showEco = route === 'economic' || ecoUniverse;
+    const embedded = ecoUniverse && !mobile;
+    useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
     const [chatKey, setChatKey] = useState(0);
     const [panelSeed, setPanelSeed] = useState(0); // bump to remount the EVA panel (e.g. to seed the welcome)
     // The conversation travels: panel → full-window chat on expand, and back again on close.
@@ -625,9 +630,12 @@ export default function App() {
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeModeContext.Provider value={{ scope: scopeMode, ax, setScope: setScopeMode }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className={`flex ${mobile ? 'flex-col' : ''}`} style={mobile
-            ? { width: '100%', height: '100%', background: view === 'home' ? HOME_BG : CANVAS }
-            : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
+        <div className={`flex ${mobile ? 'flex-col' : ''} ${embedded ? 'eva-universe-in' : ''}`} style={mobile
+            ? { width: '100%', height: '100%', background: view === 'home' && !ax ? HOME_BG : CANVAS }
+            : embedded
+            // the EVA universe over e-conomic: a rounded container left of the docked EVA panel
+            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 'calc(var(--eco-panel-w, 420px) + 10px)', zIndex: 61, borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 64px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
+            : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
             {!mobile && (
             <aside
@@ -828,7 +836,7 @@ export default function App() {
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
                                 {ax && (
                                     <button
-                                        onClick={() => { navigate('economic'); setAccountOpen(false); }}
+                                        onClick={() => { setEcoUniverse(false); navigate('economic'); setAccountOpen(false); }}
                                         className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm"
                                         style={{ color: COLORS.text }}
                                         onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
@@ -1005,7 +1013,7 @@ export default function App() {
                 </nav>
             )}
 
-            {chatPanel && (
+            {chatPanel && !embedded && (
                 <ChatPanel
                     key={panelKey}
                     storageKey="eva"
@@ -1049,42 +1057,6 @@ export default function App() {
                 </div>
             )}
 
-            {/* AX: today's e-conomic with EVA on top (#/economic). Expanding EVA leaves for the EVA universe,
-                taking the conversation along into the panel there. */}
-            {route === 'economic' && (
-                <EconomicShell
-                    panelOpen={ecoPanel}
-                    onTogglePanel={() => setEcoPanel((o) => !o)}
-                    flagged={ecoFlagged}
-                    leaving={ecoLeaving}
-                    panel={
-                        <ChatPanel
-                            key={'eco-' + lang}
-                            storageKey="eva-economic"
-                            subtitle=""
-                            intro="I'm EVA. I can see you're in the daily journal — 15 entries, 3 without a document. Want me to check it before you post?"
-                            chips={['Check this journal before I post it', 'What’s left to close September?', 'What did EVA do overnight?']}
-                            respond={(q) => { const j = journalAnswer(q, lang); if (j) { setEcoFlagged(true); return j; } return overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }); }}
-                            collapsed={false}
-                            onToggleCollapsed={() => setEcoPanel(false)}
-                            onExpand={(turns) => {
-                                setEcoLeaving(true);
-                                setTimeout(() => {
-                                    // carry the conversation only if you started one — the journal intro stays in e-conomic
-                                    if (turns.some((x) => x.role === 'user')) { setPanelCarry({ view: 'home', turns }); setPanelSeed((k) => k + 1); }
-                                    setChatCollapsed(false);
-                                    goView('home');
-                                    setEcoLeaving(false);
-                                    setEcoPanel(false);
-                                }, 560);
-                            }}
-                            pendingAsk={null}
-                            onPendingConsumed={() => {}}
-                        />
-                    }
-                />
-            )}
-
             {/* Onboarding lives at its own linkable URL (#/onboarding), shown as a full-screen overlay. */}
             {route === 'onboarding' && (
                 <Onboarding
@@ -1093,6 +1065,41 @@ export default function App() {
                 />
             )}
         </div>
+        {/* AX: today's e-conomic with EVA on top (#/economic). EVA docks on the right; expanding it opens
+            the EVA universe (the app above) in a rounded container over e-conomic, next to the same panel. */}
+        {showEco && (
+            <EconomicShell
+                panelOpen={ecoPanel}
+                onTogglePanel={() => setEcoPanel((o) => !o)}
+                flagged={ecoFlagged}
+                universe={embedded}
+                panel={
+                    <ChatPanel
+                        key={'eco-' + lang}
+                        storageKey="eva-economic"
+                        subtitle=""
+                        intro="I'm EVA. I can see you're in the daily journal — 15 entries, 3 without a document. Want me to check it before you post?"
+                        chips={['Check this journal before I post it', 'What’s left to close September?', 'What did EVA do overnight?']}
+                        respond={(q) => {
+                            const j = journalAnswer(q, lang);
+                            if (j) { setEcoFlagged(true); return j; }
+                            return EVA_CHIPS.includes(q) || !chatPanel ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }) : chatPanel.respond(q);
+                        }}
+                        collapsed={false}
+                        onToggleCollapsed={() => { setEcoPanel(false); if (ecoUniverse) { setEcoUniverse(false); navigate('economic'); } }}
+                        expanded={embedded}
+                        onExpand={() => {
+                            if (ecoUniverse) { setEcoUniverse(false); navigate('economic'); return; } // back to e-conomic
+                            if (!mobile) setEcoUniverse(true);
+                            goView('home');
+                        }}
+                        // in the universe this is the EVA panel — the overview's question box asks here
+                        pendingAsk={embedded ? pendingAsk : null}
+                        onPendingConsumed={() => setPendingAsk(null)}
+                    />
+                }
+            />
+        )}
         </ScopeContext.Provider>
         </ScopeModeContext.Provider>
         </LangContext.Provider>
