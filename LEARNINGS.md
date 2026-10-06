@@ -58,7 +58,8 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   *In progress* (that's Vision: work being done right now by you or by EVA).
 - **Connectors:** e-conomic only. *Add connector* opens an empty state with a field to request the system
   you'd want (`ConnectorRequest`) instead of the partner directory.
-- **Sidebar:** no card of its own — flush to the container's top, left and bottom (in the overlay it takes the
+- **Sidebar:** white with dark icons (the `sb` colour set in App; rail icons use currentColor), no card of its
+  own — flush to the container's top, left and bottom with a hairline divider (in the overlay it takes the
   overlay's rounded corners), mirroring the docked EVA panel on the right.
 - **Profile / account menu:** gone from the sidebar — AX is the EVA overlay on e-conomic, whose header owns the
   profile. Switch scope with `?scope=vision` / `?scope=ax`.

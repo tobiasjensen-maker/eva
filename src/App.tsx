@@ -226,6 +226,10 @@ export default function App() {
         } catch { /* ignore */ }
     };
     const rail = ax ? RAIL.filter((r) => !AX_HIDDEN_VIEWS.includes(r.id)) : RAIL;
+    // Menu colours: Vision's dark floating menu; AX's white menu flush in the overlay with dark icons.
+    const sb = ax
+        ? { bg: '#ffffff', fg: '#52525b', muted: '#71717a', activeFg: '#1c1b3a', activeBg: 'rgba(28, 27, 58, 0.07)', hover: 'rgba(28, 27, 58, 0.045)' }
+        : { bg: SIDEBAR_BG, fg: 'rgba(255,255,255,0.65)', muted: 'rgba(255,255,255,0.6)', activeFg: '#ffffff', activeBg: 'rgba(255,255,255,0.12)', hover: 'rgba(255,255,255,0.06)' };
     useEffect(() => { if (ax && AX_HIDDEN_VIEWS.includes(view)) goView('home'); }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
     const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions + (ax ? 0 : needsReply) };
 
@@ -652,10 +656,10 @@ export default function App() {
                 className={`flex flex-col shrink-0 ${ax ? '' : 'rounded-2xl'}`}
                 style={{
                     width: collapsed ? 68 : 240,
-                    background: SIDEBAR_BG,
+                    background: sb.bg,
                     // AX: no card of its own — flush to the container's top, left and bottom edges (in the overlay it
                     // takes the overlay's rounded corners), pulled out over the shell's 10px padding
-                    ...(ax ? { margin: '-10px 0 -10px -10px' } : { border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: panelShadow }),
+                    ...(ax ? { margin: '-10px 0 -10px -10px', borderRight: '1px solid #e9e9ec' } : { border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: panelShadow }),
                     transition: 'width .18s ease',
                 }}
             >
@@ -669,7 +673,7 @@ export default function App() {
                             onClick={() => setCollapsed(false)}
                             title="Expand sidebar"
                             className="rounded-md p-1.5"
-                            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = sb.hover)}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
                             <NodeMark size={24} />
@@ -677,15 +681,15 @@ export default function App() {
                     ) : (
                         <>
                             <span className="flex items-center gap-2">
-                                <EconomicLogo white />
+                                <EconomicLogo white={!ax} />
                                 {ax && <span className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide" style={{ background: '#ed9b2c', color: '#1c1b3a' }} title={t('AX — what we build first')}>AX</span>}
                             </span>
                             <button
                                 onClick={() => setCollapsed(true)}
                                 title="Collapse sidebar"
                                 className="rounded-md p-1.5"
-                                style={{ color: 'rgba(255,255,255,0.6)' }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                                style={{ color: sb.muted }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = sb.hover)}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                             >
                                 <Icon name="layout-first" />
@@ -709,21 +713,21 @@ export default function App() {
                                 style={{
                                     padding: collapsed ? '9px 0' : '8px 12px',
                                     justifyContent: collapsed ? 'center' : 'flex-start',
-                                    background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-                                    color: active ? '#ffffff' : 'rgba(255,255,255,0.65)',
+                                    background: active ? sb.activeBg : 'transparent',
+                                    color: active ? sb.activeFg : sb.fg,
                                     fontWeight: active ? 600 : 500,
                                 }}
-                                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                                onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = sb.hover; }}
                                 onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                             >
                                 <span className="relative flex items-center shrink-0">
                                     <RIcon active={active} />
                                     {collapsed && (badgeFor[id] ?? 0) > 0 && (
-                                        <span className="absolute rounded-full" style={{ top: -3, right: -4, width: 7, height: 7, background: COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />
+                                        <span className="absolute rounded-full" style={{ top: -3, right: -4, width: 7, height: 7, background: COUNT_DOT, border: `2px solid ${sb.bg}` }} />
                                     )}
                                 </span>
                                 {!collapsed && <span className="flex-1">{label}</span>}
-                                {!collapsed && <CountBadge n={badgeFor[id] ?? 0} onDark />}
+                                {!collapsed && <CountBadge n={badgeFor[id] ?? 0} onDark={!ax} />}
                             </button>
                             </SidebarTooltip>
                         );

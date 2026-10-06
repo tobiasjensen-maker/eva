@@ -629,9 +629,8 @@ export function EmojiTile({ emoji, size = 36 }: { emoji: string; size?: number }
 }
 
 // ---- Rail icons (inline SVG for exact look) ----
-const railIconStyle = (active: boolean): CSSProperties => ({
-    color: active ? '#ffffff' : 'rgba(255,255,255,0.6)',
-});
+// Rail icons take their colour from the menu item (currentColor), so light and dark menus both work.
+const railIconStyle = (_active: boolean): CSSProperties => ({});
 
 export function ChatIcon({ active }: { active: boolean }) {
     return (
