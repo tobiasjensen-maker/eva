@@ -394,6 +394,8 @@ export default function App() {
     const [ecoUniverse, setEcoUniverse] = useState(() => ssGet('va-eco-universe'));
     const [ecoFlagged, setEcoFlagged] = useState(false);
     const showEco = route === 'economic' || ecoUniverse;
+    // Close the universe back to e-conomic — the EVA panel stays open (route set now, so the shell never unmounts).
+    const closeUniverse = () => { setEcoUniverse(false); setRoute('economic'); navigate('economic'); };
     const embedded = ecoUniverse && !mobile;
     useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
     const [chatKey, setChatKey] = useState(0);
@@ -838,7 +840,7 @@ export default function App() {
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
                                 {ax && (
                                     <button
-                                        onClick={() => { setEcoUniverse(false); navigate('economic'); setAccountOpen(false); }}
+                                        onClick={() => { if (ecoUniverse) closeUniverse(); else navigate('economic'); setAccountOpen(false); }}
                                         className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm"
                                         style={{ color: COLORS.text }}
                                         onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
@@ -1088,10 +1090,11 @@ export default function App() {
                             return EVA_CHIPS.includes(q) || !chatPanel ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }) : chatPanel.respond(q);
                         }}
                         collapsed={false}
-                        onToggleCollapsed={() => { setEcoPanel(false); if (ecoUniverse) { setEcoUniverse(false); navigate('economic'); } }}
+                        // with the universe open, the first close goes back to e-conomic and keeps EVA docked
+                        onToggleCollapsed={() => { if (ecoUniverse) closeUniverse(); else setEcoPanel(false); }}
                         expanded={embedded}
                         onExpand={() => {
-                            if (ecoUniverse) { setEcoUniverse(false); navigate('economic'); return; } // back to e-conomic
+                            if (ecoUniverse) { closeUniverse(); return; } // back to e-conomic
                             if (!mobile) setEcoUniverse(true);
                             goView('home');
                         }}
