@@ -400,7 +400,7 @@ export default function App() {
     const [ecoPanel, setEcoPanel] = useState(() => ssGet('va-eco-panel'));
     const [ecoUniverse, setEcoUniverse] = useState(() => ssGet('va-eco-universe'));
     const [ecoFlagged, setEcoFlagged] = useState(false);
-    const showEco = route === 'economic' || ecoUniverse;
+    const showEco = route === 'economic' || (ecoUniverse && ax); // the universe overlay is an AX thing
     // Close the universe back to e-conomic — the EVA panel stays open (route set now, so the shell never unmounts).
     // It retracts into the panel first (eva-universe-out), then goes.
     const [ecoClosing, setEcoClosing] = useState(false);
@@ -409,7 +409,7 @@ export default function App() {
         setEcoClosing(true);
         setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setRoute('economic'); navigate('economic'); }, 240);
     };
-    const embedded = ecoUniverse && !mobile;
+    const embedded = ecoUniverse && ax && !mobile;
     useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
     const [chatKey, setChatKey] = useState(0);
     const [panelSeed, setPanelSeed] = useState(0); // bump to remount the EVA panel (e.g. to seed the welcome)
@@ -824,7 +824,7 @@ export default function App() {
                                     <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t('Scope')}</span>
                                     <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
                                         {(['vision', 'ax'] as ScopeMode[]).map((m) => (
-                                            <button key={m} onClick={() => { setScopeMode(m); if (m === 'ax') { setAccountOpen(false); navigate('economic'); } }} className="rounded-md text-xs font-semibold" title={t(m === 'ax' ? 'Agent management and period closing — what we build first' : 'The full product vision')}
+                                            <button key={m} onClick={() => { setScopeMode(m); if (m === 'ax') { setAccountOpen(false); setEcoUniverse(false); setEcoPanel(false); navigate('economic'); } }} className="rounded-md text-xs font-semibold" title={t(m === 'ax' ? 'Agent management and period closing — what we build first' : 'The full product vision')}
                                                 style={{ padding: '3px 9px', background: scopeMode === m ? '#fff' : 'transparent', color: scopeMode === m ? COLORS.text : COLORS.textMuted, boxShadow: scopeMode === m ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
                                                 {m === 'ax' ? 'AX' : t('Vision')}
                                             </button>
@@ -1098,10 +1098,11 @@ export default function App() {
                 flagged={ecoFlagged}
                 universe={embedded}
                 closing={ecoClosing}
-                // the gear: back to the Vision (leaves e-conomic for the full product) and the language
+                // the gear: back to the Vision (leaves e-conomic for the full product) and the language.
+                // Turning AX on (here or in Vision's account menu) lands in plain Regnskab — no overlay, EVA closed.
                 settings={{
                     scope: scopeMode, lang,
-                    onScope: (m) => { if (m === 'vision') { setEcoUniverse(false); setScopeMode('vision'); goView('home'); } else setScopeMode('ax'); },
+                    onScope: (m) => { if (m === 'vision') { setEcoUniverse(false); setScopeMode('vision'); goView('home'); } else { setScopeMode('ax'); if (ecoUniverse) closeUniverse(); } },
                     onLang: setLang,
                 }}
                 panel={
