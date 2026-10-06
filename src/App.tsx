@@ -731,7 +731,9 @@ export default function App() {
 
                 <div className="flex-1" />
 
-                {/* Account (bottom) */}
+                {/* Account (bottom) — not in AX: AX is the EVA overlay on e-conomic, whose header owns the profile.
+                    (Switch scope with ?scope=vision / ?scope=ax.) */}
+                {!ax && (
                 <div className="relative" style={{ padding: collapsed ? 8 : 12 }}>
                     {accountOpen && (
                         <>
@@ -911,6 +913,7 @@ export default function App() {
                     </button>
                     </SidebarTooltip>
                 </div>
+                )}
             </aside>
             )}
 
