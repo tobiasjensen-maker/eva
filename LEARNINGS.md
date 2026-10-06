@@ -34,6 +34,32 @@ What it shows:
 Mock data only. Builds on the learnings from Komma (controlling with "Fix it", liquidity,
 budgeting, company context, adoption).
 
+
+## Two scopes: Vision and AX (`src/edition.tsx`)
+
+**AX** is what we build first — *agent management and period closing* — shown as a filtered view of
+the same app. **Vision** is the full product. Switch in the settings menu (profile → Scope: Vision | AX),
+or link straight in with `?scope=ax` / `?scope=vision` (the param only sets the start; the choice is kept
+in localStorage). AX shows an orange **AX** tag next to the logo.
+
+Because it's one codebase, **every change to a shared screen shows up in both scopes.** AX hides:
+- **Pages:** Inbox, Practice, client Insights (+ Views, Customers) — `AX_HIDDEN_VIEWS`; the menu and
+  phone tab bar filter them out and going there redirects to the overview.
+- **Advisory and client-conversation content:** client replies in the review queue / Work / month-end
+  report; advisory and Inbox activity (`AX_HIDDEN_SKILLS`); people's advisory tasks (calls, meetings,
+  advice, workshops — `axHidesTask`; sign-off stays); in the client drawer the cash forecast, budget,
+  talking points, benchmarks, "why flagged" and the conversation link; the ledger's Insights link.
+- **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
+  *What did EVA do overnight?* instead of the advisory prompts.
+
+AX keeps: the Portfolio overview (tasks, review queue, Books status, client list), Work (board, review
+modals with Fix it, Activity, Routines incl. payroll, month-end flow and report), the books, Connectors,
+EVA everywhere, mobile and Danish.
+
+**When you add something:** if it's part of agent management or period closing, do nothing — it's in
+both. If it's Vision-only (advice, client conversations, practice management), gate it with
+`const { ax } = useScopeMode()` (or add the page to `AX_HIDDEN_VIEWS`).
+
 ## What it is
 
 A single-page app (hash routing) that mocks a full agentic product surface. All data is

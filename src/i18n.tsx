@@ -2308,4 +2308,11 @@ const DA: Record<string, string> = {
     'Present report': 'Præsentér rapport',
     "I'm EVA. Ask me about your day, your clients, your work or your practice — I'll take it from there.": 'Jeg er EVA. Spørg mig om din dag, dine kunder, dit arbejde eller din praksis — så tager jeg den derfra.',
     'What’s waiting on me?': 'Hvad venter på mig?',
+    'Scope': 'Omfang',
+    'Vision': 'Vision',
+    'AX — what we build first': 'AX — det, vi bygger først',
+    'Agent management and period closing — what we build first': 'Agentstyring og periodeafslutning — det, vi bygger først',
+    'The full product vision': 'Hele produktvisionen',
+    'What’s left to close September?': 'Hvad mangler for at lukke september?',
+    'What did EVA do overnight?': 'Hvad lavede EVA i nat?',
 };

@@ -72,6 +72,7 @@ import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
+import { AX_HIDDEN_SKILLS, AX_HIDDEN_VIEWS, ScopeModeContext, initialScope, type Scope as ScopeMode } from './edition';
 import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
@@ -208,7 +209,21 @@ export default function App() {
     const needsReply = threads.filter((x) => x.status === 'needs').length;
     // Menu counts — one subtle badge style for every item.
     // Work's badge is its In progress queue: EVA's drafts to review + client replies drafted in the Inbox.
-    const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions + needsReply };
+    // Vision (the full product) vs AX (what we build first: agent management + period closing).
+    const [scopeMode, setScopeModeState] = useState<ScopeMode>(initialScope);
+    const ax = scopeMode === 'ax';
+    const setScopeMode = (m: ScopeMode) => {
+        setScopeModeState(m);
+        try {
+            localStorage.setItem('va-scope', m);
+            // a ?scope= link only sets the starting point — drop it so a refresh keeps your choice
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('scope')) { url.searchParams.delete('scope'); window.history.replaceState(null, '', url.toString()); }
+        } catch { /* ignore */ }
+    };
+    const rail = ax ? RAIL.filter((r) => !AX_HIDDEN_VIEWS.includes(r.id)) : RAIL;
+    useEffect(() => { if (ax && AX_HIDDEN_VIEWS.includes(view)) goView('home'); }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
+    const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions + (ax ? 0 : needsReply) };
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
@@ -536,7 +551,8 @@ export default function App() {
     // doesn't reset or rename itself per page. (It still knows which page you're on when it answers.)
     const panelKey = 'eva-' + lang + panelSeed;
     const EVA_INTRO = "I'm EVA. Ask me about your day, your clients, your work or your practice — I'll take it from there.";
-    const EVA_CHIPS = ['Walk me through my day', 'What’s waiting on me?', 'Which of my clients need attention?'];
+    const EVA_CHIPS = ax ? ['Walk me through my day', 'What’s left to close September?', 'What did EVA do overnight?'] : ['Walk me through my day', 'What’s waiting on me?', 'Which of my clients need attention?'];
+    const activityShown = ax ? activityAll.filter((e) => !AX_HIDDEN_SKILLS.has(e.skill)) : activityAll;
 
     function applyScope(s: string) {
         setScope(s);
@@ -597,6 +613,7 @@ export default function App() {
 
     return (
         <LangContext.Provider value={{ lang, setLang, t }}>
+        <ScopeModeContext.Provider value={{ scope: scopeMode, ax, setScope: setScopeMode }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
         <div className={`flex ${mobile ? 'flex-col' : ''}`} style={mobile
             ? { width: '100%', height: '100%', background: view === 'home' ? HOME_BG : CANVAS }
@@ -630,7 +647,10 @@ export default function App() {
                         </button>
                     ) : (
                         <>
-                            <EconomicLogo white />
+                            <span className="flex items-center gap-2">
+                                <EconomicLogo white />
+                                {ax && <span className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide" style={{ background: '#ed9b2c', color: '#1c1b3a' }} title={t('AX — what we build first')}>AX</span>}
+                            </span>
                             <button
                                 onClick={() => setCollapsed(true)}
                                 title="Collapse sidebar"
@@ -647,7 +667,7 @@ export default function App() {
 
                 {/* Nav */}
                 <nav className="flex flex-col gap-1 mt-3" style={{ paddingLeft: collapsed ? 10 : 12, paddingRight: collapsed ? 10 : 12 }}>
-                    {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
+                    {rail.map(({ id, label: railLabel, Icon: RIcon }) => {
                         // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
                         // Sub-pages keep their parent lit: Work's Activity and Routines tabs, a client's analysis under the overview.
                         const active = view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
@@ -760,6 +780,19 @@ export default function App() {
                                     </button>
                                 ))}
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
+                                {/* Scope — the full Vision, or AX (what we build first) */}
+                                <div className="flex items-center gap-3 px-3 py-2.5">
+                                    <Icon name="layout" style={{ color: COLORS.textMuted }} />
+                                    <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t('Scope')}</span>
+                                    <div className="flex items-center rounded-lg p-0.5" style={{ background: '#f1f1f3' }}>
+                                        {(['vision', 'ax'] as ScopeMode[]).map((m) => (
+                                            <button key={m} onClick={() => setScopeMode(m)} className="rounded-md text-xs font-semibold" title={t(m === 'ax' ? 'Agent management and period closing — what we build first' : 'The full product vision')}
+                                                style={{ padding: '3px 9px', background: scopeMode === m ? '#fff' : 'transparent', color: scopeMode === m ? COLORS.text : COLORS.textMuted, boxShadow: scopeMode === m ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+                                                {m === 'ax' ? 'AX' : t('Vision')}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                                 {/* Language — for demoing in Danish */}
                                 <div className="flex items-center gap-3 px-3 py-2.5">
                                     <Icon name="website" style={{ color: COLORS.textMuted }} />
@@ -903,11 +936,11 @@ export default function App() {
                         decisions={dayDecisions}
                         onResolveDecision={resolveDecision}
                         onAddDecision={addDecision}
-                        activity={activityAll}
+                        activity={activityShown}
                         threads={threads}
                         onOpenThread={openReply}
                         onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
-                        activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activityAll} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                        activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activityShown} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                         routines={<SkillsView page="routines" skills={skills} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}
@@ -934,7 +967,7 @@ export default function App() {
             {/* Phones: the five places as a bottom tab bar */}
             {mobile && (
                 <nav className="shrink-0 flex items-stretch justify-around" style={{ background: SIDEBAR_BG, paddingBottom: 'env(safe-area-inset-bottom)' }}>
-                    {RAIL.map(({ id, label: railLabel, Icon: RIcon }) => {
+                    {rail.map(({ id, label: railLabel, Icon: RIcon }) => {
                         const active = view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const n = badgeFor[id] ?? 0;
                         return (
@@ -1003,6 +1036,7 @@ export default function App() {
             )}
         </div>
         </ScopeContext.Provider>
+        </ScopeModeContext.Provider>
         </LangContext.Provider>
     );
 }

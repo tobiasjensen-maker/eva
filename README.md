@@ -26,6 +26,8 @@ What it shows:
 Mock data only. Builds on the learnings from Komma (controlling with "Fix it", liquidity,
 budgeting, company context, adoption).
 
+**Two scopes — Vision and AX.** Toggle in the settings menu, or open AX directly: https://e-conomic.design/tobiasjensen-maker/agentic-platform/?scope=ax — AX is the first build (agent management + period closing); same app, Vision-only parts filtered out, so changes propagate to both.
+
 **Live:** https://e-conomic.design/tobiasjensen-maker/agentic-platform/
 
 See [LEARNINGS.md](./LEARNINGS.md) for the full handover.

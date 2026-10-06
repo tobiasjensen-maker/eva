@@ -6,6 +6,7 @@ import { MY_PORTFOLIO, OWNER, type Thread } from '../practice';
 import { downloadCsv } from '../exportCsv';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
+import { useScopeMode } from '../edition';
 
 // ---- Month-end, as one flow ----------------------------------------------------------------
 // Operations first: the bookkeeping EVA runs across your clients every month, end to end —
@@ -93,6 +94,7 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
     initialFilter?: 'closed' | 'todo' | 'blocked'; // opened from a slice of the Books donut
 }) {
     const { t } = useLang();
+    const { ax } = useScopeMode();
     const [filter, setFilter] = useState<'all' | 'closed' | 'todo' | 'blocked'>(initialFilter ?? 'all');
     const [sel, setSel] = useState<string | null>(null); // client drilled into
     const [review, setReview] = useState<DecisionItem | null>(null);
@@ -120,7 +122,7 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
         // `done` = settled from here; `note` = acted on but still outstanding (e.g. a reminder sent)
         const items: { key: string; who: Who; text: string; sub?: string; action?: { label: string; run: () => void }; done?: string; note?: string }[] = [];
         decisions.filter((d) => !d.done && d.company === name).forEach((d) => items.push({ key: d.id, who: 'You', text: t(d.question), sub: `${t(d.label)} · ${t('EVA has a fix ready')}`, action: onResolveDecision ? { label: 'Review', run: () => setReview(d) } : undefined }));
-        threads.filter((x) => x.status === 'needs' && x.client === name).forEach((x) => items.push({ key: x.id, who: 'You', text: `${x.contact} ${t('is waiting for your reply')}`, sub: t(x.subject), action: onOpenThread ? { label: 'Reply', run: () => onOpenThread(x) } : undefined }));
+        threads.filter((x) => !ax && x.status === 'needs' && x.client === name).forEach((x) => items.push({ key: x.id, who: 'You', text: `${x.contact} ${t('is waiting for your reply')}`, sub: t(x.subject), action: onOpenThread ? { label: 'Reply', run: () => onOpenThread(x) } : undefined }));
         if (r.missing > 0 && statusOf(r) !== 'closed') items.push({ key: 'docs', who: 'Client', text: t('{n} documents missing').replace('{n}', String(r.missing)), sub: t('Requested from {name} on 24 Sep · EVA chases every 3 days').replace('{name}', owner),
             ...(received.has(name) ? { done: t('Received — EVA matched them') } : reminded.has(name) ? { note: t('Reminder sent') } : { action: { label: 'Remind now', run: () => remind(name) } }) });
         const drafts = statusOf(r) === 'closed' ? 0 : 3 + (r.lines % 9);

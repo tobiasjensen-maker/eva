@@ -5,6 +5,7 @@ import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
 import { MonthEndCard } from './MonthEnd';
+import { axHidesTask, useScopeMode } from '../edition';
 import { clientName, type LogEntry } from './ActivityView';
 import { MY_PORTFOLIO, TEAM, type Thread } from '../practice';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread, type Priority } from '../priority';
@@ -187,6 +188,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     onAddDecision: (d: DecisionItem) => void;
 }) {
     const { t } = useLang();
+    const { ax } = useScopeMode(); // AX: no client replies or advisory tasks
     const [layout, setLayout] = useState<Layout>('board');
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
@@ -229,10 +231,10 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         .sort((a, b) => (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
     const items: WorkItem[] = [
         ...all.filter((x) => x.status === 'eva-running' && handing.has(x.id)).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'inprogress', overdue: false, company: x.company, title: t(x.title), task: x })),
-        ...all.filter((x) => !isEva(x.status) && x.status !== 'done').map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'todo', overdue: x.bucket === 'overdue', company: x.company, title: t(x.title), task: x })),
+        ...all.filter((x) => !isEva(x.status) && x.status !== 'done' && !(ax && axHidesTask(x.title))).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: 'todo', overdue: x.bucket === 'overdue', company: x.company, title: t(x.title), task: x })),
         ...evaReview.map((d): WorkItem => ({ kind: 'review', id: d.id, ws: 'inprogress', overdue: false, company: d.company, title: t(d.label), d })),
         // client replies EVA drafted in the Inbox — the same review queue
-        ...threads.filter((x) => x.status === 'needs' && (!ql || t(x.subject).toLowerCase().includes(ql) || x.client.toLowerCase().includes(ql) || x.contact.toLowerCase().includes(ql)))
+        ...threads.filter((x) => !ax && x.status === 'needs' && (!ql || t(x.subject).toLowerCase().includes(ql) || x.client.toLowerCase().includes(ql) || x.contact.toLowerCase().includes(ql)))
             .map((x): WorkItem => ({ kind: 'reply', id: `reply-${x.id}`, ws: 'inprogress', overdue: false, company: x.client, title: `${t('Reply to {name}').replace('{name}', x.contact.split(' ')[0])} — ${t(x.subject)}`, th: x })),
         ...doneLog.map((e): WorkItem => ({ kind: 'logged', id: e.id, ws: 'done', overdue: false, company: clientName(e.client), title: t(e.title ?? e.desc), entry: e, task: e.taskId ? tasks.find((x) => x.id === e.taskId) : undefined })),
     ];

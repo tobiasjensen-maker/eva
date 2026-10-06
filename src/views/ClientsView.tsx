@@ -5,6 +5,7 @@ import { useLang } from '../i18n';
 import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, OWNER, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client, type Thread } from '../practice';
 import { LiquidityModal } from './Liquidity';
 import { LedgerModal } from './Ledger';
+import { useScopeMode } from '../edition';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { BudgetModal } from './Budget';
 import type { ShareDraft } from './Attachment';
@@ -189,6 +190,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
     const { t } = useLang();
     const [noted, setNoted] = useState(false);
     const [sheet, setSheet] = useState<'cash' | 'budget' | 'books' | null>(null);
+    const { ax } = useScopeMode();
     const owner = OWNER[c.name];
     const pb = PLAYBOOKS.find((p) => p.id === c.playbook);
     const threads = (liveThreads ?? THREADS).filter((x) => x.client === c.name && x.status !== 'done');
@@ -224,6 +226,8 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                         ))}
                     </div>
 
+                    {/* Vision only: practical advisory (cash, plan, talking points, benchmarks) — AX keeps the books and EVA's context */}
+                    {!ax && (<>
                     {/* practical advisory, one click away: cash and the plan */}
                     <div className="grid grid-cols-2 gap-2">
                         {[
@@ -278,6 +282,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                         </div>
                         <p className="text-[11px] mt-2.5 flex items-start gap-1.5" style={{ color: COLORS.textMuted }}><Icon name="info" /> {t('Source: public statistics (Danmarks Statistik) by industry code and company size, aggregated — no individual e-conomic customer is identifiable.')}</p>
                     </div>
+                    </>)}
 
                     {/* what EVA knows about this client — company-specific context it uses everywhere */}
                     <div>
@@ -286,7 +291,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                         <NotesList company={c.name} editable />
                     </div>
 
-                    {c.signal && (
+                    {!ax && c.signal && (
                         <div>
                             <p className="text-sm font-semibold mb-2" style={{ color: COLORS.text }}>{t('Why EVA flagged this')}</p>
                             <ol className="flex flex-col gap-1.5">
@@ -305,7 +310,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                         <div className="flex flex-wrap gap-1.5">{c.services.map((s) => <span key={s} className="rounded-full px-2.5 py-1 text-xs" style={{ background: '#f1f1f3', color: '#52525b' }}>{t(s)}</span>)}</div>
                     </div>
 
-                    {threads.length > 0 && (
+                    {!ax && threads.length > 0 && (
                         <button onClick={() => onMessage(c.name)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-left" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
                             <Icon name="chat" style={{ color: COLORS.textMuted }} />
                             <span className="flex-1">{t('{n} open conversation(s) in the inbox').replace('{n}', String(threads.length))}</span>
@@ -317,7 +322,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                 </div>
             </div>
             {sheet === 'cash' && <div onClick={(e) => e.stopPropagation()}><LiquidityModal company={c.name} owner={owner} onClose={() => setSheet(null)} onDiscuss={onShare ? (d) => { setSheet(null); onShare(d); } : undefined} /></div>}
-            {sheet === 'books' && <div onClick={(e) => e.stopPropagation()}><LedgerModal company={c.name} decisions={decisions} threads={liveThreads ?? THREADS} onResolveDecision={onResolveDecision} onClose={() => setSheet(null)} onOpenInsights={() => { setSheet(null); onOpenBooks(c.name); }} /></div>}
+            {sheet === 'books' && <div onClick={(e) => e.stopPropagation()}><LedgerModal company={c.name} decisions={decisions} threads={liveThreads ?? THREADS} onResolveDecision={onResolveDecision} onClose={() => setSheet(null)} onOpenInsights={ax ? undefined : () => { setSheet(null); onOpenBooks(c.name); }} /></div>}
             {sheet === 'budget' && <div onClick={(e) => e.stopPropagation()}><BudgetModal company={c.name} owner={owner} onClose={() => setSheet(null)} onShare={onShare ? (d) => { setSheet(null); onShare(d); } : undefined} /></div>}
         </div>
     );

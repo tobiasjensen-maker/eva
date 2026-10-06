@@ -8,6 +8,7 @@ import type { ViewId } from '../types';
 import { ClientList, ClientDrawer } from './ClientsView';
 import { DecisionRow, DecisionReview, ReplyRow } from './Decisions';
 import { MonthEndReport } from './MonthEnd';
+import { axHidesTask, useScopeMode } from '../edition';
 import type { ShareDraft } from './Attachment';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread } from '../priority';
 import { TaskModal, WorkTag, dueColor, handTaskToEva, isEva, workTagsFor, type Task } from './TaskManagementView';
@@ -33,6 +34,12 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
         return da
             ? `Her er din tirsdag: ${ctx.decisions} beslutninger klar til gennemgang, ${ctx.replies} kundesamtaler med udkast til svar, og dine opgaver står i Mine opgaver. ${worth.length} af dine kunder er værd at bruge tid på — Café Solsikkes likviditet haster mest. Jeg har også lavet oktoberlønnen for 14 kunder — én undtagelse venter på dig. Skal vi starte med gennemgangene?`
             : `Here’s your Tuesday: ${ctx.decisions} decision${ctx.decisions === 1 ? '' : 's'} ready for your review, ${ctx.replies} client conversation${ctx.replies === 1 ? '' : 's'} with a drafted reply, and your tasks are in My tasks. ${worth.length} of your clients are worth your time — Café Solsikke’s cash runway is the most urgent. I’ve also drafted October payroll for 14 clients — one exception is waiting for you. Shall we start with the reviews?`;
+    if (/close|september|month-end|luk/.test(s))
+        return da ? '33 af dine 40 kunder er lukket for september. Resten venter på 58 bilag fra kunderne — jeg rykker hver 3. dag — og 2 kontrolmarkeringer venter på din gennemgang. Åbn månedsrapporten for at se, hvad der mangler pr. kunde.'
+            : '33 of your 40 clients are closed for September. The rest are waiting on 58 documents from clients — I chase every 3 days — and 2 controlling flags are waiting for your review. Open the month-end report to see what’s left per client.';
+    if (/overnight|did eva|i nat/.test(s))
+        return da ? 'I nat afstemte jeg bankerne for alle 40 kunder, bogførte 96 kladder, lavede oktoberlønnen for 14 kunder og kontrollerede 1.342 posteringer. 3 ting venter på din gennemgang — det hele står i Aktivitet.'
+            : 'Overnight I reconciled the banks for all 40 clients, posted 96 drafts, drafted October payroll for 14 clients and checked 1,342 postings. 3 things are waiting for your review — it’s all in Activity.';
     if (/cash|runway|likvidit/.test(s)) {
         const list = mine.filter((c) => c.signal?.kind === 'Cash flow');
         return da ? `${list.length} af dine kunder har likviditetsudfordringer: ${names(list)} — ca. seks ugers likviditet. Åbn kunden for samtalepunkter.` : `${list.length === 1 ? 'One of your clients has' : `${list.length} of your clients have`} cash-flow issues: ${names(list)} — about six weeks of runway. Open the client for talking points.`;
@@ -76,7 +83,10 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     const [hour, setHour] = useState(() => new Date().getHours());
     useEffect(() => { const id = setInterval(() => setHour(new Date().getHours()), 60_000); return () => clearInterval(id); }, []);
     const [sel, setSel] = useState<Client | null>(null);
-    const chips = [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
+    const { ax } = useScopeMode();
+    const chips = ax
+        ? [t('Walk me through my day'), t('What’s left to close September?'), t('What did EVA do overnight?')]
+        : [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
     const ask = (text: string) => { if (text.trim()) { onAsk(text.trim()); setQ(''); } };
 
     return (
@@ -141,7 +151,8 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
     const [open, setOpen] = useState<Task | null>(null);
     const ORDER: Record<string, number> = { overdue: 0, today: 1, week: 2, later: 3 };
     const mine = tasks.filter((x) => x.accountant === ME);
-    const plate = mine.filter((x) => !isEva(x.status) && x.status !== 'done').sort((a, b) => ORDER[a.bucket] - ORDER[b.bucket]);
+    const { ax } = useScopeMode();
+    const plate = mine.filter((x) => !isEva(x.status) && x.status !== 'done' && !(ax && axHidesTask(x.title))).sort((a, b) => ORDER[a.bucket] - ORDER[b.bucket]);
     const running = mine.filter((x) => x.status === 'eva-running').length;
     const scheduled = mine.filter((x) => x.status === 'eva-scheduled').length;
     return (
@@ -178,7 +189,8 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
 // modal, from src/day.ts), filtered to the logged-in accountant.
 function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; threads: Thread[]; onOpenThread: (th: Thread) => void; onResolve: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onGo: (v: ViewId) => void }) {
     const open = decisions.filter((d) => !d.done && d.accountant === ME);
-    const replies = threads.filter((x) => x.status === 'needs'); // client conversations with EVA's drafted reply
+    const { ax } = useScopeMode();
+    const replies = ax ? [] : threads.filter((x) => x.status === 'needs'); // client conversations with EVA's drafted reply (Vision)
     // one queue, ranked by EVA — most urgent first
     const queue = [
         ...open.map((d) => ({ d, th: undefined as Thread | undefined, p: priorityOfDecision(d) })),
