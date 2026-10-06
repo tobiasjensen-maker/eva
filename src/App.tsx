@@ -649,12 +649,13 @@ export default function App() {
             {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
             {!mobile && (
             <aside
-                className="flex flex-col shrink-0 rounded-2xl"
+                className={`flex flex-col shrink-0 ${ax ? '' : 'rounded-2xl'}`}
                 style={{
                     width: collapsed ? 68 : 240,
                     background: SIDEBAR_BG,
-                    border: `1px solid ${SIDEBAR_BORDER}`,
-                    boxShadow: panelShadow,
+                    // AX: no card of its own — flush to the container's top, left and bottom edges (in the overlay it
+                    // takes the overlay's rounded corners), pulled out over the shell's 10px padding
+                    ...(ax ? { margin: '-10px 0 -10px -10px' } : { border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: panelShadow }),
                     transition: 'width .18s ease',
                 }}
             >
