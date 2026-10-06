@@ -166,7 +166,9 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
                         {/* EVA — the way in */}
                         <span className="relative flex items-center mr-1">
                             <button onClick={() => { setHint(false); onTogglePanel(); }} className={`flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-sm font-semibold ${hint && !panelOpen ? 'eva-pulse' : ''}`}
-                                style={{ background: panelOpen ? '#fff' : 'rgba(255,255,255,0.12)', color: panelOpen ? '#23233f' : '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
+                                style={{ background: panelOpen ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', border: `1px solid rgba(255,255,255,${panelOpen ? 0.28 : 0.16})`, transition: 'background .2s ease, border-color .2s ease' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = panelOpen ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)')}>
                                 <Orb size={22} /> {t('Ask EVA')}
                             </button>
                             {hint && !panelOpen && (
