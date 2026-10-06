@@ -3098,9 +3098,6 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .ml-3 {
   margin-left: 0.75rem;
 }
-.ml-3\.5 {
-  margin-left: 0.875rem;
-}
 .ml-4 {
   margin-left: 1rem;
 }
@@ -3508,6 +3505,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .w-\[20px\] {
   width: 20px;
+}
+.w-\[256px\] {
+  width: 256px;
 }
 .w-\[40rem\] {
   width: 40rem;
@@ -4091,6 +4091,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .border-current {
   border-color: currentColor;
 }
+.border-gray-100 {
+  --tw-border-opacity: 1;
+  border-color: rgb(246 246 246 / var(--tw-border-opacity, 1));
+}
 .border-gray-200 {
   --tw-border-opacity: 1;
   border-color: rgb(235 235 235 / var(--tw-border-opacity, 1));
@@ -4455,6 +4459,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   padding-top: 2rem;
   padding-bottom: 2rem;
 }
+.py-px {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
 .\!pb-0 {
   padding-bottom: 0px !important;
 }
@@ -4791,6 +4799,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   --tw-text-opacity: 1;
   color: rgb(89 89 89 / var(--tw-text-opacity, 1));
 }
+.text-green-500 {
+  --tw-text-opacity: 1;
+  color: rgb(8 174 135 / var(--tw-text-opacity, 1));
+}
 .text-green-700 {
   --tw-text-opacity: 1;
   color: rgb(2 132 101 / var(--tw-text-opacity, 1));
@@ -4814,6 +4826,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+.text-yellow-500 {
+  --tw-text-opacity: 1;
+  color: rgb(255 189 59 / var(--tw-text-opacity, 1));
 }
 .text-yellow-700 {
   --tw-text-opacity: 1;
@@ -5217,6 +5233,13 @@ select:focus-visible {
 .eva-pulse { animation: evaPulse 2.2s ease-in-out infinite; }
 @keyframes evaPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(237, 155, 44, 0.55); } 50% { box-shadow: 0 0 0 7px rgba(237, 155, 44, 0); } }
 @media (prefers-reduced-motion: reduce) { .eco-enter, .eco-leave, .eco-panel-in, .eco-flag, .eva-pulse { animation: none; } .eco-leave { opacity: 0; } }
+.eva-universe-in { animation: universeIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes universeIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+.eco-dim { animation: ecoEnter 360ms ease both; }
+@media (prefers-reduced-motion: reduce) { .eva-universe-in, .eco-dim { animation: none; } }
+/* EVA's findings tint the whole journal row (Table3 has no row class hook) */
+#journal__feed tr:has(.eco-flag-cell) > td { background: #fffaf0 !important; animation: ecoFlag 900ms ease both; }
+#journal__feed tr:has(.eco-flag-cell) > td:first-child { box-shadow: inset 3px 0 0 #ed9b2c; }
 .placeholder\:text-gray-700::placeholder {
   --tw-text-opacity: 1;
   color: rgb(89 89 89 / var(--tw-text-opacity, 1));
