@@ -346,13 +346,13 @@ export function ChatPanel({
                     )}
                     <button
                         onClick={onToggleCollapsed}
-                        title="Collapse"
+                        title={t('Close')}
                         className="rounded-md p-1"
                         style={{ color: COLORS.textMuted }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
                         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                        <Icon name="layout-last" />
+                        <Icon name="close" />
                     </button>
                 </div>
             </div>

@@ -395,7 +395,13 @@ export default function App() {
     const [ecoFlagged, setEcoFlagged] = useState(false);
     const showEco = route === 'economic' || ecoUniverse;
     // Close the universe back to e-conomic — the EVA panel stays open (route set now, so the shell never unmounts).
-    const closeUniverse = () => { setEcoUniverse(false); setRoute('economic'); navigate('economic'); };
+    // It retracts into the panel first (eva-universe-out), then goes.
+    const [ecoClosing, setEcoClosing] = useState(false);
+    const closeUniverse = () => {
+        if (ecoClosing) return;
+        setEcoClosing(true);
+        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); setRoute('economic'); navigate('economic'); }, 400);
+    };
     const embedded = ecoUniverse && !mobile;
     useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
     const [chatKey, setChatKey] = useState(0);
@@ -632,7 +638,7 @@ export default function App() {
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeModeContext.Provider value={{ scope: scopeMode, ax, setScope: setScopeMode }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
-        <div className={`flex ${mobile ? 'flex-col' : ''} ${embedded ? 'eva-universe-in' : ''}`} style={mobile
+        <div className={`flex ${mobile ? 'flex-col' : ''} ${embedded ? (ecoClosing ? 'eva-universe-out' : 'eva-universe-in') : ''}`} style={mobile
             ? { width: '100%', height: '100%', background: view === 'home' && !ax ? HOME_BG : CANVAS }
             : embedded
             // the EVA universe over e-conomic: a rounded container left of the docked EVA panel
@@ -1077,6 +1083,7 @@ export default function App() {
                 onTogglePanel={() => setEcoPanel((o) => !o)}
                 flagged={ecoFlagged}
                 universe={embedded}
+                closing={ecoClosing}
                 panel={
                     <ChatPanel
                         key={'eco-' + lang}

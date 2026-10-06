@@ -95,12 +95,13 @@ const DIM_ON_WHITE = '#9998a6';
 // Mock agreement (fictional).
 const AGREEMENT = { number: 612448, name: 'Holm Revision ApS', userId: 'THJ', isAdministrator: true, imageSrc: agreementAvatar };
 
-export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, universe }: {
+export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, universe, closing = false }: {
     panel: ReactNode;          // the EVA side panel (shown when open)
     panelOpen: boolean;
     onTogglePanel: () => void;
     flagged: boolean;          // EVA has checked the journal — mark what it found
     universe: boolean;         // the EVA universe is open on top — dim e-conomic under it
+    closing?: boolean;         // the universe is retracting into the panel
 }) {
     const { t } = useLang();
     const [hint, setHint] = useState(true); // a one-time nudge towards the EVA button
@@ -148,7 +149,7 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
         <div className="fixed inset-0 z-[60] flex eco-enter" style={{ background: '#fff' }} onClickCapture={(e) => { if ((e.target as HTMLElement).closest('a[href="#"]')) e.preventDefault(); }}>
             {/* e-conomic: top menu + content (the EVA universe covers this part when open) */}
             <div className="flex-1 min-w-0 flex flex-col relative">
-                {universe && <div className="absolute inset-0 z-20 eco-dim" style={{ background: 'rgba(28, 27, 58, 0.45)' }} />}
+                {universe && <div className={`absolute inset-0 z-20 ${closing ? 'eco-dim-out' : 'eco-dim'}`} style={{ background: 'rgba(28, 27, 58, 0.45)' }} />}
                 {/* Kit: AppShell header */}
                 <Header>
                     <Header.MenuButton onClick={() => setSidebarOpen((v) => !v)} />
