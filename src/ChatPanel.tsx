@@ -120,7 +120,7 @@ const PANEL_HISTORY: Past[] = [
 ];
 
 export function ChatPanel({
-    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, expanded = false, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false, storageKey,
+    subtitle, intro, chips, respond, evaConfig, evaSrc, collapsed, onToggleCollapsed, onExpand, expanded = false, docked = false, welcome, onWelcomeConsumed, pendingAsk, onPendingConsumed, seed, mobile = false, storageKey,
 }: {
     storageKey?: string; // keeps this page's conversation across a refresh (session storage)
     mobile?: boolean; // phones: a floating EVA button, and the chat opens full screen
@@ -135,6 +135,7 @@ export function ChatPanel({
     onToggleCollapsed: () => void;
     onExpand?: (turns: Turn[]) => void; // open the full-window chat, taking the conversation along
     expanded?: boolean; // the full view is open next to this panel — the button closes it again
+    docked?: boolean; // a side panel flush to its container's edges (no card of its own) — e.g. over e-conomic
     seed?: Turn[] | null; // a conversation to continue (e.g. coming back from the full-window chat)
     // A one-off welcome brief seeded as the first message (e.g. right after onboarding).
     welcome?: string | null;
@@ -282,8 +283,8 @@ export function ChatPanel({
 
     return (
         <aside
-            className={mobile ? 'fixed inset-0 z-[55] flex flex-col overflow-hidden anim-in' : 'shrink-0 flex flex-col rounded-2xl overflow-hidden relative'}
-            style={mobile ? { background: '#fff', paddingBottom: 'env(safe-area-inset-bottom)' } : { width, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
+            className={mobile ? 'fixed inset-0 z-[55] flex flex-col overflow-hidden anim-in' : `shrink-0 flex flex-col overflow-hidden relative ${docked ? '' : 'rounded-2xl'}`}
+            style={mobile ? { background: '#fff', paddingBottom: 'env(safe-area-inset-bottom)' } : docked ? { width, background: '#fff', borderLeft: `1px solid ${SIDEBAR_BORDER}` } : { width, background: '#fff', border: `1px solid ${SIDEBAR_BORDER}`, boxShadow: PANEL_SHADOW }}
         >
             {/* drag the left edge to widen the panel (desktop) */}
             {!mobile && <div

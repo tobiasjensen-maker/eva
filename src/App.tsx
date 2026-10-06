@@ -1100,6 +1100,7 @@ export default function App() {
                         // with the universe open, the first close goes back to e-conomic and keeps EVA docked
                         onToggleCollapsed={() => { if (ecoUniverse) closeUniverse(); else setEcoPanel(false); }}
                         expanded={embedded}
+                        docked
                         onExpand={() => {
                             if (ecoUniverse) { closeUniverse(); return; } // back to e-conomic
                             if (!mobile) setEcoUniverse(true);

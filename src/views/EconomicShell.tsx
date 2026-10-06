@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, Group, Header, Heading, Icon, IconButton, Menu, Navigation2, Table3, Tooltip, type IconName } from '@economic/taco';
-import { Orb, CANVAS } from '../ui';
+import { Orb } from '../ui';
 import { useLang } from '../i18n';
 import agreementAvatar from '../assets/agreement-avatar.svg';
 
@@ -246,11 +246,11 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
             </div>
 
             {/* EVA, docked on the right, full height — it stays put when the universe opens */}
-            {/* With the universe open, the panel joins it on one surface: same canvas, the universe's left
-                corners + these right corners make one rounded plane; only e-conomic around it is dimmed. */}
+            {/* EVA docks flush on the right, full height — a side panel, not a card. With the universe open it
+                becomes the right side of that one surface: same edges, the surface's rounded corners. */}
             {panelOpen && (
-                <div ref={panelRef} className="shrink-0 flex eco-panel-in" style={{ background: universe ? DIM_ON_WHITE : '#f4f4f6', borderLeft: universe ? 'none' : '1px solid #e9e9ec', padding: universe ? '10px 10px 10px 0' : 10, transition: 'background .36s ease' }}>
-                    <div className="flex" style={{ background: universe ? CANVAS : 'transparent', borderRadius: universe ? '0 20px 20px 0' : 0, padding: universe ? '10px 10px 10px 0' : 0 }}>{panel}</div>
+                <div ref={panelRef} className="shrink-0 flex eco-panel-in" style={{ background: universe ? DIM_ON_WHITE : '#fff', padding: universe ? '10px 10px 10px 0' : 0, transition: 'padding .32s cubic-bezier(0.32, 0.72, 0, 1), background .36s ease' }}>
+                    <div className="flex overflow-hidden" style={{ borderRadius: universe ? '0 20px 20px 0' : 0, transition: 'border-radius .32s ease' }}>{panel}</div>
                 </div>
             )}
         </div>
