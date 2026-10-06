@@ -2800,6 +2800,9 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 .left-0\.5 {
   left: 0.125rem;
 }
+.left-2\.5 {
+  left: 0.625rem;
+}
 .left-3 {
   left: 0.75rem;
 }
@@ -2871,6 +2874,15 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
 }
 .z-\[60\] {
   z-index: 60;
+}
+.z-\[70\] {
+  z-index: 70;
+}
+.z-\[80\] {
+  z-index: 80;
+}
+.z-\[81\] {
+  z-index: 81;
 }
 .z-\[999\] {
   z-index: 999;
@@ -5238,7 +5250,8 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) { .eco-enter, .eco-leave, .eco-panel-in, .eco-flag, .eva-pulse { animation: none; } .eco-leave { opacity: 0; } }
 /* The EVA universe grows out of the docked EVA panel: the shared plane sweeps left from the panel's edge
    (a clip reveal — nothing squashes), its content follows, and it retracts the same way on close. */
-.eva-universe-in { animation: universeReveal 620ms cubic-bezier(0.32, 0.72, 0, 1) both; }
+.eva-universe-in { animation: universeReveal 620ms cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+/* not held: see App */
 /* backwards, not both: a held end state would give each child its own stacking context and bury the
    sidebar's tooltips under the main content */
 .eva-universe-in > * { animation: universeContent 520ms 140ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
