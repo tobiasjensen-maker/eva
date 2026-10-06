@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, Orb, COLORS } from '../ui';
 import { useLang } from '../i18n';
@@ -184,7 +185,9 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
         }
     };
 
-    return (
+    // Rendered at the top of the page (portal), so it covers everything wherever it's opened from —
+    // e.g. inside Work's month-end card, whose load animation would otherwise trap it.
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full anim-in overflow-hidden flex flex-col" style={{ maxWidth: 760, maxHeight: 'calc(100vh - 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start gap-3 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
@@ -334,6 +337,7 @@ export function MonthEndReport({ onClose, flags, decisions = [], threads = [], o
                 </div>
             </div>
             {review && <div onClick={(e) => e.stopPropagation()}><DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision?.(review.id, taken, info); setReview(null); }} /></div>}
-        </div>
+        </div>,
+        document.body,
     );
 }
