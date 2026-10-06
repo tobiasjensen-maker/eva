@@ -634,7 +634,9 @@ export default function App() {
             ? { width: '100%', height: '100%', background: view === 'home' && !ax ? HOME_BG : CANVAS }
             : embedded
             // the EVA universe over e-conomic: a rounded container left of the docked EVA panel
-            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 'calc(var(--eco-panel-w, 420px) + 10px)', zIndex: 61, borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 64px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
+            // (right edge meets the docked panel, which carries on the same canvas — one plane; the shadow is
+            // clipped on that side so no seam shows between them)
+            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 'var(--eco-panel-w, 420px)', zIndex: 61, borderRadius: '20px 0 0 20px', overflow: 'hidden', boxShadow: '0 24px 64px rgba(15, 14, 40, 0.35)', clipPath: 'inset(-80px 0 -80px -80px)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
             : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
             {!mobile && (

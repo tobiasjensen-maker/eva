@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, Group, Header, Heading, Icon, IconButton, Menu, Navigation2, Table3, Tooltip, type IconName } from '@economic/taco';
-import { Orb } from '../ui';
+import { Orb, CANVAS } from '../ui';
 import { useLang } from '../i18n';
 import agreementAvatar from '../assets/agreement-avatar.svg';
 
@@ -88,6 +88,9 @@ function RegnskabNav() {
         </Navigation2>
     );
 }
+
+// The dim over e-conomic (rgba(28,27,58,.45) on white), as a solid — so the panel column matches it.
+const DIM_ON_WHITE = '#9998a6';
 
 // Mock agreement (fictional).
 const AGREEMENT = { number: 612448, name: 'Holm Revision ApS', userId: 'THJ', isAdministrator: true, imageSrc: agreementAvatar };
@@ -242,7 +245,13 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
             </div>
 
             {/* EVA, docked on the right, full height — it stays put when the universe opens */}
-            {panelOpen && <div ref={panelRef} className="shrink-0 flex p-2.5 eco-panel-in" style={{ background: universe ? '#e4e4ea' : '#f4f4f6', borderLeft: universe ? 'none' : '1px solid #e9e9ec', transition: 'background .3s ease' }}>{panel}</div>}
+            {/* With the universe open, the panel joins it on one surface: same canvas, the universe's left
+                corners + these right corners make one rounded plane; only e-conomic around it is dimmed. */}
+            {panelOpen && (
+                <div ref={panelRef} className="shrink-0 flex eco-panel-in" style={{ background: universe ? DIM_ON_WHITE : '#f4f4f6', borderLeft: universe ? 'none' : '1px solid #e9e9ec', padding: universe ? '10px 10px 10px 0' : 10, transition: 'background .36s ease' }}>
+                    <div className="flex" style={{ background: universe ? CANVAS : 'transparent', borderRadius: universe ? '0 20px 20px 0' : 0, padding: universe ? '10px 10px 10px 0' : 0 }}>{panel}</div>
+                </div>
+            )}
         </div>
     );
 }

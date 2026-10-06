@@ -364,5 +364,7 @@ Mock data, mock agreement. The kit's `href="#"` links are swallowed so they can'
 - **Expand ⤢** opens the **EVA universe** (the AX app) as a rounded container over e-conomic's top menu and
   content, left of the panel — the panel itself stays put with the conversation (`--eco-panel-w` keeps the
   container next to it as it resizes). In the universe that panel *is* EVA: the app's own panel is hidden.
+  The two are **one plane**: the container's right edge meets the panel column, which switches to the same
+  canvas with the right-hand rounded corners (shadow clipped at the seam); only e-conomic around it is dimmed.
 - **Shrink** (same button) or account menu → *Back to e-conomic* closes the universe. Survives a refresh.
 - Link: `?scope=ax#/economic`.
