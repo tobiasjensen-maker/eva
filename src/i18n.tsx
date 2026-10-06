@@ -2360,4 +2360,5 @@ const DA: Record<string, string> = {
     'Back to e-conomic': 'Tilbage til e-conomic',
     'Daily cash journal': 'Daglig kassekladde',
     'Close full screen': 'Luk fuld skærm',
+    'Show all clients': 'Vis alle kunder',
 };

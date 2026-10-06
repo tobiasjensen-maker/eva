@@ -69,7 +69,7 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
     return da ? 'Spørg mig om din dag, en af dine kunder, eller hvem der er klar til rådgivning.' : 'Ask me about your day, one of your clients, or who’s ready for an advisory conversation.';
 }
 
-export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage, onShare }: {
+export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage, onShare, onOpenClient }: {
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     onAddDecision: (d: DecisionItem) => void;
@@ -82,6 +82,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     onOpenBooks: (name: string) => void;
     onMessage: (client: string) => void;
     onShare: (d: ShareDraft) => void;
+    onOpenClient?: (name: string) => void; // AX: a client opens its work (Work, filtered) instead of the drawer
 }) {
     const { t } = useLang();
     const [q, setQ] = useState('');
@@ -100,7 +101,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
         <div className="h-full overflow-y-auto">
             <PageHeader title={t('Portfolio overview')} showScope={false} />
             <div className="mx-auto px-8 pt-5 pb-10" style={{ maxWidth: 1240 }}>
-                <div className="land"><ClientList onSelect={setSel} /></div>
+                <div className="land"><ClientList onSelect={(c) => (onOpenClient ? onOpenClient(c.name) : setSel(c))} /></div>
             </div>
             {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
         </div>

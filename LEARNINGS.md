@@ -63,7 +63,9 @@ Because it's one codebase, **every change to a shared screen shows up in both sc
   overlay's rounded corners), mirroring the docked EVA panel on the right.
 - **Profile / account menu:** gone from the sidebar — AX is the EVA overlay on e-conomic, whose header owns the
   profile. Switch scope with `?scope=vision` / `?scope=ax`.
-- **Portfolio overview:** just the client list — no greeting, question box or cards, no *Add client*.
+- **Portfolio overview:** just the client list — no greeting, question box or cards, no *Add client*. A client
+  opens **Work › Tasks filtered to that client** (a removable client chip in the toolbar; dropped when you leave
+  Work) instead of the client drawer.
 - **Client overview:** just No., Client and Books — no Services column, no industry under the name.
 - **Suggestions:** the overview question box and EVA panel suggest *What's left to close September?* /
   *What did EVA do overnight?* instead of the advisory prompts.

@@ -158,13 +158,15 @@ export type WorkTab = 'tasks' | 'activity' | 'routines';
 
 // The active routines' next runs — shown with EVA's scheduled tasks on the Routines tab.
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine }: {
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClearClient }: {
     tab: WorkTab;
     onTab: (t: WorkTab) => void;
     activityLog: ReactNode;   // the Activity tab (the embedded activity log)
     routines: ReactNode;      // the Routines tab (routine configuration)
     bare?: boolean;           // a routine is open — its detail takes the whole page
     onNewRoutine: () => void; // the header's New routine (opens the builder in the Routines tab)
+    clientFilter?: string | null; // show one client's work only (from the overview's client list)
+    onClearClient?: () => void;
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
@@ -201,13 +203,14 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const toggleStatusF = (s: WorkStatus) => setStatusF((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
     // Perspective — "My work" (the logged-in accountant) vs. the whole practice.
-    const scoped = mine ? tasks.filter((x) => x.accountant === ME) : tasks;
+    const forClient = (name: string) => !clientFilter || name === clientFilter;
+    const scoped = (mine ? tasks.filter((x) => x.accountant === ME) : tasks).filter((x) => forClient(x.company));
     const ql = q.trim().toLowerCase();
     const matchQ = (x: Task) => !ql || t(x.title).toLowerCase().includes(ql) || x.company.toLowerCase().includes(ql) || x.accountant.toLowerCase().includes(ql);
     const all = scoped.filter(matchQ);
 
     // Ready for your review — the shared decisions, scoped like everything else here.
-    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
+    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && forClient(d.company) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
 
     // --- the work, as one set of items: To do · In progress (Vision) · For review · Done ---
     // Done is read from the activity log — the one record of what happened today, by you
@@ -215,6 +218,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const doneLog = activity
         .filter((e) => e.status === 'completed' && e.daysAgo === 0 && !['reopened', 'handed', 'taken-back'].includes(e.event ?? ''))
         .filter((e) => !e.taskId || tasks.find((x) => x.id === e.taskId)?.status === 'done')
+        .filter((e) => forClient(clientName(e.client)))
         .filter((e) => !ql || t(e.title ?? e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql))
         .sort((a, b) => (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
     const items: WorkItem[] = [
@@ -225,7 +229,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         ...all.filter((x) => !isEva(x.status) && x.status !== 'done' && !(ax && axHidesTask(x.title))).map((x): WorkItem => ({ kind: 'task', id: x.id, ws: !ax && x.status === 'in-progress' ? 'inprogress' : 'todo', overdue: x.bucket === 'overdue' && !(!ax && x.status === 'in-progress'), company: x.company, title: t(x.title), task: x })),
         ...evaReview.map((d): WorkItem => ({ kind: 'review', id: d.id, ws: 'review', overdue: false, company: d.company, title: t(d.label), d })),
         // client replies EVA drafted in the Inbox — the same review queue
-        ...threads.filter((x) => !ax && x.status === 'needs' && (!ql || t(x.subject).toLowerCase().includes(ql) || x.client.toLowerCase().includes(ql) || x.contact.toLowerCase().includes(ql)))
+        ...threads.filter((x) => !ax && x.status === 'needs' && forClient(x.client) && (!ql || t(x.subject).toLowerCase().includes(ql) || x.client.toLowerCase().includes(ql) || x.contact.toLowerCase().includes(ql)))
             .map((x): WorkItem => ({ kind: 'reply', id: `reply-${x.id}`, ws: 'review', overdue: false, company: x.client, title: `${t('Reply to {name}').replace('{name}', x.contact.split(' ')[0])} — ${t(x.subject)}`, th: x })),
         ...doneLog.map((e): WorkItem => ({ kind: 'logged', id: e.id, ws: 'done', overdue: false, company: clientName(e.client), title: t(e.title ?? e.desc), entry: e, task: e.taskId ? tasks.find((x) => x.id === e.taskId) : undefined })),
     ];
@@ -326,6 +330,13 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
                     {!ax && <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
+                        {/* one client's work (from the overview) — remove to see everything again */}
+                        {clientFilter && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-1.5 py-0.5 text-xs font-medium mr-1" style={{ background: '#eef2ff', color: '#3341a8', border: '1px solid #c9d0f5' }}>
+                                <ClientAvatar name={clientFilter} size={18} /> {clientFilter}
+                                <button onClick={onClearClient} aria-label={t('Show all clients')} title={t('Show all clients')} className="rounded-full flex items-center" style={{ color: '#4456c7' }}><Icon name="close" /></button>
+                            </span>
+                        )}
                         {((ax ? ['review', 'done'] : ['todo', 'overdue', 'inprogress', 'review', 'done']) as WorkStatus[]).map((k) => {
                             const on = statusF.has(k); const m = WORK_STATUS[k];
                             return (
@@ -334,7 +345,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 </button>
                             );
                         })}
-                        {(statusF.size > 0 || q) && <button onClick={() => { setStatusF(new Set()); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                        {(statusF.size > 0 || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setQ(''); onClearClient?.(); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                     </div>
                     <div className="relative ml-auto" style={{ width: 240 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
