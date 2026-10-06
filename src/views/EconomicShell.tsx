@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, Group, Header, Heading, Icon, IconButton, Menu, Navigation2, Table3, Tooltip, type IconName } from '@economic/taco';
 import { Orb } from '../ui';
 import { useLang } from '../i18n';
@@ -109,14 +109,17 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
     const [agreementOpen, setAgreementOpen] = useState(false);
     // The universe container sits left of the panel — share the panel's live width (it's resizable).
     const panelRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
+    useLayoutEffect(() => {
         const el = panelRef.current;
         const root = document.documentElement;
         if (!el) { root.style.setProperty('--eco-panel-w', '0px'); return; }
-        const ro = new ResizeObserver(() => root.style.setProperty('--eco-panel-w', `${el.offsetWidth}px`));
-        ro.observe(el);
+        // border-box: the column's padding changes when the universe opens, and that must count too
+        const set = () => root.style.setProperty('--eco-panel-w', `${el.offsetWidth}px`);
+        set();
+        const ro = new ResizeObserver(set);
+        ro.observe(el, { box: 'border-box' });
         return () => ro.disconnect();
-    }, [panelOpen]);
+    }, [panelOpen, universe]);
 
     const data: DraftEntry[] = JOURNAL.map((r) => ({
         entryId: r.no, entryType: r.type === 'supplier' ? 'supplierInvoice' : 'manualCustomerInvoice', formattedDate: r.date.replace(/\./g, '-'), hasDoc: r.doc,
