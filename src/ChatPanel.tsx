@@ -387,7 +387,7 @@ export function ChatPanel({
                     ) : (
                         <div key={m.id} className="flex gap-2.5">
                             <div className="shrink-0 mt-0.5"><Orb size={22} thinking={m.thinking} /></div>
-                            <div className="flex-1 min-w-0 text-sm leading-relaxed" style={{ color: COLORS.text }}>
+                            <div className="flex-1 min-w-0 text-sm leading-relaxed whitespace-pre-line" style={{ color: COLORS.text }}>
                                 {m.thinking ? <Thinking /> : m.instant ? m.text : <Stream text={m.text} onTick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })} onDone={() => settle(m.id)} />}
                                 {!m.thinking && <AnswerFormats text={m.text} />}
                             </div>

@@ -139,3 +139,17 @@ select:focus-visible {
     /* modals use the full width */
     .fixed.inset-0.p-4 { padding: 8px !important; }
 }
+
+/* ---- AX: EVA over today's e-conomic ---- */
+.eco-enter { animation: ecoEnter 380ms ease both; }
+@keyframes ecoEnter { from { opacity: 0; } to { opacity: 1; } }
+/* expanding EVA: e-conomic lifts away and the EVA universe is underneath */
+.eco-leave { animation: ecoLeave 560ms cubic-bezier(0.4, 0, 0.2, 1) forwards; pointer-events: none; }
+@keyframes ecoLeave { to { opacity: 0; transform: scale(1.04); filter: blur(2px); } }
+.eco-panel-in { animation: ecoPanelIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes ecoPanelIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.eco-flag { animation: ecoFlag 900ms ease both; }
+@keyframes ecoFlag { from { background: #fde9c4; } }
+.eva-pulse { animation: evaPulse 2.2s ease-in-out infinite; }
+@keyframes evaPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(237, 155, 44, 0.55); } 50% { box-shadow: 0 0 0 7px rgba(237, 155, 44, 0); } }
+@media (prefers-reduced-motion: reduce) { .eco-enter, .eco-leave, .eco-panel-in, .eco-flag, .eva-pulse { animation: none; } .eco-leave { opacity: 0; } }

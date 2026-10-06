@@ -72,6 +72,7 @@ import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
+import { EconomicShell, journalAnswer } from './views/EconomicShell';
 import { AX_HIDDEN_SKILLS, AX_HIDDEN_VIEWS, ScopeModeContext, initialScope, isPayroll, type Scope as ScopeMode } from './edition';
 import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
@@ -372,7 +373,7 @@ export default function App() {
     // On first load, make sure the URL reflects the current page so it's directly linkable.
     useEffect(() => {
         const h = window.location.hash.replace(/^#\/?/, '');
-        if (!SLUG_VIEW[h] && h !== 'onboarding') {
+        if (!SLUG_VIEW[h] && h !== 'onboarding' && h !== 'economic') {
             history.replaceState(null, '', `#/${VIEW_SLUG[view]}`);
             setRoute(VIEW_SLUG[view]);
         }
@@ -386,6 +387,10 @@ export default function App() {
         navigate(VIEW_SLUG[v]);
     }
     const [welcome, setWelcome] = useState(false);
+    // AX: EVA as an overlay on today's e-conomic (#/economic) — side panel first, then full screen.
+    const [ecoPanel, setEcoPanel] = useState(false);
+    const [ecoFlagged, setEcoFlagged] = useState(false);
+    const [ecoLeaving, setEcoLeaving] = useState(false);
     const [chatKey, setChatKey] = useState(0);
     const [panelSeed, setPanelSeed] = useState(0); // bump to remount the EVA panel (e.g. to seed the welcome)
     // The conversation travels: panel → full-window chat on expand, and back again on close.
@@ -821,6 +826,18 @@ export default function App() {
                                     </div>
                                 </div>
                                 <div style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
+                                {ax && (
+                                    <button
+                                        onClick={() => { navigate('economic'); setAccountOpen(false); }}
+                                        className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm"
+                                        style={{ color: COLORS.text }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                        <Icon name="arrow-left" style={{ color: COLORS.textMuted }} />
+                                        <span className="flex-1">{t('Back to e-conomic')}</span>
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => { navigate('onboarding'); setAccountOpen(false); }}
                                     className="flex items-center gap-3 w-full text-left px-3 py-2.5 text-sm"
@@ -1030,6 +1047,42 @@ export default function App() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* AX: today's e-conomic with EVA on top (#/economic). Expanding EVA leaves for the EVA universe,
+                taking the conversation along into the panel there. */}
+            {route === 'economic' && (
+                <EconomicShell
+                    panelOpen={ecoPanel}
+                    onTogglePanel={() => setEcoPanel((o) => !o)}
+                    flagged={ecoFlagged}
+                    leaving={ecoLeaving}
+                    panel={
+                        <ChatPanel
+                            key={'eco-' + lang}
+                            storageKey="eva-economic"
+                            subtitle=""
+                            intro="I'm EVA. I can see you're in the daily journal — 15 entries, 3 without a document. Want me to check it before you post?"
+                            chips={['Check this journal before I post it', 'What’s left to close September?', 'What did EVA do overnight?']}
+                            respond={(q) => { const j = journalAnswer(q, lang); if (j) { setEcoFlagged(true); return j; } return overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }); }}
+                            collapsed={false}
+                            onToggleCollapsed={() => setEcoPanel(false)}
+                            onExpand={(turns) => {
+                                setEcoLeaving(true);
+                                setTimeout(() => {
+                                    // carry the conversation only if you started one — the journal intro stays in e-conomic
+                                    if (turns.some((x) => x.role === 'user')) { setPanelCarry({ view: 'home', turns }); setPanelSeed((k) => k + 1); }
+                                    setChatCollapsed(false);
+                                    goView('home');
+                                    setEcoLeaving(false);
+                                    setEcoPanel(false);
+                                }, 560);
+                            }}
+                            pendingAsk={null}
+                            onPendingConsumed={() => {}}
+                        />
+                    }
+                />
             )}
 
             {/* Onboarding lives at its own linkable URL (#/onboarding), shown as a full-screen overlay. */}

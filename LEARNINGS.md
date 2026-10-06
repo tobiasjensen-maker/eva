@@ -349,3 +349,13 @@ EVA: it shows in In progress while EVA drafts, then comes back as a For review i
 
 There's no separate "Scheduled for EVA" list: each routine in *Your routines* shows its next run (`NEXT_RUN`
 in SkillsView, or its trigger for routines you build), sorted by when it runs. One schedule, one source.
+
+## AX entry: EVA on top of today's e-conomic (`#/economic`, `src/views/EconomicShell.tsx`)
+
+A stand-in for Accounting › Daily cash journal (top bar, left menu, journal table — mock data, mock user).
+The way in is the **EVA** button in the top bar (pulses once with a hint). EVA opens as a side panel over the
+journal — the same `ChatPanel` as everywhere, with journal-aware chips. *Check this journal* marks 6 rows in
+the table with what EVA found (wrong account, accrual, partial VAT, missing documents). **Expand ⤢** lifts
+e-conomic away (fade + slight zoom) into the EVA universe (the AX overview) — the conversation comes along
+into the panel there, if you started one. Back: account menu → *Back to e-conomic* (AX).
+Link: `?scope=ax#/economic`.
