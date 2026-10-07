@@ -44,7 +44,8 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
 
 **AX's menu is four places** (`AX_RAIL` in App — no Work tabs, each its own item):
 - **Bookkeeping** (`#/work`) — what the bookkeeping needs from you: EVA's drafts and missing pieces to approve
-  *before* booking, with the agreement selector. Badge = those items.
+  *before* booking, with the agreement selector. Badge = those items. A list, not draggable; an empty *For review* says
+  "You're all caught up".
 - **Controlling** (`#/home`) — the post-booking analysis: the same client selector (shared with Bookkeeping),
   **1)** the closing summary on top (the month-end card, steps open, following the selected client) and **2)**
   **Control flags** — the findings the AO has to consider (decisions with a `correction`). Badge = flags.

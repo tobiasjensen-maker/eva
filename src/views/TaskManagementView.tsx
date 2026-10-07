@@ -382,13 +382,14 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     <div className="flex flex-col gap-4 land" style={{ ['--d' as string]: '360ms' }}>
                         {listGroups.filter((g) => g.items.length > 0 || g.footer || true).map((g) => {
                             // By status, each group is a column you can drag rows into, like the board.
-                            const col = g.key as Col;
+                            // AX: no dragging — rows are opened and reviewed, not moved between groups
+                            const col = ax ? null : (g.key as Col);
                             return (
                             <div key={g.key} onDragOver={col ? (e) => { if (!dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(col); } : undefined} onDrop={col ? (e) => { e.preventDefault(); dnd.drop(col); } : undefined}>
                             <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
                                 {g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
                                 {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
-                                {col && g.items.length === 0 && (g.key === 'review' && !dragId ? (
+                                {g.items.length === 0 && (g.key === 'review' && !dragId ? (
                                     // nothing waiting on you — say so properly
                                     <div className="flex flex-col items-center text-center px-4 py-8 anim-in">
                                         <span className="flex items-center justify-center rounded-full mb-3" style={{ width: 44, height: 44, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
