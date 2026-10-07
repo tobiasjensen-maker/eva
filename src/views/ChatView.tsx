@@ -55,6 +55,7 @@ interface Props {
     seedTurns?: Turn[] | null; // the conversation so far, when opened from the EVA panel
     onTurns?: (turns: Turn[]) => void; // reports the conversation as it changes (AX keeps the docked panel in step)
     headerLeft?: ReactNode; // replaces the agreement pill (AX: the client picker from Tasks)
+    onMinimise?: () => void; // AX: shrink back into the side panel
 }
 
 const MONTHS = [
@@ -499,7 +500,7 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns, onTurns, headerLeft }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns, onTurns, headerLeft, onMinimise }: Props) {
     const { t, lang } = useLang();
     // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
     // Opened from the EVA panel: continue that conversation (shown as it was, not re-typed).
@@ -804,6 +805,12 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                             style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
                         >
                             <Icon name="circle-plus" /> {t('New chat')}
+                        </button>
+                    )}
+                    {onMinimise && (
+                        <button onClick={onMinimise} title={t('Back to the side panel')} className="flex items-center justify-center rounded-lg"
+                            style={{ width: 34, height: 34, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
+                            <Icon name="modal-shrink" />
                         </button>
                     )}
                     {onClose && (

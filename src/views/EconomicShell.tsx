@@ -144,7 +144,7 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
     useLayoutEffect(() => {
         const el = panelRef.current;
         const root = document.documentElement;
-        if (!el) { root.style.setProperty('--eco-panel-w', '0px'); return; }
+        if (!el) return; // keep the last width: full-screen EVA grows from (and shrinks back to) the panel's edge
         // border-box: the column's padding changes when the universe opens, and that must count too
         const set = () => root.style.setProperty('--eco-panel-w', `${el.offsetWidth}px`);
         set();

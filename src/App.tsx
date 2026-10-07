@@ -5,6 +5,7 @@ import {
     CANVAS,
     EconomicLogo,
     NodeMark,
+    Orb,
     ProfileAvatar,
     TasksIcon,
     ReviewIcon,
@@ -425,11 +426,11 @@ export default function App() {
     const closeUniverse = (alsoPanel = false) => {
         if (ecoClosing) return;
         setEcoClosing(true);
-        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setRoute('economic'); navigate('economic'); }, 240);
+        setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setEcoSeed((n) => n + 1); setRoute('economic'); navigate('economic'); }, 240);
     };
     const embedded = ecoUniverse && ax && !mobile;
-    // AX: the full-screen chat is a menu item — the docked panel steps aside and the universe takes the width
-    const chatFull = embedded && view === 'chat';
+    // AX: full-screen EVA has no side panel on any page — the panel *expands* into it (landing in Chat) and the
+    // menu leads to the other pages; shrinking turns it back into the panel, same conversation.
     const [ecoSeed, setEcoSeed] = useState(0); // bump to reload the docked panel's conversation
     const ECO_CHAT_KEY = 'va-chat-msgs:eva-economic';
     const prevView = useRef(view);
@@ -687,14 +688,14 @@ export default function App() {
             // the EVA universe over e-conomic: a rounded container left of the docked EVA panel
             // (right edge meets the docked panel, which carries on the same canvas — one plane; the shadow is
             // cast left only, so no seam shows. No lasting clip-path: it would cut modal backdrops off at the panel.)
-            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: chatFull ? 10 : 'var(--eco-panel-w, 420px)', zIndex: 61, borderRadius: chatFull ? 20 : '20px 0 0 20px', overflow: 'hidden', boxShadow: chatFull ? '0 24px 64px rgba(15, 14, 40, 0.35)' : '-28px 0 56px -14px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
+            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 10, zIndex: 61, borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 64px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
             : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
             {!mobile && (
             <aside
                 className={`flex flex-col shrink-0 ${ax ? '' : 'rounded-2xl'}`}
                 style={{
-                    width: collapsed ? 68 : 240,
+                    width: collapsed ? 68 : ax ? 180 : 240, // AX: a quarter narrower
                     background: sb.bg,
                     // AX: no card of its own — flush to the container's top, left and bottom edges (in the overlay it
                     // takes the overlay's rounded corners), pulled out over the shell's 10px padding
@@ -715,12 +716,12 @@ export default function App() {
                             onMouseEnter={(e) => (e.currentTarget.style.background = sb.hover)}
                             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                            <NodeMark size={24} />
+                            {ax ? <Orb size={24} /> : <NodeMark size={24} />}
                         </button>
                     ) : (
                         <>
                             <span className="flex items-center gap-2">
-                                <EconomicLogo white={!ax} />
+                                {ax ? <span className="flex items-center gap-2"><Orb size={24} /><span className="text-base font-semibold" style={{ color: '#1c1b3a' }}>EVA</span></span> : <EconomicLogo white />}
                             </span>
                             <button
                                 onClick={() => setCollapsed(true)}
@@ -774,6 +775,18 @@ export default function App() {
 
                 <div className="flex-1" />
 
+                {/* AX: shrink full-screen EVA back into the side panel (or close it all from Chat's X) */}
+                {embedded && (
+                    <div style={{ padding: collapsed ? 8 : 12 }}>
+                        <SidebarTooltip label={t('Minimise EVA')} show={collapsed}>
+                            <button onClick={() => closeUniverse()} className="flex items-center gap-3 w-full rounded-lg text-sm" title={t('Back to the side panel')}
+                                style={{ padding: collapsed ? '9px 0' : '8px 12px', justifyContent: collapsed ? 'center' : 'flex-start', color: sb.fg }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = sb.hover)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                <Icon name="modal-shrink" />{!collapsed && <span>{t('Minimise EVA')}</span>}
+                            </button>
+                        </SidebarTooltip>
+                    </div>
+                )}
                 {/* Account (bottom) — not in AX: AX is the EVA overlay on e-conomic, whose header owns the profile.
                     (Switch scope with ?scope=vision / ?scope=ax.) */}
                 {!ax && (
@@ -982,6 +995,7 @@ export default function App() {
                         analyticsUnlocked={insightsPro}
                         onSelectClient={applyScope}
                         seedTurns={chatCarry}
+                        onMinimise={embedded ? () => closeUniverse() : undefined}
                         // AX: the same client picker as on Tasks (shared client), instead of the agreement pill
                         headerLeft={ax ? <AgreementSelector align="left" value={workClient} onChange={setWorkClient} counts={Object.fromEntries(MY_PORTFOLIO.map(({ name: n }) => [n, decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen' && d.company === n).length]))} /> : undefined}
                         onTurns={ax ? (turns) => { try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify(turns)); } catch { /* ignore */ } } : undefined}
@@ -1136,7 +1150,7 @@ export default function App() {
             the EVA universe (the app above) in a rounded container over e-conomic, next to the same panel. */}
         {showEco && (
             <EconomicShell
-                panelOpen={ecoPanel && !chatFull}
+                panelOpen={ecoPanel && !embedded}
                 onTogglePanel={() => setEcoPanel((o) => !o)}
                 flagged={ecoFlagged}
                 universe={embedded}
@@ -1168,7 +1182,7 @@ export default function App() {
                         onExpand={() => {
                             if (ecoUniverse) { closeUniverse(); return; } // back to e-conomic
                             if (!mobile) setEcoUniverse(true);
-                            goView('activity'); // AX opens on Bookkeeping
+                            openAxChat(); // full-screen EVA opens in the chat, with the panel's conversation
                         }}
                         // in the universe this is the EVA panel — the overview's question box asks here
                         pendingAsk={embedded ? pendingAsk : null}

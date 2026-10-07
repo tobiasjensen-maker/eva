@@ -43,9 +43,11 @@ or link straight in with `?scope=ax` / `?scope=vision` (the param only sets the 
 in localStorage). AX shows an orange **AX** tag next to the logo.
 
 **AX's menu** (`AX_RAIL` in App):
-- **EVA** (`#/chat`, top) — the full-screen chat. While it's open the docked panel steps aside and the universe
-  takes the full width; it's the *same conversation* as the panel (seeded from it, written back as it changes).
-  Its header has the same client picker as Tasks (shared client), instead of the agreement pill.
+- **Chat** (`#/chat`, top) — **expanding EVA from the side panel lands here**: the panel grows to full width
+  (the reveal starts at the panel's edge) and there's *no side panel on any page* of full-screen EVA — the menu
+  (EVA mark + name, a quarter narrower) leads to Tasks and Routines. Same conversation as the panel (seeded from
+  it, written back as it changes). Header: the Tasks client picker; ⤡ back to the side panel; X closes EVA.
+  *Minimér EVA* at the bottom of the menu also shrinks back to the panel, from any page.
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
