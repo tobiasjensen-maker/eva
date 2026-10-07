@@ -745,7 +745,7 @@ export default function App() {
                                 <span className="relative flex items-center shrink-0">
                                     <RIcon active={active} />
                                     {collapsed && (badgeFor[id] ?? 0) > 0 && (
-                                        <span className="absolute rounded-full" style={{ top: -3, right: -4, width: 7, height: 7, background: COUNT_DOT, border: `2px solid ${sb.bg}` }} />
+                                        <span className="absolute rounded-full" style={{ top: -3, right: -4, width: 7, height: 7, background: ax ? '#ed9b2c' : COUNT_DOT, border: `2px solid ${sb.bg}` }} />
                                     )}
                                 </span>
                                 {!collapsed && <span className="flex-1">{label}</span>}
@@ -1048,7 +1048,7 @@ export default function App() {
                             <button key={id} onClick={() => goView(id)} className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-w-0"
                                 style={{ color: active ? '#fff' : 'rgba(255,255,255,0.6)' }} aria-current={active ? 'page' : undefined}>
                                 <span className="relative flex items-center"><RIcon active={active} />
-                                    {n > 0 && <span className="absolute rounded-full" style={{ top: -3, right: -5, width: 8, height: 8, background: COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />}
+                                    {n > 0 && <span className="absolute rounded-full" style={{ top: -3, right: -5, width: 8, height: 8, background: ax ? '#ed9b2c' : COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />}
                                 </span>
                                 <span className="text-[10px] font-medium truncate max-w-full px-1">{t(id === 'home' && !ax ? 'Overview' : railLabel)}</span>
                             </button>

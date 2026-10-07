@@ -438,7 +438,7 @@ export function AgreementSelector({ value, onChange, counts }: { value: string |
                 {cur ? <ClientAvatar name={cur.name} size={24} /> : <span className="flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>}
                 <span className="flex-1 min-w-0 text-left leading-tight">
                     <span className="block truncate font-medium">{cur ? cur.name : t('All clients')}</span>
-                    <span className="block text-[11px]" style={{ color: COLORS.textMuted }}>{cur ? `${t('Client')} ${cur.no}` : `${MY_PORTFOLIO.length} ${t('agreements')}`}</span>
+                    <span className="block text-[11px]" style={{ color: COLORS.textMuted }}>{cur ? cur.no : `${MY_PORTFOLIO.length} ${t('agreements')}`}</span>
                 </span>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: COLORS.textMuted }} />
             </button>
@@ -454,7 +454,7 @@ export function AgreementSelector({ value, onChange, counts }: { value: string |
                         </div>
                         {!ql && row('all', !value, () => pick(null), <span className="flex items-center justify-center rounded-md shrink-0" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>, t('All clients'), `${MY_PORTFOLIO.length} ${t('agreements')}`, total)}
                         <div style={{ maxHeight: 300, overflowY: 'auto', borderTop: ql ? undefined : `1px solid ${COLORS.cardBorder}` }}>
-                            {list.map((c) => row(c.id, value === c.name, () => pick(c.name), <ClientAvatar name={c.name} size={24} />, c.name, `${t('Client')} ${c.no}`, counts[c.name] ?? 0))}
+                            {list.map((c) => row(c.id, value === c.name, () => pick(c.name), <ClientAvatar name={c.name} size={24} />, c.name, c.no, counts[c.name] ?? 0))}
                             {list.length === 0 && <p className="text-xs px-3 py-4 text-center" style={{ color: COLORS.textMuted }}>{t('No clients match')}</p>}
                         </div>
                     </div>
