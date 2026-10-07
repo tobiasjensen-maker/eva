@@ -342,7 +342,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 {!ax && <div className="mb-4 land" style={{ ['--d' as string]: '260ms' }}><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>}
 
                 {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
-                <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
+                <div className="flex flex-wrap items-center gap-2 mb-4 land relative z-20" style={{ ['--d' as string]: '310ms' }}>
                     {!ax && <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
                         {/* AX shows one status (For review) — no status chips needed */}
@@ -366,13 +366,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             );
                         })}
                         {/* AX: filter on the routine that raised it */}
-                        {ax && (
-                            <select value={routineF} onChange={(e) => setRoutineF(e.target.value)} aria-label={t('Routine')}
-                                className="rounded-full pl-3 pr-2 py-1 text-xs font-medium bg-white" style={{ border: `1px solid ${routineF !== 'all' ? '#7c3aed' : COLORS.cardBorder}`, color: routineF !== 'all' ? '#6d28d9' : COLORS.textMuted, background: routineF !== 'all' ? '#f3f0fb' : '#fff' }}>
-                                <option value="all">{t('All routines')}</option>
-                                {AX_ROUTINES.map((r) => <option key={r.id} value={r.id}>{r.emoji} {t(r.label)} ({items.filter((i) => i.kind === 'review' && routineOf(i.d).id === r.id).length})</option>)}
-                            </select>
-                        )}
+                        {ax && <RoutineFilter value={routineF} onChange={setRoutineF} counts={Object.fromEntries(AX_ROUTINES.map((r) => [r.id, items.filter((i) => i.kind === 'review' && routineOf(i.d).id === r.id).length]))} />}
                         {(statusF.size > 0 || kindF.size > 0 || routineF !== 'all' || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setKindF(new Set()); setRoutineF('all'); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                     </div>
                     <div className="relative ml-auto" style={{ width: 240 }}>
@@ -534,6 +528,46 @@ function KindTag({ it }: { it: WorkItem }) {
         </span>
     );
 }
+
+// AX: the routine filter — a small dropdown (button + menu) next to the Flags / Actions chips.
+function RoutineFilter({ value, onChange, counts }: { value: string; onChange: (id: string) => void; counts: Record<string, number> }) {
+    const { t } = useLang();
+    const [open, setOpen] = useState(false);
+    const cur = AX_ROUTINES.find((r) => r.id === value);
+    const on = !!cur;
+    const pick = (id: string) => { onChange(id); setOpen(false); };
+    const opt = (id: string, label: ReactNode, n: number | null) => (
+        <button key={id} onClick={() => pick(id)} className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm" style={{ color: COLORS.text, background: value === id ? '#f4f5fb' : 'transparent' }}
+            onMouseEnter={(e) => { if (value !== id) e.currentTarget.style.background = '#f7f7f8'; }} onMouseLeave={(e) => { if (value !== id) e.currentTarget.style.background = 'transparent'; }}>
+            <span className="flex-1 min-w-0 truncate">{label}</span>
+            {n !== null && <CountBadge n={n} showZero />}
+            <span style={{ width: 16, color: '#16a34a', display: 'inline-flex' }}>{value === id && <Icon name="tick" />}</span>
+        </button>
+    );
+    return (
+        <div className="relative">
+            <button onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}
+                className="inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1 text-xs font-medium"
+                style={{ border: `1px solid ${on ? '#7c3aed' : open ? '#c9d0f5' : COLORS.cardBorder}`, background: on ? '#f3f0fb' : '#fff', color: on ? '#6d28d9' : COLORS.textMuted }}>
+                {cur ? <>{cur.emoji} {t(cur.label)}</> : <><RoutinesIconSmall /> {t('All routines')}</>}
+                <Icon name={open ? 'chevron-up' : 'chevron-down'} />
+            </button>
+            {open && (
+                <>
+                    <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+                    <div role="listbox" className="absolute left-0 z-40 mt-1.5 rounded-xl bg-white py-1 anim-in" style={{ minWidth: 240, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                        {opt('all', t('All routines'), null)}
+                        <div className="my-1" style={{ borderTop: `1px solid ${COLORS.cardBorder}` }} />
+                        {AX_ROUTINES.map((r) => opt(r.id, <>{r.emoji} {t(r.label)}</>, counts[r.id] ?? 0))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+const RoutinesIconSmall = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 5h6a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="5" r="2.1" fill="currentColor" /><circle cx="18" cy="17" r="2.1" fill="currentColor" /></svg>
+);
 
 // AX: the routine that raised a review item, at the start of its subtitle.
 function RoutineTag({ it }: { it: WorkItem }) {
