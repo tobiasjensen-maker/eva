@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useMemo, type ReactNode } from 'react';
 import type { Turn } from '../ChatPanel';
 import { Button, Icon } from '@economic/taco';
-import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, COLORS } from '../ui';
+import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, EvaWindowControls, COLORS } from '../ui';
 import { ArtifactPreview } from '../SpaceArtifact';
 import { CHAT_SUGGESTIONS, AGREEMENTS } from '../data';
 import { useLang } from '../i18n';
@@ -807,24 +807,8 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                             <Icon name="circle-plus" /> {t('New chat')}
                         </button>
                     )}
-                    {onMinimise && (
-                        <button onClick={onMinimise} title={t('Back to the side panel')} className="flex items-center justify-center rounded-lg"
-                            style={{ width: 34, height: 34, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}>
-                            <Icon name="modal-shrink" />
-                        </button>
-                    )}
-                    {onClose && (
-                        <button
-                            onClick={() => onClose(messages.flatMap((m): Turn[] => (m.role === 'user' ? [{ role: 'user', text: m.text }] : m.kind === 'text' ? [{ role: 'assistant', text: m.text }] : [])))}
-                            title={t('Close')}
-                            className="flex items-center justify-center rounded-lg"
-                            style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                        >
-                            <Icon name="close" />
-                        </button>
-                    )}
+                    <EvaWindowControls onMinimise={onMinimise}
+                        onClose={onClose ? () => onClose(messages.flatMap((m): Turn[] => (m.role === 'user' ? [{ role: 'user', text: m.text }] : m.kind === 'text' ? [{ role: 'assistant', text: m.text }] : []))) : undefined} />
                 </div>
             </div>
 

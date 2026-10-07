@@ -1,6 +1,6 @@
 import { Fragment, useState, type Dispatch, type DragEvent, type ReactNode, type SetStateAction } from 'react';
 import { Button, Icon } from '@economic/taco';
-import { Card, ClientAvatar, CountBadge, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
+import { Card, ClientAvatar, CountBadge, EvaWindowControls, Orb, PageHeader, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
 import { SEED_DECISIONS, type DecisionItem, type ResolveInfo } from '../day';
 import { DecisionReview } from './Decisions';
@@ -158,7 +158,7 @@ export type WorkTab = 'tasks' | 'activity' | 'routines';
 
 // The active routines' next runs — shown with EVA's scheduled tasks on the Routines tab.
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClientChange }: {
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClientChange, evaControls }: {
     tab: WorkTab;
     onTab: (t: WorkTab) => void;
     activityLog: ReactNode;   // the Activity tab (the embedded activity log)
@@ -167,6 +167,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     onNewRoutine: () => void; // the header's New routine (opens the builder in the Routines tab)
     clientFilter?: string | null; // show one client's work only (the agreement selector, or a client in the overview)
     onClientChange?: (name: string | null) => void;
+    evaControls?: { onMinimise: () => void; onClose: () => void }; // AX full-screen EVA: ⤡ and ✕ at top right
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
@@ -324,9 +325,13 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     badge={ax
                         ? (tab === 'routines' ? undefined : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }]} />)
                         : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
-                    right={ax && tab === 'activity' ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} />
+                    right={(() => {
+                        const base = ax && tab === 'activity' ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} />
                         : tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
-                        : tab === 'routines' && !ax ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
+                        : tab === 'routines' && !ax ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined;
+                        // AX full-screen EVA: the same ⤡ / ✕ as Chat, on every page
+                        return evaControls ? <>{base}<EvaWindowControls onMinimise={evaControls.onMinimise} onClose={evaControls.onClose} /></> : base;
+                    })()}
                 />
             )}
             <div className={bare ? 'h-full' : 'mx-auto px-8 pt-5 pb-10'} style={bare ? undefined : { maxWidth: 1240 }}>

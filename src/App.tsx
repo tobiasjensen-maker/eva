@@ -775,18 +775,6 @@ export default function App() {
 
                 <div className="flex-1" />
 
-                {/* AX: shrink full-screen EVA back into the side panel (or close it all from Chat's X) */}
-                {embedded && (
-                    <div style={{ padding: collapsed ? 8 : 12 }}>
-                        <SidebarTooltip label={t('Minimise EVA')} show={collapsed}>
-                            <button onClick={() => closeUniverse()} className="flex items-center gap-3 w-full rounded-lg text-sm" title={t('Back to the side panel')}
-                                style={{ padding: collapsed ? '9px 0' : '8px 12px', justifyContent: collapsed ? 'center' : 'flex-start', color: sb.fg }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = sb.hover)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                <Icon name="modal-shrink" />{!collapsed && <span>{t('Minimise EVA')}</span>}
-                            </button>
-                        </SidebarTooltip>
-                    </div>
-                )}
                 {/* Account (bottom) — not in AX: AX is the EVA overlay on e-conomic, whose header owns the profile.
                     (Switch scope with ?scope=vision / ?scope=ax.) */}
                 {!ax && (
@@ -1040,6 +1028,7 @@ export default function App() {
                         onTab={(tb) => goView(WORK_VIEW_OF[tb])}
                         clientFilter={workClient}
                         onClientChange={setWorkClient}
+                        evaControls={embedded ? { onMinimise: () => closeUniverse(), onClose: () => closeUniverse(true) } : undefined}
                         bare={view === 'skills' && routineOpen}
                         onNewRoutine={() => setNewRoutineTick((n) => n + 1)}
                         tasks={tasksShown}

@@ -44,6 +44,19 @@ export function ClientAvatar({ name, size = 18 }: { name: string; size?: number 
     );
 }
 
+// Full-screen EVA's window controls (AX): ⤡ back to the side panel, ✕ close EVA. Same on every page.
+export function EvaWindowControls({ onMinimise, onClose }: { onMinimise?: () => void; onClose?: () => void }) {
+    const { t } = useLang();
+    const btn = (title: string, icon: 'modal-shrink' | 'close', on: () => void) => (
+        <button onClick={on} title={t(title)} aria-label={t(title)} className="flex items-center justify-center rounded-lg shrink-0"
+            style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: '#fff' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#f4f4f5')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>
+            <Icon name={icon} />
+        </button>
+    );
+    return <div className="flex items-center gap-2">{onMinimise && btn('Back to the side panel', 'modal-shrink', onMinimise)}{onClose && btn('Close', 'close', onClose)}</div>;
+}
+
 // The agreement pill + dropdown, shown in each page header.
 export function ScopeSwitcher() {
     const { scope, onChoose, liveAgreement, reviewCounts } = useContext(ScopeContext);
