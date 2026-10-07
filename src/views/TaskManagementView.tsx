@@ -418,7 +418,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             <div key={g.key} onDragOver={col ? (e) => { if (!dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(col); } : undefined} onDrop={col ? (e) => { e.preventDefault(); dnd.drop(col); } : undefined}>
                             <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
                                 {ax && g.key === 'review'
-                                    ? g.items.length > 0 && <ReviewTable items={g.items} onOpen={openItem} onAccept={(d) => onResolveDecision(d.id, 'confirm')} onAsk={onAskEva} />
+                                    ? g.items.length > 0 && <ReviewRows items={g.items} onOpen={openItem} onAccept={(d) => onResolveDecision(d.id, 'confirm')} onDismiss={(d) => onResolveDecision(d.id, 'alt')} onAsk={onAskEva} />
                                     : g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
                                 {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
                                 {g.items.length === 0 && (g.key === 'review' && !dragId ? (
@@ -579,61 +579,65 @@ const RoutinesIconSmall = () => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 5h6a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="5" r="2.1" fill="currentColor" /><circle cx="18" cy="17" r="2.1" fill="currentColor" /></svg>
 );
 
-// AX: the review queue as a control overview — severity, client, voucher, the check, why, EVA's suggested
-// fix, and the two moves: ask EVA about it, or accept the fix. A row opens the full review.
+// AX: the review queue in the Activity pattern — a simple row (what, who, how urgent) that opens EVA's
+// explanation inline: what it did, the fix it suggests, voucher · routine · Review (the full review modal, like
+// Activity's Trace), and the moves — Ask EVA, Dismiss, Accept.
 const SEV: Record<string, { bg: string; fg: string }> = { high: { bg: '#fdecec', fg: '#b42318' }, medium: { bg: '#fdf1dc', fg: '#92710f' }, low: { bg: '#f1f1f3', fg: '#52525b' } };
-function ReviewTable({ items, onOpen, onAccept, onAsk }: { items: WorkItem[]; onOpen: (it: WorkItem) => void; onAccept: (d: DecisionItem) => void; onAsk?: (d: DecisionItem) => void }) {
+function ReviewRows({ items, onOpen, onAccept, onDismiss, onAsk }: { items: WorkItem[]; onOpen: (it: WorkItem) => void; onAccept: (d: DecisionItem) => void; onDismiss: (d: DecisionItem) => void; onAsk?: (d: DecisionItem) => void }) {
     const { t } = useLang();
+    const [open, setOpen] = useState<string | null>(null);
     const rows = items.filter((i): i is Extract<WorkItem, { kind: 'review' }> => i.kind === 'review');
-    const cols = ['Severity', 'Client', 'Voucher', 'Check', 'Reason', 'Suggested fix', ''];
     return (
-        <div className="overflow-x-auto">
-            {/* fixed layout: reason and fix share the width; the rest stay compact */}
-            <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: 760 }}>
-                <colgroup><col style={{ width: 86 }} /><col style={{ width: 150 }} /><col style={{ width: 62 }} /><col style={{ width: 160 }} /><col /><col /><col style={{ width: 128 }} /></colgroup>
-                <thead>
-                    <tr style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                        {cols.map((h, i) => <th key={i} className="text-left text-xs font-semibold px-4 py-2.5 whitespace-nowrap" style={{ color: COLORS.text }}>{h ? t(h) : ''}</th>)}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((it, i) => {
-                        const d = it.d; const p = priorityOfDecision(d); const r = routineOf(d);
-                        const voucher = d.correction?.voucher.match(/#(\d+)/)?.[1] ?? '—';
-                        return (
-                            <tr key={it.id} onClick={() => onOpen(it)} className="cursor-pointer align-top" style={i === rows.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                <td className="px-4 py-3.5"><span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={SEV[p.level] && { background: SEV[p.level].bg, color: SEV[p.level].fg }}>{t(PRIO_STYLE[p.level].label)}</span></td>
-                                <td className="px-4 py-3.5"><span className="flex items-start gap-2 leading-snug" style={{ color: COLORS.text }}><span className="shrink-0"><ClientAvatar name={d.company} size={22} /></span>{d.company}</span></td>
-                                <td className="px-4 py-3.5 font-semibold whitespace-nowrap" style={{ color: COLORS.text }}>{voucher}</td>
-                                <td className="px-4 py-3.5">
-                                    <KindTag it={it} />
-                                    <p className="mt-1 leading-snug" style={{ color: COLORS.text }}>{t(d.label)}</p>
-                                    <p className="text-xs mt-0.5" style={{ color: '#a1a1aa' }} title={t('Raised by this routine')}>{r.emoji} {t(r.label)}</p>
-                                </td>
-                                <td className="px-4 py-3.5 leading-snug" style={{ color: COLORS.text }}>{t(d.question)}</td>
-                                <td className="px-4 py-3.5">
-                                    <div className="flex items-start gap-2 rounded-lg px-3 py-2.5 leading-snug" style={{ background: '#f6f4fe', border: '1px solid #e4defb', color: COLORS.text }}>
-                                        <span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t(d.recommend)}</span>
+        <>
+            {rows.map((it, i) => {
+                const d = it.d; const p = priorityOfDecision(d); const r = routineOf(d); const isOpen = open === it.id;
+                const voucher = d.correction?.voucher.match(/#(\d+)/)?.[1];
+                const flag = !!d.correction;
+                return (
+                    <div key={it.id} style={i === rows.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                        <button onClick={() => setOpen(isOpen ? null : it.id)} className="w-full flex items-center gap-3 p-4 text-left bg-white">
+                            <ClientAvatar name={d.company} size={30} />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium flex items-center min-w-0" style={{ color: COLORS.text }}><KindTag it={it} /><span className="truncate">{t(d.question)}</span></p>
+                                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{d.company} · {r.emoji} {t(r.label)} · {t(p.why)}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: SEV[p.level].bg, color: SEV[p.level].fg }}>{t(PRIO_STYLE[p.level].label)}</span>
+                            <Icon name={isOpen ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
+                        </button>
+                        {isOpen && (
+                            <div className="px-4 pb-4 anim-in">
+                                <div className="rounded-xl p-4" style={{ border: '1px solid #7c3aed26', background: '#7c3aed0a' }}>
+                                    <div className="flex items-center gap-2">
+                                        <Orb size={18} />
+                                        <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(flag ? 'What EVA found' : 'What EVA prepared')}</span>
                                     </div>
-                                </td>
-                                <td className="px-4 py-3.5">
-                                    <div className="flex flex-col items-stretch gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                        {onAsk && (
-                                            <button onClick={() => onAsk(d)} className="flex items-center justify-center gap-1.5 rounded-full pl-2 pr-3 py-1 text-sm font-semibold whitespace-nowrap" style={{ background: '#fff7ed', border: '1px solid #efddc0', color: COLORS.text }}
-                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fdecd2')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}>
-                                                <Orb size={14} /> {t('Ask EVA')}
+                                    <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}>{d.steps.map((x) => t(x)).join('. ')}.</p>
+                                    <p className="text-sm leading-relaxed mt-2" style={{ color: COLORS.text }}><span className="font-semibold">{t('EVA suggests')}:</span> {t(d.recommend)}</p>
+                                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 text-sm" style={{ color: COLORS.textMuted }}>
+                                        {voucher && <span className="flex items-center gap-1.5"><Icon name="document" /> {t('Voucher')} #{voucher}</span>}
+                                        <span className="flex items-center gap-1.5">{r.emoji} {t(r.label)}</span>
+                                        <button onClick={() => onOpen(it)} className="flex items-center gap-1.5 font-medium" style={{ color: '#4456c7' }}><Icon name="search" /> {t('Review')}</button>
+                                    </div>
+                                    <div style={{ borderTop: '1px solid #7c3aed1f', margin: '14px -16px 0' }} />
+                                    <div className="flex items-center justify-between pt-3 gap-3">
+                                        {onAsk ? (
+                                            <button onClick={() => onAsk(d)} className="flex items-center gap-1.5 rounded-full font-semibold shrink-0" style={{ padding: '5px 12px 5px 8px', fontSize: 13, background: '#fff7ed', color: COLORS.text, border: '1px solid #efddc0' }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fdeed8')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}>
+                                                <Orb size={16} /> {t('Ask EVA')}
                                             </button>
-                                        )}
-                                        <Button onClick={() => onAccept(d)} title={t(d.confirm)}>{t('Accept')}</Button>
+                                        ) : <span />}
+                                        <div className="flex items-center gap-2">
+                                            <Button onClick={() => onDismiss(d)}>{t(d.alt)}</Button>
+                                            <Button appearance="primary" onClick={() => onAccept(d)}>{t(d.confirm)}</Button>
+                                        </div>
                                     </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </>
     );
 }
 

@@ -2418,4 +2418,6 @@ const DA: Record<string, string> = {
     'Back to the side panel': 'Tilbage til sidepanelet',
     'Check': 'Kontrol',
     'Suggested fix': 'Foreslået rettelse',
+    'What EVA found': 'Det fandt EVA',
+    'What EVA prepared': 'Det har EVA forberedt',
 };

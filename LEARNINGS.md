@@ -53,10 +53,10 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
   a **global** client context, not an applied filter ("Clear filters" leaves it alone).
-  The queue is a **control overview** table (inspired by a mockup): Severity · Client · Voucher · Check (Flag/
-  Action + what + routine) · Reason · EVA's suggested fix (purple EVA box) · **Ask EVA** (opens Chat with the
-  item explained) / **Accept** (applies EVA's fix). A row opens the full review. (Before that, rows were two lines: the tag + EVA's finding/ask (not the routine-ish title), then
-  urgency dot · client · what it changes — and, muted on the right, the routine.) Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
+  The queue follows **Activity's row pattern**: a simple row (Flag/Action + the finding · client · routine ·
+  impact · severity) that expands into EVA's purple panel — what EVA found / prepared, *EVA suggests…*, voucher ·
+  routine · **Review** (the full review modal — Activity's *Trace*), and Ask EVA · Dismiss · Accept. (Tried before:
+  a control-overview table, and two-line cards.)
   Weekly Bookkeeping → the rest — `routineOf`), with a routine filter next to the chips.
   Filters are **Flags | Actions** (not status); completed work isn't listed — it's in the **Activity** tab, which
   uses the same agreement selector (no area or client dropdowns). A list, not draggable; an empty *For review*
