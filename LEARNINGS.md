@@ -45,7 +45,8 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
 **AX's menu is two places** (`AX_RAIL` in App):
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
-  correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right.
+  correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
+  a **global** client context, not an applied filter ("Clear filters" leaves it alone).
   Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
   Weekly Bookkeeping → the rest — `routineOf`), with a routine filter next to the chips.
   Filters are **Flags | Actions** (not status); completed work isn't listed — it's in the **Activity** tab, which

@@ -354,7 +354,8 @@ export function PageHeader({
     showScope?: boolean;
 }) {
     return (
-        <div className="sticky top-0 z-20" style={{ background: CANVAS }}>
+        // z-30: above page toolbars (z-20) so header menus — e.g. the agreement selector — open over the content
+        <div className="sticky top-0 z-30" style={{ background: CANVAS }}>
             {/* flex-wrap: when title + pill + controls don't fit (e.g. longer Danish labels), controls wrap below instead of crushing the title */}
             <div className="mx-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 px-8 py-2 land" style={{ maxWidth, minHeight: 62 }}>
                 {onBack && (

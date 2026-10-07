@@ -367,7 +367,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                         })}
                         {/* AX: filter on the routine that raised it */}
                         {ax && <RoutineFilter value={routineF} onChange={setRoutineF} counts={Object.fromEntries(AX_ROUTINES.map((r) => [r.id, items.filter((i) => i.kind === 'review' && routineOf(i.d).id === r.id).length]))} />}
-                        {(statusF.size > 0 || kindF.size > 0 || routineF !== 'all' || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setKindF(new Set()); setRoutineF('all'); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                        {/* the client is global context (the agreement selector), not one of these filters */}
+                        {(statusF.size > 0 || kindF.size > 0 || routineF !== 'all' || q) && <button onClick={() => { setStatusF(new Set()); setKindF(new Set()); setRoutineF('all'); setQ(''); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                     </div>
                     <div className="relative ml-auto" style={{ width: 240 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
