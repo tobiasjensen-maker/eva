@@ -505,6 +505,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
     // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
     // Opened from the EVA panel: continue that conversation (shown as it was, not re-typed).
     const [seeded] = useState<ChatMsg[]>(() => (seedTurns ?? []).map((x): ChatMsg => (x.role === 'user' ? { id: nextId(), role: 'user', text: x.text } : { id: nextId(), role: 'assistant', kind: 'text', text: x.text })));
+    const [kebab, setKebab] = useState(false); // AX full screen: new chat + history behind ⋮
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : seeded));
     useEffect(() => {
         if (!onTurns) return;
@@ -791,6 +792,28 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
             <div className="flex items-center justify-between gap-2 px-6 py-3">
                 {headerLeft ?? <ScopeSwitcher />}
                 <div className="flex items-center gap-2">
+                    {onMinimise ? (
+                        // AX full screen: the same controls as the side panel — ⋮ (new chat, history), ⤡, ✕
+                        <div className="relative">
+                            <button onClick={() => setKebab((v) => !v)} title={t('More options')} aria-label={t('More options')} aria-expanded={kebab}
+                                className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text, background: kebab ? '#f4f4f5' : '#fff' }}>
+                                <Icon name="more" />
+                            </button>
+                            {kebab && (
+                                <>
+                                    <div className="fixed inset-0 z-30" onClick={() => setKebab(false)} />
+                                    <div className="absolute right-0 z-40 mt-1.5 rounded-xl bg-white py-1 anim-in" style={{ minWidth: 200, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                                        {[{ icon: 'circle-plus', label: 'New chat', run: newChat, show: !empty }, { icon: 'time', label: 'History', run: () => setHistoryOpen(true), show: true }].filter((x) => x.show).map((x) => (
+                                            <button key={x.label} onClick={() => { setKebab(false); x.run(); }} className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-sm" style={{ color: COLORS.text }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#f7f7f8')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                                <Icon name={x.icon as 'time'} style={{ color: COLORS.textMuted }} /> {t(x.label)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ) : (<>
                     <button
                         onClick={() => setHistoryOpen(true)}
                         className="flex items-center gap-1.5 text-sm rounded-lg px-3 py-1.5"
@@ -807,6 +830,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
                             <Icon name="circle-plus" /> {t('New chat')}
                         </button>
                     )}
+                    </>)}
                     <EvaWindowControls onMinimise={onMinimise}
                         onClose={onClose ? () => onClose(messages.flatMap((m): Turn[] => (m.role === 'user' ? [{ role: 'user', text: m.text }] : m.kind === 'text' ? [{ role: 'assistant', text: m.text }] : []))) : undefined} />
                 </div>
@@ -1328,7 +1352,7 @@ function AssistantBubble({
         }
         if (msg.kind === 'text') {
             return (
-                <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{lead(t(msg.text))}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: COLORS.text }}>{lead(t(msg.text))}</p>
             );
         }
         if (msg.kind === 'clienttable') {

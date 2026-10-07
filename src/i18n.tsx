@@ -2416,4 +2416,6 @@ const DA: Record<string, string> = {
     'The month-end report goes to the client once it’s closed': 'Månedsrapporten sendes til kunden, når den er lukket',
     'Minimise EVA': 'Minimér EVA',
     'Back to the side panel': 'Tilbage til sidepanelet',
+    'Check': 'Kontrol',
+    'Suggested fix': 'Foreslået rettelse',
 };

@@ -47,13 +47,16 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   (the reveal starts at the panel's edge) and there's *no side panel on any page* of full-screen EVA — the menu
   (EVA mark + name, a quarter narrower) leads to Tasks and Routines. Same conversation as the panel (seeded from
   it, written back as it changes). Header: the Tasks client picker. **Every page** of full-screen EVA has the
-  same window controls top right (`EvaWindowControls`): ⤡ back to the side panel, ✕ closes EVA.
+  same window controls top right (`EvaWindowControls`): ⤡ back to the side panel, ✕ closes EVA. Chat also has
+  the side panel's ⋮ (New chat, History) — same buttons expanded as in the panel.
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
   a **global** client context, not an applied filter ("Clear filters" leaves it alone).
-  Rows show **just what matters**, in two lines: the tag + EVA's finding/ask (not the routine-ish title), then
-  urgency dot · client · what it changes — and, muted on the right, the routine. Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
+  The queue is a **control overview** table (inspired by a mockup): Severity · Client · Voucher · Check (Flag/
+  Action + what + routine) · Reason · EVA's suggested fix (purple EVA box) · **Ask EVA** (opens Chat with the
+  item explained) / **Accept** (applies EVA's fix). A row opens the full review. (Before that, rows were two lines: the tag + EVA's finding/ask (not the routine-ish title), then
+  urgency dot · client · what it changes — and, muted on the right, the routine.) Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
   Weekly Bookkeeping → the rest — `routineOf`), with a routine filter next to the chips.
   Filters are **Flags | Actions** (not status); completed work isn't listed — it's in the **Activity** tab, which
   uses the same agreement selector (no area or client dropdowns). A list, not draggable; an empty *For review*

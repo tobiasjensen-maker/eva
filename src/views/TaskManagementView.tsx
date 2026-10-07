@@ -158,7 +158,7 @@ export type WorkTab = 'tasks' | 'activity' | 'routines';
 
 // The active routines' next runs — shown with EVA's scheduled tasks on the Routines tab.
 
-export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClientChange, evaControls }: {
+export default function TaskManagementView({ tasks, setTasks, decisions, onResolveDecision, onAddDecision, activity, onOpenActivity, threads = [], onOpenThread, tab, onTab, activityLog, routines, bare, onNewRoutine, clientFilter = null, onClientChange, evaControls, onAskEva }: {
     tab: WorkTab;
     onTab: (t: WorkTab) => void;
     activityLog: ReactNode;   // the Activity tab (the embedded activity log)
@@ -168,6 +168,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     clientFilter?: string | null; // show one client's work only (the agreement selector, or a client in the overview)
     onClientChange?: (name: string | null) => void;
     evaControls?: { onMinimise: () => void; onClose: () => void }; // AX full-screen EVA: ⤡ and ✕ at top right
+    onAskEva?: (d: DecisionItem) => void; // AX: "Ask EVA" on a flag/action — opens Chat with it explained
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     decisions: DecisionItem[];
@@ -416,7 +417,9 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             return (
                             <div key={g.key} onDragOver={col ? (e) => { if (!dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(col); } : undefined} onDrop={col ? (e) => { e.preventDefault(); dnd.drop(col); } : undefined}>
                             <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
-                                {g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
+                                {ax && g.key === 'review'
+                                    ? g.items.length > 0 && <ReviewTable items={g.items} onOpen={openItem} onAccept={(d) => onResolveDecision(d.id, 'confirm')} onAsk={onAskEva} />
+                                    : g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
                                 {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
                                 {g.items.length === 0 && (g.key === 'review' && !dragId ? (
                                     // nothing waiting on you — say so properly
@@ -575,6 +578,64 @@ function RoutineFilter({ value, onChange, counts }: { value: string; onChange: (
 const RoutinesIconSmall = () => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 5h6a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="5" r="2.1" fill="currentColor" /><circle cx="18" cy="17" r="2.1" fill="currentColor" /></svg>
 );
+
+// AX: the review queue as a control overview — severity, client, voucher, the check, why, EVA's suggested
+// fix, and the two moves: ask EVA about it, or accept the fix. A row opens the full review.
+const SEV: Record<string, { bg: string; fg: string }> = { high: { bg: '#fdecec', fg: '#b42318' }, medium: { bg: '#fdf1dc', fg: '#92710f' }, low: { bg: '#f1f1f3', fg: '#52525b' } };
+function ReviewTable({ items, onOpen, onAccept, onAsk }: { items: WorkItem[]; onOpen: (it: WorkItem) => void; onAccept: (d: DecisionItem) => void; onAsk?: (d: DecisionItem) => void }) {
+    const { t } = useLang();
+    const rows = items.filter((i): i is Extract<WorkItem, { kind: 'review' }> => i.kind === 'review');
+    const cols = ['Severity', 'Client', 'Voucher', 'Check', 'Reason', 'Suggested fix', ''];
+    return (
+        <div className="overflow-x-auto">
+            {/* fixed layout: reason and fix share the width; the rest stay compact */}
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: 760 }}>
+                <colgroup><col style={{ width: 86 }} /><col style={{ width: 150 }} /><col style={{ width: 62 }} /><col style={{ width: 160 }} /><col /><col /><col style={{ width: 128 }} /></colgroup>
+                <thead>
+                    <tr style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                        {cols.map((h, i) => <th key={i} className="text-left text-xs font-semibold px-4 py-2.5 whitespace-nowrap" style={{ color: COLORS.text }}>{h ? t(h) : ''}</th>)}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((it, i) => {
+                        const d = it.d; const p = priorityOfDecision(d); const r = routineOf(d);
+                        const voucher = d.correction?.voucher.match(/#(\d+)/)?.[1] ?? '—';
+                        return (
+                            <tr key={it.id} onClick={() => onOpen(it)} className="cursor-pointer align-top" style={i === rows.length - 1 ? undefined : { borderBottom: `1px solid ${COLORS.cardBorder}` }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fafafa')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                                <td className="px-4 py-3.5"><span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap" style={SEV[p.level] && { background: SEV[p.level].bg, color: SEV[p.level].fg }}>{t(PRIO_STYLE[p.level].label)}</span></td>
+                                <td className="px-4 py-3.5"><span className="flex items-start gap-2 leading-snug" style={{ color: COLORS.text }}><span className="shrink-0"><ClientAvatar name={d.company} size={22} /></span>{d.company}</span></td>
+                                <td className="px-4 py-3.5 font-semibold whitespace-nowrap" style={{ color: COLORS.text }}>{voucher}</td>
+                                <td className="px-4 py-3.5">
+                                    <KindTag it={it} />
+                                    <p className="mt-1 leading-snug" style={{ color: COLORS.text }}>{t(d.label)}</p>
+                                    <p className="text-xs mt-0.5" style={{ color: '#a1a1aa' }} title={t('Raised by this routine')}>{r.emoji} {t(r.label)}</p>
+                                </td>
+                                <td className="px-4 py-3.5 leading-snug" style={{ color: COLORS.text }}>{t(d.question)}</td>
+                                <td className="px-4 py-3.5">
+                                    <div className="flex items-start gap-2 rounded-lg px-3 py-2.5 leading-snug" style={{ background: '#f6f4fe', border: '1px solid #e4defb', color: COLORS.text }}>
+                                        <span className="shrink-0 mt-0.5"><Orb size={14} /></span><span>{t(d.recommend)}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3.5">
+                                    <div className="flex flex-col items-stretch gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                        {onAsk && (
+                                            <button onClick={() => onAsk(d)} className="flex items-center justify-center gap-1.5 rounded-full pl-2 pr-3 py-1 text-sm font-semibold whitespace-nowrap" style={{ background: '#fff7ed', border: '1px solid #efddc0', color: COLORS.text }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.background = '#fdecd2')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff7ed')}>
+                                                <Orb size={14} /> {t('Ask EVA')}
+                                            </button>
+                                        )}
+                                        <Button onClick={() => onAccept(d)} title={t(d.confirm)}>{t('Accept')}</Button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
 
 // AX: the routine that raised a review item, at the start of its subtitle.
 function RoutineTag({ it }: { it: WorkItem }) {

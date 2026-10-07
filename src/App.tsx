@@ -438,6 +438,15 @@ export default function App() {
         if (ax && prevView.current === 'chat' && view !== 'chat') setEcoSeed((n) => n + 1); // back from full screen
         prevView.current = view;
     }, [view, ax]);
+    // AX: "Ask EVA" on a flag/action — Chat opens with the item explained (the panel's conversation continues)
+    const askEvaAbout = (d: DecisionItem) => {
+        let turns: Turn[] = [];
+        try { turns = JSON.parse(sessionStorage.getItem(ECO_CHAT_KEY) ?? '[]'); } catch { /* none */ }
+        const q = lang === 'da' ? `Fortæl mig om “${t(d.label)}” for ${d.company}` : `Tell me about “${d.label}” for ${d.company}`;
+        const a = `${t(d.question)} ${t(d.recommend)}\n\n${lang === 'da' ? 'Det har jeg gjort' : 'What I did'}:\n• ${d.steps.map((x) => t(x)).join('\n• ')}`;
+        try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify([...turns, { role: 'user', text: q }, { role: 'assistant', text: a }])); } catch { /* ignore */ }
+        openAxChat();
+    };
     const openAxChat = () => {
         let turns: Turn[] = [];
         try { turns = JSON.parse(sessionStorage.getItem(ECO_CHAT_KEY) ?? '[]'); } catch { /* none */ }
@@ -1029,6 +1038,7 @@ export default function App() {
                         clientFilter={workClient}
                         onClientChange={setWorkClient}
                         evaControls={embedded ? { onMinimise: () => closeUniverse(), onClose: () => closeUniverse(true) } : undefined}
+                        onAskEva={embedded ? askEvaAbout : undefined}
                         bare={view === 'skills' && routineOpen}
                         onNewRoutine={() => setNewRoutineTick((n) => n + 1)}
                         tasks={tasksShown}
