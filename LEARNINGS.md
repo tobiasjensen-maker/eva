@@ -46,6 +46,8 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right.
+  Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
+  Weekly Bookkeeping → the rest — `routineOf`), with a routine filter next to the chips.
   Filters are **Flags | Actions** (not status); completed work isn't listed — it's in the **Activity** tab, which
   uses the same agreement selector (no area or client dropdowns). A list, not draggable; an empty *For review*
   says "You're all caught up". Badge = the whole queue.

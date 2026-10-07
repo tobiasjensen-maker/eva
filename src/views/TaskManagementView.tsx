@@ -185,6 +185,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
     // AX filters by kind instead of status: Flags (findings on booked postings) and Actions (to approve)
     const [kindF, setKindF] = useState<Set<ItemKind>>(new Set());
+    const [routineF, setRoutineF] = useState<string>('all'); // AX: one routine's items
     const toggleKindF = (k: ItemKind) => setKindF((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
     const [trace, setTrace] = useState<Task | null>(null);
     const [review, setReview] = useState<DecisionItem | null>(null);
@@ -240,7 +241,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         ...doneLog.map((e): WorkItem => ({ kind: 'logged', id: e.id, ws: 'done', overdue: false, company: clientName(e.client), title: t(e.title ?? e.desc), entry: e, task: e.taskId ? tasks.find((x) => x.id === e.taskId) : undefined })),
     ];
     const passes = (it: WorkItem) => (statusF.size === 0 || statusF.has(it.ws) || (it.overdue && statusF.has('overdue')))
-        && (!ax || kindF.size === 0 || (kindOf(it) !== null && kindF.has(kindOf(it)!)));
+        && (!ax || kindF.size === 0 || (kindOf(it) !== null && kindF.has(kindOf(it)!)))
+        && (!ax || routineF === 'all' || (it.kind === 'review' && routineOf(it.d).id === routineF));
     const visible = items.filter(passes);
     // your drag order wins; anything new since (not yet ordered) goes on top
     const ordered = (col: Col, list: WorkItem[]) => {
@@ -363,7 +365,15 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 </button>
                             );
                         })}
-                        {(statusF.size > 0 || kindF.size > 0 || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setKindF(new Set()); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                        {/* AX: filter on the routine that raised it */}
+                        {ax && (
+                            <select value={routineF} onChange={(e) => setRoutineF(e.target.value)} aria-label={t('Routine')}
+                                className="rounded-full pl-3 pr-2 py-1 text-xs font-medium bg-white" style={{ border: `1px solid ${routineF !== 'all' ? '#7c3aed' : COLORS.cardBorder}`, color: routineF !== 'all' ? '#6d28d9' : COLORS.textMuted, background: routineF !== 'all' ? '#f3f0fb' : '#fff' }}>
+                                <option value="all">{t('All routines')}</option>
+                                {AX_ROUTINES.map((r) => <option key={r.id} value={r.id}>{r.emoji} {t(r.label)} ({items.filter((i) => i.kind === 'review' && routineOf(i.d).id === r.id).length})</option>)}
+                            </select>
+                        )}
+                        {(statusF.size > 0 || kindF.size > 0 || routineF !== 'all' || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setKindF(new Set()); setRoutineF('all'); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                     </div>
                     <div className="relative ml-auto" style={{ width: 240 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
@@ -493,6 +503,15 @@ export function AgreementSelector({ value, onChange, counts }: { value: string |
 }
 
 type ItemKind = 'flag' | 'action';
+// AX: which of the three routines raised a review item — controlling raises the flags; the close raises
+// closing items; everything else comes from the weekly bookkeeping.
+const AX_ROUTINES = [
+    { id: 't-ax-weekly', label: 'Weekly Bookkeeping', emoji: '🗓️' },
+    { id: 't-ax-ctrl', label: 'Monthly Controlling', emoji: '🔍' },
+    { id: 't-ax-close', label: 'Monthly Close', emoji: '✅' },
+] as const;
+type AxRoutine = (typeof AX_ROUTINES)[number];
+const routineOf = (d: DecisionItem): AxRoutine => (d.correction ? AX_ROUTINES[1] : /close|closing|month-end|period/i.test(d.label) ? AX_ROUTINES[2] : AX_ROUTINES[0]);
 const kindOf = (it: WorkItem): ItemKind | null => (it.kind === 'review' ? (it.d.correction ? 'flag' : 'action') : null);
 const FLAG_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 21V4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><path d="M5 4h11l-2 4 2 4H5" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>;
 const ACTION_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -514,6 +533,15 @@ function KindTag({ it }: { it: WorkItem }) {
             {m.icon}{t(m.label)}
         </span>
     );
+}
+
+// AX: the routine that raised a review item, at the start of its subtitle.
+function RoutineTag({ it }: { it: WorkItem }) {
+    const { t } = useLang();
+    const { ax } = useScopeMode();
+    if (!ax || it.kind !== 'review') return null;
+    const r = routineOf(it.d);
+    return <span className="font-medium" style={{ color: '#52525b' }} title={t('Raised by this routine')}>{r.emoji} {t(r.label)} · </span>;
 }
 
 // ---- Board + list pieces --------------------------------------------------------------------
@@ -608,7 +636,7 @@ function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: Work
                 <ClientAvatar name={it.company} size={30} />
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium flex items-center min-w-0" style={{ color: COLORS.text }}><KindTag it={it} /><span className={`truncate ${clickable ? 'hover:underline' : ''}`}>{it.title}</span></p>
-                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{showCompany ? <>{it.company} · </> : null}{itemSub(it, t)}</p>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}><RoutineTag it={it} />{showCompany ? <>{it.company} · </> : null}{itemSub(it, t)}</p>
                     {prioOf(it) && <PrioLine p={prioOf(it)!} t={t} />}
                 </div>
             </button>
