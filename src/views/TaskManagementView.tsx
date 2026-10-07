@@ -418,7 +418,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             <div key={g.key} onDragOver={col ? (e) => { if (!dragId) return; e.preventDefault(); if (e.target === e.currentTarget) dnd.overCol(col); } : undefined} onDrop={col ? (e) => { e.preventDefault(); dnd.drop(col); } : undefined}>
                             <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
                                 {ax && g.key === 'review'
-                                    ? g.items.length > 0 && <ReviewRows items={g.items} onOpen={openItem} onAccept={(d) => onResolveDecision(d.id, 'confirm')} onDismiss={(d) => onResolveDecision(d.id, 'alt')} onAsk={onAskEva} />
+                                    ? g.items.length > 0 && <ReviewRows items={g.items} onOpen={openItem} onAccept={(d) => onResolveDecision(d.id, 'confirm')} onAsk={onAskEva} />
                                     : g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
                                 {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
                                 {g.items.length === 0 && (g.key === 'review' && !dragId ? (
@@ -479,8 +479,8 @@ export function AgreementSelector({ value, onChange, counts, align = 'right' }: 
             <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 rounded-lg pl-1.5 pr-2 py-1 text-sm bg-white" style={{ border: `1px solid ${open ? '#c9d0f5' : COLORS.cardBorder}`, color: COLORS.text, minWidth: 210 }}>
                 {cur ? <ClientAvatar name={cur.name} size={24} /> : <span className="flex items-center justify-center rounded-md" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>}
                 <span className="flex-1 min-w-0 text-left leading-tight">
-                    <span className="block truncate font-medium">{cur ? cur.name : t('All clients')}</span>
-                    <span className="block text-[11px]" style={{ color: COLORS.textMuted }}>{cur ? cur.no : `${MY_PORTFOLIO.length} ${t('agreements')}`}</span>
+                    <span className="block truncate font-medium">{cur ? cur.name : t('All agreements')}</span>
+                    <span className="block text-[11px]" style={{ color: COLORS.textMuted }}>{cur ? cur.no : `${MY_PORTFOLIO.length} ${t('in total')}`}</span>
                 </span>
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: COLORS.textMuted }} />
             </button>
@@ -491,13 +491,13 @@ export function AgreementSelector({ value, onChange, counts, align = 'right' }: 
                         <div className="p-2" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                             <div className="relative">
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
-                                <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search by name or client number…')} className="w-full rounded-lg pl-8 pr-2 py-1.5 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                                <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search by name or agreement number…')} className="w-full rounded-lg pl-8 pr-2 py-1.5 text-sm" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
                             </div>
                         </div>
-                        {!ql && row('all', !value, () => pick(null), <span className="flex items-center justify-center rounded-md shrink-0" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>, t('All clients'), `${MY_PORTFOLIO.length} ${t('agreements')}`, total)}
+                        {!ql && row('all', !value, () => pick(null), <span className="flex items-center justify-center rounded-md shrink-0" style={{ width: 24, height: 24, background: '#f1f1f3', color: COLORS.textMuted }}><Icon name="contacts" /></span>, t('All agreements'), `${MY_PORTFOLIO.length} ${t('in total')}`, total)}
                         <div style={{ maxHeight: 300, overflowY: 'auto', borderTop: ql ? undefined : `1px solid ${COLORS.cardBorder}` }}>
                             {list.map((c) => row(c.id, value === c.name, () => pick(c.name), <ClientAvatar name={c.name} size={24} />, c.name, c.no, counts[c.name] ?? 0))}
-                            {list.length === 0 && <p className="text-xs px-3 py-4 text-center" style={{ color: COLORS.textMuted }}>{t('No clients match')}</p>}
+                            {list.length === 0 && <p className="text-xs px-3 py-4 text-center" style={{ color: COLORS.textMuted }}>{t('No agreements match')}</p>}
                         </div>
                     </div>
                 </>
@@ -581,9 +581,9 @@ const RoutinesIconSmall = () => (
 
 // AX: the review queue in the Activity pattern — a simple row (what, who, how urgent) that opens EVA's
 // explanation inline: what it did, the fix it suggests, voucher · routine · Review (the full review modal, like
-// Activity's Trace), and the moves — Ask EVA, Dismiss, Accept.
+// Activity's Trace), and the moves — Ask EVA, Accept.
 const SEV: Record<string, { bg: string; fg: string }> = { high: { bg: '#fdecec', fg: '#b42318' }, medium: { bg: '#fdf1dc', fg: '#92710f' }, low: { bg: '#f1f1f3', fg: '#52525b' } };
-function ReviewRows({ items, onOpen, onAccept, onDismiss, onAsk }: { items: WorkItem[]; onOpen: (it: WorkItem) => void; onAccept: (d: DecisionItem) => void; onDismiss: (d: DecisionItem) => void; onAsk?: (d: DecisionItem) => void }) {
+function ReviewRows({ items, onOpen, onAccept, onAsk }: { items: WorkItem[]; onOpen: (it: WorkItem) => void; onAccept: (d: DecisionItem) => void; onAsk?: (d: DecisionItem) => void }) {
     const { t } = useLang();
     const [open, setOpen] = useState<string | null>(null);
     const rows = items.filter((i): i is Extract<WorkItem, { kind: 'review' }> => i.kind === 'review');
@@ -626,10 +626,8 @@ function ReviewRows({ items, onOpen, onAccept, onDismiss, onAsk }: { items: Work
                                                 <Orb size={16} /> {t('Ask EVA')}
                                             </button>
                                         ) : <span />}
-                                        <div className="flex items-center gap-2">
-                                            <Button onClick={() => onDismiss(d)}>{t(d.alt)}</Button>
-                                            <Button appearance="primary" onClick={() => onAccept(d)}>{t(d.confirm)}</Button>
-                                        </div>
+                                        {/* one CTA — EVA's fix is the action; anything else goes through Review or Ask EVA */}
+                                        <Button appearance="primary" onClick={() => onAccept(d)} title={t(d.confirm)}>{t('Accept')}</Button>
                                     </div>
                                 </div>
                             </div>

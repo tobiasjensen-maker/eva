@@ -52,10 +52,11 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
-  a **global** client context, not an applied filter ("Clear filters" leaves it alone).
+  a **global** client context, not an applied filter ("Clear filters" leaves it alone). Wording: *agreement*
+  (aftale), not client — "All agreements", search by name or agreement number.
   The queue follows **Activity's row pattern**: a simple row (Flag/Action + the finding · client · routine ·
   impact · severity) that expands into EVA's purple panel — what EVA found / prepared, *EVA suggests…*, voucher ·
-  routine · **Review** (the full review modal — Activity's *Trace*), and Ask EVA · Dismiss · Accept. (Tried before:
+  routine · **Review** (the full review modal — Activity's *Trace*), Ask EVA, and one CTA: **Accept**. (Tried before:
   a control-overview table, and two-line cards.)
   Weekly Bookkeeping → the rest — `routineOf`), with a routine filter next to the chips.
   Filters are **Flags | Actions** (not status); completed work isn't listed — it's in the **Activity** tab, which

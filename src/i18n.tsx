@@ -2420,4 +2420,8 @@ const DA: Record<string, string> = {
     'Suggested fix': 'Foreslået rettelse',
     'What EVA found': 'Det fandt EVA',
     'What EVA prepared': 'Det har EVA forberedt',
+    'All agreements': 'Alle aftaler',
+    'in total': 'i alt',
+    'Search by name or agreement number…': 'Søg på navn eller aftalenummer…',
+    'No agreements match': 'Ingen aftaler matcher',
 };
