@@ -1010,7 +1010,7 @@ const FEED_BUCKETS: { key: Bucket; label: string }[] = [
 
 // The Activity log: everything EVA has done, with advanced filtering (search, status,
 // area, client, date range). `embedded` renders it as the Routines page's Activity tab.
-export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false, focusId, onOpenEntry }: {
+export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onAskEva, onBack, embedded = false, focusId, onOpenEntry, clientFilter = null }: {
     focusId?: string | null;
     onOpenEntry?: (e: LogEntry) => boolean; // a task or EVA draft opens its own modal, like on the Tasks tab
     entries: LogEntry[];
@@ -1019,8 +1019,10 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
     onAskEva: (user: string, answer: string) => void;
     onBack?: () => void;
     embedded?: boolean;
+    clientFilter?: string | null; // AX: one client, from the page's agreement selector (replaces the dropdowns)
 }) {
     const { t } = useLang();
+    const { ax } = useScopeMode();
     const A = useActivityActions(setEntries, onAskEva);
     const [range, setRange] = useState('30');
     const [q, setQ] = useState('');
@@ -1043,16 +1045,16 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
         && (statusF.size === 0 || statusF.has(e.status))
         && (skillF === 'all' || e.skill === skillF)
         && (clientF === 'all' || e.client === clientF)
+        && (!clientFilter || clientName(e.client) === clientFilter)
         && (!ql || t(e.desc).toLowerCase().includes(ql) || t(clientName(e.client)).toLowerCase().includes(ql) || (e.source ?? '').toLowerCase().includes(ql)),
     ).sort((a, b) => a.daysAgo - b.daysAgo || (b.at ?? 0) - (a.at ?? 0) || b.time.localeCompare(a.time));
     const groups: { key: string; title: ReactNode; items: LogEntry[] }[] = FEED_BUCKETS
         .map((b) => ({ key: b.key, title: <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t(b.label)}</span>, items: filtered.filter((e) => e.bucket === b.key) }))
         .filter((g) => g.items.length > 0);
-    const statusCount = (k: ActivityStatus) => entries.filter((e) => inRangeOf(e, range) && e.status === k).length;
+    const statusCount = (k: ActivityStatus) => entries.filter((e) => inRangeOf(e, range) && e.status === k && (!clientFilter || clientName(e.client) === clientFilter)).length;
     const anyFilter = statusF.size > 0 || skillF !== 'all' || clientF !== 'all' || !!q;
 
     const selectStyle = { border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text };
-    const { ax } = useScopeMode();
     const skills = Object.keys(SKILL_INFO).filter((k) => !(ax && AX_HIDDEN_SKILLS.has(k)));
 
     const rowProps = (e: LogEntry) => ({
@@ -1075,15 +1077,16 @@ export function ActivityFeedView({ entries, setEntries, scope = 'portfolio', onA
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
                         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search activity…')} className="w-full rounded-lg pl-9 pr-3 py-2 text-sm bg-white" style={selectStyle} />
                     </div>
-                    <select value={skillF} onChange={(e) => setSkillF(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selectStyle}>
+                    {/* AX: the agreement selector picks the client; no area or client dropdowns */}
+                    {!ax && <select value={skillF} onChange={(e) => setSkillF(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selectStyle}>
                         <option value="all">{t('All areas')}</option>
                         {skills.map((s) => <option key={s} value={s}>{t(SKILL_INFO[s].label)}</option>)}
-                    </select>
-                    <select value={clientF} onChange={(e) => setClientF(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selectStyle}>
+                    </select>}
+                    {!ax && <select value={clientF} onChange={(e) => setClientF(e.target.value)} className="rounded-lg px-3 py-2 text-sm bg-white" style={selectStyle}>
                         <option value="all">{t('All clients')}</option>
                         <option value="portfolio">{t('Portfolio-wide')}</option>
                         {AGREEMENTS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
+                    </select>}
                 </div>
                 {/* status chips — the same tags and chip style as the Tasks list */}
                 <div className="flex flex-wrap items-center gap-1.5 mb-4">

@@ -1010,7 +1010,7 @@ export default function App() {
                         threads={threads}
                         onOpenThread={openReply}
                         onOpenActivity={(id) => { setActivityFocus(id); goView('activitylog'); }}
-                        activityLog={<ActivityFeedView embedded focusId={activityFocus} onOpenEntry={openFromLog} entries={activityShown} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
+                        activityLog={<ActivityFeedView embedded clientFilter={ax ? workClient : null} focusId={activityFocus} onOpenEntry={openFromLog} entries={activityShown} setEntries={setActivity} scope="portfolio" onAskEva={(user, answer) => { setPendingAsk({ user, answer }); setChatCollapsed(false); }} />}
                         routines={<SkillsView page="routines" skills={skillsShown} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} onDetailChange={setRoutineOpen} newRoutineTick={newRoutineTick} />}
                     />
                 )}

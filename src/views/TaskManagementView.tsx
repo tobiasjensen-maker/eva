@@ -183,6 +183,9 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const view: Layout = ax ? 'list' : layout; // AX: the list only
     const [q, setQ] = useState('');
     const [statusF, setStatusF] = useState<Set<WorkStatus>>(new Set());
+    // AX filters by kind instead of status: Flags (findings on booked postings) and Actions (to approve)
+    const [kindF, setKindF] = useState<Set<ItemKind>>(new Set());
+    const toggleKindF = (k: ItemKind) => setKindF((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
     const [trace, setTrace] = useState<Task | null>(null);
     const [review, setReview] = useState<DecisionItem | null>(null);
     const [creating, setCreating] = useState(false);
@@ -236,7 +239,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
             .map((x): WorkItem => ({ kind: 'reply', id: `reply-${x.id}`, ws: 'review', overdue: false, company: x.client, title: `${t('Reply to {name}').replace('{name}', x.contact.split(' ')[0])} — ${t(x.subject)}`, th: x })),
         ...doneLog.map((e): WorkItem => ({ kind: 'logged', id: e.id, ws: 'done', overdue: false, company: clientName(e.client), title: t(e.title ?? e.desc), entry: e, task: e.taskId ? tasks.find((x) => x.id === e.taskId) : undefined })),
     ];
-    const passes = (it: WorkItem) => statusF.size === 0 || statusF.has(it.ws) || (it.overdue && statusF.has('overdue'));
+    const passes = (it: WorkItem) => (statusF.size === 0 || statusF.has(it.ws) || (it.overdue && statusF.has('overdue')))
+        && (!ax || kindF.size === 0 || (kindOf(it) !== null && kindF.has(kindOf(it)!)));
     const visible = items.filter(passes);
     // your drag order wins; anything new since (not yet ordered) goes on top
     const ordered = (col: Col, list: WorkItem[]) => {
@@ -303,7 +307,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] = [
         ...(ax ? [] : [{ key: 'todo', title: <WorkTag s="todo" />, items: todo }, { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress }]), // AX: no tasks of your own
         { key: 'review', title: <WorkTag s="review" />, items: forReview },
-        { key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 },
+        // AX: completed work lives in the Activity tab, not here
+        ...(ax ? [] : [{ key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 }]),
     ];
 
     return (
@@ -316,7 +321,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     badge={ax
                         ? (tab === 'routines' ? undefined : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }]} />)
                         : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
-                    right={tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
+                    right={ax && tab === 'activity' ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} />
+                        : tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
                         : tab === 'routines' && !ax ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
             )}
@@ -337,7 +343,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
                     {!ax && <SegmentedTabs value={layout} onChange={(v) => setLayout(v as Layout)} options={[{ value: 'board', label: t('Board') }, { value: 'list', label: t('List') }]} />}
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {((ax ? ['review', 'done'] : ['todo', 'overdue', 'inprogress', 'review', 'done']) as WorkStatus[]).map((k) => {
+                        {/* AX shows one status (For review) — no status chips needed */}
+                        {((ax ? [] : ['todo', 'overdue', 'inprogress', 'review', 'done']) as WorkStatus[]).map((k) => {
                             const on = statusF.has(k); const m = WORK_STATUS[k];
                             return (
                                 <button key={k} onClick={() => toggleStatusF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
@@ -345,7 +352,18 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                                 </button>
                             );
                         })}
-                        {(statusF.size > 0 || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
+                        {ax && (['flag', 'action'] as ItemKind[]).map((k) => {
+                            const on = kindF.has(k); const m = KIND[k];
+                            const n = items.filter((i) => i.ws === 'review' && kindOf(i) === k).length;
+                            return (
+                                <button key={k} onClick={() => toggleKindF(k)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ border: `1px solid ${on ? m.fg : COLORS.cardBorder}`, background: on ? m.bg : '#fff', color: on ? m.fg : COLORS.textMuted }}>
+                                    <span style={{ color: m.fg, display: 'inline-flex' }}>{m.icon}</span> {t(m.plural)}
+                                    {/* the counter follows the chip's colour when it's on (no grey on red) */}
+                                    <span className="inline-flex items-center justify-center rounded-full text-[11px] font-semibold" style={{ minWidth: 18, height: 18, padding: '0 6px', background: on ? '#fff' : '#ececf0', color: on ? m.fg : '#52525b' }}>{n}</span>
+                                </button>
+                            );
+                        })}
+                        {(statusF.size > 0 || kindF.size > 0 || q || clientFilter) && <button onClick={() => { setStatusF(new Set()); setKindF(new Set()); setQ(''); onClientChange?.(null); }} className="text-xs font-medium ml-1" style={{ color: '#4456c7' }}>{t('Clear filters')}</button>}
                     </div>
                     <div className="relative ml-auto" style={{ width: 240 }}>
                         <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
@@ -474,23 +492,26 @@ export function AgreementSelector({ value, onChange, counts }: { value: string |
     );
 }
 
+type ItemKind = 'flag' | 'action';
+const kindOf = (it: WorkItem): ItemKind | null => (it.kind === 'review' ? (it.d.correction ? 'flag' : 'action') : null);
+const FLAG_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 21V4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><path d="M5 4h11l-2 4 2 4H5" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>;
+const ACTION_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const KIND: Record<ItemKind, { label: string; plural: string; bg: string; fg: string; icon: JSX.Element; tip: string }> = {
+    flag: { label: 'Flag', plural: 'Flags', bg: '#fdecec', fg: '#b42318', icon: FLAG_ICON, tip: 'A finding on a booked posting — EVA has the correction ready' },
+    action: { label: 'Action', plural: 'Actions', bg: '#eef2ff', fg: '#3341a8', icon: ACTION_ICON, tip: 'EVA’s draft, waiting for your approval before it’s booked' },
+};
+
 // AX: what kind of review item this is — a Flag (EVA's finding on a booked posting, with a correction
 // ready) or an Action (EVA's draft or request waiting for your approval before booking).
 function KindTag({ it }: { it: WorkItem }) {
     const { t } = useLang();
     const { ax } = useScopeMode();
-    if (!ax || it.kind !== 'review') return null;
-    const flag = !!it.d.correction;
+    const k = kindOf(it);
+    if (!ax || !k) return null;
+    const m = KIND[k];
     return (
-        <span className="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-px mr-2 text-[11px] font-semibold align-middle"
-            style={flag ? { background: '#fdecec', color: '#b42318' } : { background: '#eef2ff', color: '#3341a8' }}
-            title={t(flag ? 'A finding on a booked posting — EVA has the correction ready' : 'EVA’s draft, waiting for your approval before it’s booked')}>
-            {flag ? (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 21V4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><path d="M5 4h11l-2 4 2 4H5" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
-            ) : (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            )}
-            {t(flag ? 'Flag' : 'Action')}
+        <span className="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-px mr-2 text-[11px] font-semibold align-middle" style={{ background: m.bg, color: m.fg }} title={t(m.tip)}>
+            {m.icon}{t(m.label)}
         </span>
     );
 }

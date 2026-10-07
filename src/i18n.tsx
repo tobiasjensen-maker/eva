@@ -2399,4 +2399,5 @@ const DA: Record<string, string> = {
     'Flag': 'Markering',
     'A finding on a booked posting — EVA has the correction ready': 'Et fund på en bogført postering — EVA har rettelsen klar',
     'EVA’s draft, waiting for your approval before it’s booked': 'EVAs udkast, der venter på din godkendelse, før det bogføres',
+    'Flags': 'Markeringer',
 };
