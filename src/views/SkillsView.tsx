@@ -236,6 +236,38 @@ function st(label: string, approach: StepApproach, capId?: string): FlowStep {
 }
 
 const FLOW_TEMPLATES: FlowTemplate[] = [
+    // ---- AX: the three routines we build first — the bookkeeping week, the month's control, the close ----
+    { id: 't-ax-weekly', title: 'Weekly Bookkeeping', emoji: '🗓️', category: 'Bookkeeping', price: 0, trialDays: 0,
+        desc: 'Every week: reconcile the bank, turn documents into drafts, chase what’s missing and hand you the exceptions.',
+        conditions: ['Confidence is 95% or higher', 'Amount is below the auto-booking threshold'],
+        starter: 'schedule', steps: [
+            st('Import bank transactions', 'rule'),
+            st('Match transactions to documents', 'eva'),
+            st('Read new Inbox documents', 'eva'),
+            st('Draft postings with accounts and VAT', 'eva'),
+            st('Request missing documents from the client', 'eva'),
+            st('Post what’s confident, route the rest for review', 'review'),
+        ] },
+    { id: 't-ax-ctrl', title: 'Monthly Controlling', emoji: '🔍', category: 'Controlling', price: 0, trialDays: 0,
+        desc: 'After the month: check every booked posting against the account plan and the last 12 months, and flag what needs you.',
+        starter: 'monthend', steps: [
+            st('Gather the month’s booked postings', 'rule'),
+            st('Check accounts against the account plan and history', 'eva'),
+            st('Check VAT codes and reverse charge', 'eva'),
+            st('Check periods and accruals', 'eva'),
+            st('Prepare corrections', 'eva'),
+            st('Flag findings for you', 'review'),
+        ] },
+    { id: 't-ax-close', title: 'Monthly Close', emoji: '✅', category: 'Closing', price: 0, trialDays: 0,
+        desc: 'Close the month per client: everything reconciled, documented and posted — then the period is closed and reported.',
+        starter: 'monthend', steps: [
+            st('Confirm the bank is fully reconciled', 'rule'),
+            st('Chase the last missing documents', 'eva'),
+            st('Post the remaining drafts', 'review'),
+            st('Run the final posting', 'rule'),
+            st('Close the period', 'review'),
+            st('Send the month-end report', 'eva'),
+        ] },
     // ---- Payroll — run end to end by EVA, with you approving exceptions ----
     { id: 't-payroll', title: 'Run payroll every month', emoji: '💸', category: 'Payroll', price: 449, trialDays: 30,
         desc: 'Drafts every client’s payroll, pays on time, reports to eIndkomst and books the salary journals.',
@@ -443,6 +475,9 @@ const NEXT_RUN: Record<string, { when: string; scope: string }> = {
     't-recon': { when: 'Tonight at 22:00', scope: 'All 40 of your clients' },
     't-supplier': { when: 'Tomorrow at 07:00', scope: '14 invoices waiting across 6 clients' },
     't-vatfile': { when: '10 Oct at 06:00', scope: '12 clients due this quarter' },
+    't-ax-weekly': { when: 'Mon at 06:00', scope: 'All 40 of your clients' },
+    't-ax-ctrl': { when: 'Tomorrow at 06:00', scope: 'September · 40 clients' },
+    't-ax-close': { when: '10 Oct at 06:00', scope: 'September · 7 clients left to close' },
     't-payroll': { when: '28 Oct at 06:00', scope: '14 clients · 116 employees · paid 30 Oct' },
 };
 // Order "when" labels in time: continuous first, then tonight, tomorrow, weekdays, dates; event-triggered last.
@@ -454,8 +489,10 @@ const whenRank = (w?: string) => {
 
 // Doc-based flows that ship already installed and running (keep their template ids so perf maps).
 const PREINSTALLED_FLOW_IDS = ['t-voucher', 't-recon', 't-supplier', 't-vatfile', 't-payroll'];
-function preinstalledFlows(): LocalFlow[] {
-    return PREINSTALLED_FLOW_IDS
+// AX runs exactly three routines — fixed, in this order.
+const AX_FLOW_IDS = ['t-ax-weekly', 't-ax-ctrl', 't-ax-close'];
+function preinstalledFlows(ids = PREINSTALLED_FLOW_IDS): LocalFlow[] {
+    return ids
         .map((id) => FLOW_TEMPLATES.find((tpl) => tpl.id === id))
         .filter((tpl): tpl is FlowTemplate => !!tpl)
         .map((tpl) => flowFromTemplate(tpl, tpl.id, 'Active'));
@@ -481,8 +518,10 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     const customFlows: LocalFlow[] = skills
         .filter((s) => s.id.startsWith('custom-') && s.state !== 'locked')
         .map((s) => ({ skill: s, seed: { starter: 'schedule', conditions: [], steps: [] } }));
-    const { ax } = useScopeMode(); // AX: no payroll routine
-    const flows = [...localFlows, ...customFlows].filter((f) => !(ax && f.skill.id === 't-payroll'));
+    const { ax } = useScopeMode();
+    const [axFlows] = useState<LocalFlow[]>(() => preinstalledFlows(AX_FLOW_IDS));
+    // AX: just its three routines (no payroll, no extras); Vision: the installed set plus anything new
+    const flows = ax ? axFlows : [...localFlows, ...customFlows];
     const allFlows = flows.map((f) => f.skill);
 
     // Suggestions EVA surfaces — hide any whose routine is already set up.
@@ -591,7 +630,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
             <>
                     <div className="flex flex-col gap-6 pb-10 land-kids">
                         {/* Suggested routines, drawn from what EVA has been doing by hand */}
-                        {suggestions.length > 0 && (
+                        {!ax && suggestions.length > 0 && (
                             <SectionCard title={t('Suggested for you')} count={suggestions.length} sub={t('Based on what EVA has been doing by hand')}>
                                 {suggestions.map((s, i) => {
                                     const tpl = FLOW_TEMPLATES.find((tp) => tp.id === s.id)!;
@@ -606,7 +645,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
                             </Card>
                         ) : (
                             <SectionCard title={t('Your routines')} count={allFlows.length}>
-                                {[...flows].sort((a, b) => whenRank(NEXT_RUN[a.skill.id]?.when) - whenRank(NEXT_RUN[b.skill.id]?.when)).map((f, i) => (
+                                {(ax ? flows : [...flows].sort((a, b) => whenRank(NEXT_RUN[a.skill.id]?.when) - whenRank(NEXT_RUN[b.skill.id]?.when))).map((f, i) => (
                                     <RoutineRow
                                         key={f.skill.id}
                                         skill={f.skill}
@@ -826,6 +865,10 @@ const FLOW_PERF: Record<string, { actions: number; hours: number; pct: number }>
     't-recon': { actions: 318, hours: 44, pct: 94 },
     't-supplier': { actions: 240, hours: 33, pct: 90 },
     't-vatfile': { actions: 18, hours: 12, pct: 80 },
+    // AX's three
+    't-ax-weekly': { actions: 1342, hours: 96, pct: 94 },
+    't-ax-ctrl': { actions: 318, hours: 22, pct: 88 },
+    't-ax-close': { actions: 33, hours: 14, pct: 82 },
 };
 
 // ---- Office view (partner zoom): which routines run across which clients, what

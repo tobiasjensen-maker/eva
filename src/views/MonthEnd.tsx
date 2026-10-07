@@ -25,11 +25,13 @@ const rowsFor = () => MY_PORTFOLIO.map((c, i) => {
     return { c, lines, matched: lines - missing, missing, status: c.books };
 });
 
-export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, onOpenThread }: { decisions: DecisionItem[]; onReview: (d: DecisionItem) => void; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread?: (th: Thread) => void }) {
+// `client`: one client's close (Controlling's client selector). `defaultOpen`: start with the steps showing.
+export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, onOpenThread, client, defaultOpen = false }: { decisions: DecisionItem[]; onReview: (d: DecisionItem) => void; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread?: (th: Thread) => void; client?: string | null; defaultOpen?: boolean }) {
     const { t } = useLang();
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen);
     const [report, setReport] = useState(false);
-    const rows = rowsFor();
+    const rows = rowsFor().filter((r) => !client || r.c.name === client);
+    const one = client ? rows[0] : undefined;
     const total = rows.length, closed = rows.filter((r) => r.status === 'closed').length;
     const lines = rows.reduce((a, r) => a + r.lines, 0), missing = rows.reduce((a, r) => a + r.missing, 0);
     const chasing = rows.filter((r) => r.missing > 0).length;
@@ -51,9 +53,9 @@ export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, 
             <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center gap-3 px-4 py-3 text-left">
                 <Orb size={18} />
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Month-end · September')}</p>
+                    <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Month-end · September')}{one ? ` · ${one.c.name}` : ''}</p>
                     <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>
-                        {closed} {t('of')} {total} {t('clients closed')} · {missing} {t('documents missing')}{flags.length ? <> · <span style={{ color: '#c0392b', fontWeight: 500 }}>{flags.length} {t(flags.length === 1 ? 'controlling flag' : 'controlling flags')}</span></> : null}
+                        {one ? t(({ closed: 'Closed', todo: 'To do', blocked: 'Blocked' } as const)[one.status]) : <>{closed} {t('of')} {total} {t('clients closed')}</>} · {missing} {t('documents missing')}{flags.length ? <> · <span style={{ color: '#c0392b', fontWeight: 500 }}>{flags.length} {t(flags.length === 1 ? 'controlling flag' : 'controlling flags')}</span></> : null}
                     </p>
                 </div>
                 <div className="hidden md:block rounded-full overflow-hidden" style={{ width: 180, height: 6, background: '#f1f1f3' }}><div style={{ width: `${(closed / total) * 100}%`, height: 6, background: '#16a34a' }} /></div>

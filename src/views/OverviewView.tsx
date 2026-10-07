@@ -11,7 +11,7 @@ import { MonthEndCard, MonthEndReport } from './MonthEnd';
 import { axHidesTask, useScopeMode } from '../edition';
 import type { ShareDraft } from './Attachment';
 import { PRIO_RANK, priorityOfDecision, priorityOfThread } from '../priority';
-import { TaskModal, WorkTag, dueColor, handTaskToEva, isEva, workTagsFor, type Task } from './TaskManagementView';
+import { AgreementSelector, TaskModal, WorkTag, dueColor, handTaskToEva, isEva, workTagsFor, type Task } from './TaskManagementView';
 import type { Dispatch, SetStateAction } from 'react';
 
 // ---- Portfolio overview — where the AO starts the day ----------------------------
@@ -69,7 +69,7 @@ export function overviewAnswer(q: string, lang: 'en' | 'da', ctx: { decisions: n
     return da ? 'Spørg mig om din dag, en af dine kunder, eller hvem der er klar til rådgivning.' : 'Ask me about your day, one of your clients, or who’s ready for an advisory conversation.';
 }
 
-export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage, onShare, onOpenClient }: {
+export default function OverviewView({ tasks, setTasks, onAddDecision, decisions, threads, onOpenThread, onResolveDecision, onAsk, onGo, onOpenBooks, onMessage, onShare, clientFilter = null, onClientChange }: {
     tasks: Task[];
     setTasks: Dispatch<SetStateAction<Task[]>>;
     onAddDecision: (d: DecisionItem) => void;
@@ -82,7 +82,8 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
     onOpenBooks: (name: string) => void;
     onMessage: (client: string) => void;
     onShare: (d: ShareDraft) => void;
-    onOpenClient?: (name: string) => void; // AX: a client opens its work (Work, filtered) instead of the drawer
+    clientFilter?: string | null;          // AX Controlling: one client (shared with Bookkeeping's selector)
+    onClientChange?: (name: string | null) => void;
 }) {
     const { t } = useLang();
     const [q, setQ] = useState('');
@@ -97,23 +98,40 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
         : [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
     const ask = (text: string) => { if (text.trim()) { onAsk(text.trim()); setQ(''); } };
 
-    // AX: this is Controlling — the post-booking analysis of the books: the month-end close, where every
-    // client's books stand, EVA's control findings on booked postings, and the clients' books status.
-    if (ax) return (
-        <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Controlling')} showScope={false} />
-            <div className="mx-auto px-8 pt-5 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
-                <div className="land"><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>
-                <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
-                    <NeedsYouWidget t={t} decisions={decisions.filter((d) => d.correction)} threads={threads} onOpenThread={onOpenThread} onResolve={onResolveDecision} onGo={onGo} findings />
-                    <BooksWidget t={t} flags={decisions.filter((d) => !d.done && d.correction && d.accountant === ME).length} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />
+    // AX: this is Controlling — the post-booking analysis of the books. A client selector (shared with
+    // Bookkeeping), the closing summary on top, then the flags the AO has to consider.
+    if (ax) {
+        const mineAll = decisions.filter((d) => d.accountant === ME && (!clientFilter || d.company === clientFilter));
+        const flags = mineAll.filter((d) => !d.done && d.correction).sort((a, b) => PRIO_RANK[priorityOfDecision(a).level] - PRIO_RANK[priorityOfDecision(b).level]);
+        const flagsByClient: Record<string, number> = {};
+        decisions.forEach((d) => { if (!d.done && d.correction && d.accountant === ME) flagsByClient[d.company] = (flagsByClient[d.company] ?? 0) + 1; });
+        return (
+            <div className="h-full overflow-y-auto">
+                <PageHeader title={t('Controlling')} showScope={false} right={<AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={flagsByClient} />} />
+                <div className="mx-auto px-8 pt-5 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
+                    {/* 1 — the closing, summarised */}
+                    <div className="land"><MonthEndCard key={clientFilter ?? 'all'} decisions={mineAll} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} client={clientFilter} defaultOpen /></div>
+                    {/* 2 — the flags to consider: EVA's findings on booked postings */}
+                    <div className="land" style={{ ['--d' as string]: '120ms' }}>
+                        <Card className="overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                                <span className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t('Control flags')}</span>
+                                <span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span>
+                                <CountBadge n={flags.length} showZero />
+                            </div>
+                            {flags.length === 0 ? (
+                                <div className="px-4 py-6 flex items-center gap-2.5">
+                                    <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
+                                    <p className="text-sm" style={{ color: COLORS.text }}>{t('No findings — the books look right.')}</p>
+                                </div>
+                            ) : flags.map((d, i) => <DecisionRow key={d.id} d={d} t={t} prio={priorityOfDecision(d)} last={i === flags.length - 1} onReview={() => setReview(d)} />)}
+                        </Card>
+                    </div>
                 </div>
-                <div className="land" style={{ ['--d' as string]: '440ms' }}><ClientList onSelect={(c) => (onOpenClient ? onOpenClient(c.name) : setSel(c))} /></div>
+                {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
             </div>
-            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
-            {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="h-full overflow-y-auto">
@@ -214,11 +232,10 @@ function TasksWidget({ t, tasks, setTasks, onAddDecision, onGo }: { t: (s: strin
 
 // Ready for your review — the same decisions as Work's review lane (shared rows and
 // modal, from src/day.ts), filtered to the logged-in accountant.
-// `findings`: Controlling's version — EVA's findings on booked postings, no client replies, no link to Work.
-function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo, findings = false }: { t: (s: string) => string; decisions: DecisionItem[]; threads: Thread[]; onOpenThread: (th: Thread) => void; onResolve: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onGo: (v: ViewId) => void; findings?: boolean }) {
+function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo }: { t: (s: string) => string; decisions: DecisionItem[]; threads: Thread[]; onOpenThread: (th: Thread) => void; onResolve: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onGo: (v: ViewId) => void }) {
     const open = decisions.filter((d) => !d.done && d.accountant === ME);
     const { ax } = useScopeMode();
-    const replies = ax || findings ? [] : threads.filter((x) => x.status === 'needs'); // client conversations with EVA's drafted reply (Vision)
+    const replies = ax ? [] : threads.filter((x) => x.status === 'needs'); // client conversations with EVA's drafted reply (Vision)
     // one queue, ranked by EVA — most urgent first
     const queue = [
         ...open.map((d) => ({ d, th: undefined as Thread | undefined, p: priorityOfDecision(d) })),
@@ -227,12 +244,12 @@ function NeedsYouWidget({ t, decisions, threads, onOpenThread, onResolve, onGo, 
     const [review, setReview] = useState<DecisionItem | null>(null);
     return (
         <>
-            <Widget delay={290} title={t(findings ? 'Control findings' : 'Ready for your review')} right={<><span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span><CountBadge n={open.length + replies.length} /></>}
-                footer={findings ? undefined : <button onClick={() => onGo('activity')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>}>
+            <Widget delay={290} title={t('Ready for your review')} right={<><span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span><CountBadge n={open.length + replies.length} /></>}
+                footer={<button onClick={() => onGo('activity')} className="text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open Work')} →</button>}>
                 {open.length + replies.length === 0 ? (
                     <div className="px-4 py-6 flex items-center gap-2.5">
                         <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
-                        <p className="text-sm" style={{ color: COLORS.text }}>{t(findings ? 'No findings — the books look right.' : 'Nothing in the books needs you.')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{t('Nothing in the books needs you.')}</p>
                     </div>
                 ) : queue.map((q, i) => q.d
                     ? <DecisionRow key={q.d.id} d={q.d} t={t} prio={q.p} last={i === queue.length - 1} onReview={() => setReview(q.d!)} />

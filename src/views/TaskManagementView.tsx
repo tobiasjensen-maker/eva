@@ -317,7 +317,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                     showScope={false}
                     badge={ax ? undefined : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
                     right={tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
-                        : tab === 'routines' ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
+                        : tab === 'routines' && !ax ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
             )}
             <div className={bare ? 'h-full' : 'mx-auto px-8 pt-5 pb-10'} style={bare ? undefined : { maxWidth: 1240 }}>
@@ -414,7 +414,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
 // ---- Agreement selector (AX, Work's top-right) ----------------------------------------------
 // Pick whose work you see — like e-conomic's agreement selector: the client, its number, a searchable list.
-function AgreementSelector({ value, onChange, counts }: { value: string | null; onChange: (name: string | null) => void; counts: Record<string, number> }) {
+export function AgreementSelector({ value, onChange, counts }: { value: string | null; onChange: (name: string | null) => void; counts: Record<string, number> }) {
     const { t } = useLang();
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');

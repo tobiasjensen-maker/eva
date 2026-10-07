@@ -211,7 +211,8 @@ export default function App() {
     const [routineOpen, setRoutineOpen] = useState(false);
     // AX: Work filtered to one client (from the overview's client list) — dropped once you leave Work.
     const [workClient, setWorkClient] = useState<string | null>(null);
-    useEffect(() => { if (!['activity', 'activitylog', 'skills'].includes(view)) setWorkClient(null); }, [view]);
+    // (shared by Bookkeeping and Controlling in AX)
+    useEffect(() => { if (!['activity', 'activitylog', 'skills', 'home'].includes(view)) setWorkClient(null); }, [view]);
     const [newRoutineTick, setNewRoutineTick] = useState(0);
     // Connector status — shared by Routines (template gating) and the Connectors page.
     const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() => Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus])));
@@ -980,7 +981,8 @@ export default function App() {
                         onOpenThread={openReply}
                         onResolveDecision={resolveDecision}
                         onGo={goView}
-                        onOpenClient={ax ? (name) => { setWorkClient(name); goView('activity'); } : undefined}
+                        clientFilter={workClient}
+                        onClientChange={setWorkClient}
                         // The question box hands off to the EVA panel, answer included.
                         onAsk={(q) => { setPendingAsk({ user: q, answer: overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax }) }); setChatCollapsed(false); }}
                         onMessage={(client) => { setInboxFocus(client); goView('inbox'); }}
