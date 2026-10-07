@@ -308,7 +308,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     // The list is grouped by status — the board's columns, as sections.
     const listGroups: { key: string; title: ReactNode; items: WorkItem[]; footer?: boolean }[] = [
         ...(ax ? [] : [{ key: 'todo', title: <WorkTag s="todo" />, items: todo }, { key: 'inprogress', title: <WorkTag s="inprogress" />, items: inprogress }]), // AX: no tasks of your own
-        { key: 'review', title: <WorkTag s="review" />, items: forReview },
+        // AX: one list, so a plain heading — not a status pill
+        { key: 'review', title: ax ? <span className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Needs your review')}</span> : <WorkTag s="review" />, items: forReview },
         // AX: completed work lives in the Activity tab, not here
         ...(ax ? [] : [{ key: 'done', title: <WorkTag s="done" />, items: done, footer: doneAll.length > 0 }]),
     ];
@@ -661,6 +662,7 @@ function WorkCard({ it, col, nextId, dnd, onOpen }: { it: WorkItem; col: Col; ne
 
 function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: WorkItem; col: Col | null; nextId: string | null; dnd: Dnd; showCompany: boolean; last: boolean; onOpen: () => void }) {
     const { t } = useLang();
+    const { ax } = useScopeMode();
     const clickable = true;
     return (
         <>
@@ -676,7 +678,8 @@ function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: Work
                 </div>
             </button>
             {(it.kind === 'review' || it.kind === 'reply') && <Button onClick={onOpen}>{t('Review')}</Button>}
-            <div className="flex items-center gap-1.5 shrink-0">{tagsOf(it).map((s) => <WorkTag key={s} s={s} />)}</div>
+            {/* AX: every row here is for review — no status pill (the Flag / Action tag says what it is) */}
+            {!(ax && it.ws === 'review') && <div className="flex items-center gap-1.5 shrink-0">{tagsOf(it).map((s) => <WorkTag key={s} s={s} />)}</div>}
         </div>
         </>
     );
