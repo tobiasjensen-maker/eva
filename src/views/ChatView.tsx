@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, type ReactNode } from 'react';
 import type { Turn } from '../ChatPanel';
 import { Button, Icon } from '@economic/taco';
 import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, COLORS } from '../ui';
@@ -53,6 +53,8 @@ interface Props {
     onSelectClient?: (id: string) => void;
     onClose?: (turns: Turn[]) => void; // close the full-window chat and return, taking the conversation back
     seedTurns?: Turn[] | null; // the conversation so far, when opened from the EVA panel
+    onTurns?: (turns: Turn[]) => void; // reports the conversation as it changes (AX keeps the docked panel in step)
+    headerLeft?: ReactNode; // replaces the agreement pill (AX: the client picker from Tasks)
 }
 
 const MONTHS = [
@@ -497,12 +499,17 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns, onTurns, headerLeft }: Props) {
     const { t, lang } = useLang();
     // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
     // Opened from the EVA panel: continue that conversation (shown as it was, not re-typed).
     const [seeded] = useState<ChatMsg[]>(() => (seedTurns ?? []).map((x): ChatMsg => (x.role === 'user' ? { id: nextId(), role: 'user', text: x.text } : { id: nextId(), role: 'assistant', kind: 'text', text: x.text })));
     const [messages, setMessages] = useState<ChatMsg[]>(() => (seedWelcome ? [{ id: 0, role: 'assistant', kind: 'getstarted' }] : seeded));
+    useEffect(() => {
+        if (!onTurns) return;
+        onTurns(messages.flatMap((m): Turn[] => (m.role === 'user' ? [{ role: 'user', text: m.text }] : m.kind === 'text' && m.text ? [{ role: 'assistant', text: m.text }] : [])));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages]);
     const [input, setInput] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>(SEED_HISTORY);
     const [historyOpen, setHistoryOpen] = useState(false);
@@ -781,7 +788,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
         <div className="flex h-full">
             <div className="flex flex-col flex-1 min-w-0 h-full">
             <div className="flex items-center justify-between gap-2 px-6 py-3">
-                <ScopeSwitcher />
+                {headerLeft ?? <ScopeSwitcher />}
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setHistoryOpen(true)}

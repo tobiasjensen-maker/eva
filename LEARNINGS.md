@@ -42,7 +42,10 @@ the same app. **Vision** is the full product. Switch in the settings menu (profi
 or link straight in with `?scope=ax` / `?scope=vision` (the param only sets the start; the choice is kept
 in localStorage). AX shows an orange **AX** tag next to the logo.
 
-**AX's menu is two places** (`AX_RAIL` in App):
+**AX's menu** (`AX_RAIL` in App):
+- **EVA** (`#/chat`, top) — the full-screen chat. While it's open the docked panel steps aside and the universe
+  takes the full width; it's the *same conversation* as the panel (seeded from it, written back as it changes).
+  Its header has the same client picker as Tasks (shared client), instead of the agreement pill.
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
@@ -54,7 +57,9 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   says "You're all caught up". Badge = the whole queue.
 - **Routines** (`#/routines`) — exactly three, in order: **Weekly Bookkeeping**, **Monthly Controlling**,
   **Monthly Close** (`AX_FLOW_IDS`). No *New routine*, no *Suggested for you*.
-Expanding EVA from e-conomic opens on Tasks; anything else redirects there. (Controlling — closing summary +
+Expanding EVA from e-conomic opens on Tasks; anything else redirects there. Note: the Vision / AX switch is `va-scope` in localStorage; the agreement scope has its own key
+(`va-agreement-scope`) — sharing one key made the chat show "ax" as an agreement and flipped AX to Vision on reload.
+(Controlling — closing summary +
 client selector — was tried as its own page and taken out; its code is still in OverviewView's AX branch.)
 
 Because it's one codebase, **every change to a shared screen shows up in both scopes.** AX hides:

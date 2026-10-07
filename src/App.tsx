@@ -9,6 +9,7 @@ import {
     TasksIcon,
     ReviewIcon,
     RoutinesIcon,
+    ChatIcon,
     HomeIcon,
     InboxIcon,
     PracticeIcon,
@@ -72,7 +73,7 @@ import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
-import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
+import TaskManagementView, { AgreementSelector, tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
 import { EconomicShell, journalAnswer } from './views/EconomicShell';
 import { AX_HIDDEN_SKILLS, ScopeModeContext, initialScope, isPayroll, type Scope as ScopeMode } from './edition';
@@ -80,7 +81,7 @@ import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
 import PracticeView from './views/PracticeView';
-import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, rateOf, TARGET_RATE, type Thread } from './practice';
+import { THREADS, TEAM, CLIENTS as FIRM_CLIENT_LIST, MY_PORTFOLIO, rateOf, TARGET_RATE, type Thread } from './practice';
 import SpacesView from './views/SpacesView';
 import CustomersView from './views/CustomersView';
 import { ChatPanel, type PendingAsk, type Turn } from './ChatPanel';
@@ -127,6 +128,8 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
 // AX's menu — two places: Tasks (the queue of Actions and Flags, with the activity log as a tab) and the
 // routine setup. (They reuse Work's views.)
 const AX_RAIL: typeof RAIL = [
+    // EVA, full screen — the same conversation as the docked panel (which steps aside while it's open)
+    { id: 'chat', label: 'EVA', Icon: ChatIcon },
     { id: 'activity', label: 'Tasks', Icon: ReviewIcon },
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
 ];
@@ -208,7 +211,7 @@ export default function App() {
     // AX: Work filtered to one client (from the overview's client list) — dropped once you leave Work.
     const [workClient, setWorkClient] = useState<string | null>(null);
     // (shared by Bookkeeping and Controlling in AX)
-    useEffect(() => { if (!['activity', 'activitylog', 'skills', 'home'].includes(view)) setWorkClient(null); }, [view]);
+    useEffect(() => { if (!['activity', 'activitylog', 'skills', 'home', 'chat'].includes(view)) setWorkClient(null); }, [view]);
     const [newRoutineTick, setNewRoutineTick] = useState(0);
     // Connector status — shared by Routines (template gating) and the Connectors page.
     const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() => Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus])));
@@ -425,6 +428,23 @@ export default function App() {
         setTimeout(() => { setEcoClosing(false); setEcoUniverse(false); if (alsoPanel) setEcoPanel(false); setRoute('economic'); navigate('economic'); }, 240);
     };
     const embedded = ecoUniverse && ax && !mobile;
+    // AX: the full-screen chat is a menu item — the docked panel steps aside and the universe takes the width
+    const chatFull = embedded && view === 'chat';
+    const [ecoSeed, setEcoSeed] = useState(0); // bump to reload the docked panel's conversation
+    const ECO_CHAT_KEY = 'va-chat-msgs:eva-economic';
+    const prevView = useRef(view);
+    useEffect(() => {
+        if (ax && prevView.current === 'chat' && view !== 'chat') setEcoSeed((n) => n + 1); // back from full screen
+        prevView.current = view;
+    }, [view, ax]);
+    const openAxChat = () => {
+        let turns: Turn[] = [];
+        try { turns = JSON.parse(sessionStorage.getItem(ECO_CHAT_KEY) ?? '[]'); } catch { /* none */ }
+        setChatCarry(turns.length ? turns : null);
+        setChatKey((k) => k + 1);
+        if (view !== 'chat') setChatReturn(view);
+        goView('chat');
+    };
     useEffect(() => { try { sessionStorage.setItem('va-eco-panel', ecoPanel ? '1' : '0'); sessionStorage.setItem('va-eco-universe', ecoUniverse ? '1' : '0'); } catch { /* ignore */ } }, [ecoPanel, ecoUniverse]);
     const [chatKey, setChatKey] = useState(0);
     const [panelSeed, setPanelSeed] = useState(0); // bump to remount the EVA panel (e.g. to seed the welcome)
@@ -436,12 +456,13 @@ export default function App() {
         localStorage.setItem('va-collapsed', collapsed ? '1' : '0');
     }, [collapsed]);
 
-    const [scope, setScope] = useState<string>(() => localStorage.getItem('va-scope') || 'portfolio');
+    // (its own key — 'va-scope' is the Vision / AX switch)
+    const [scope, setScope] = useState<string>(() => localStorage.getItem('va-agreement-scope') || 'portfolio');
     const [pendingScope, setPendingScope] = useState<string | null>(null);
     const [chatActive, setChatActive] = useState(false);
     const [chatReturn, setChatReturn] = useState<ViewId>('activity'); // where to return when closing full chat
     useEffect(() => {
-        localStorage.setItem('va-scope', scope);
+        localStorage.setItem('va-agreement-scope', scope);
     }, [scope]);
     // With the connected-agreement layer hidden, clear any stale live scope / Customers view.
     useEffect(() => {
@@ -666,7 +687,7 @@ export default function App() {
             // the EVA universe over e-conomic: a rounded container left of the docked EVA panel
             // (right edge meets the docked panel, which carries on the same canvas — one plane; the shadow is
             // cast left only, so no seam shows. No lasting clip-path: it would cut modal backdrops off at the panel.)
-            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: 'var(--eco-panel-w, 420px)', zIndex: 61, borderRadius: '20px 0 0 20px', overflow: 'hidden', boxShadow: '-28px 0 56px -14px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
+            ? { position: 'fixed', top: 10, left: 10, bottom: 10, right: chatFull ? 10 : 'var(--eco-panel-w, 420px)', zIndex: 61, borderRadius: chatFull ? 20 : '20px 0 0 20px', overflow: 'hidden', boxShadow: chatFull ? '0 24px 64px rgba(15, 14, 40, 0.35)' : '-28px 0 56px -14px rgba(15, 14, 40, 0.35)', background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }
             : { zoom: APP_ZOOM, width: `calc(100vw / ${APP_ZOOM})`, height: `calc(100vh / ${APP_ZOOM})`, background: view === 'home' && !ax ? HOME_BG : CANVAS, padding: 10, gap: 10 }}>
             {/* Left sidebar — floating (desktop; phones get the bottom tabs) */}
             {!mobile && (
@@ -726,7 +747,7 @@ export default function App() {
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
                             <button
-                                onClick={() => goView(id)}
+                                onClick={() => (ax && id === 'chat' ? openAxChat() : goView(id))}
                                 className="flex items-center gap-3 rounded-lg text-sm text-left w-full"
                                 style={{
                                     padding: collapsed ? '9px 0' : '8px 12px',
@@ -962,6 +983,9 @@ export default function App() {
                         analyticsUnlocked={insightsPro}
                         onSelectClient={applyScope}
                         seedTurns={chatCarry}
+                        // AX: the same client picker as on Tasks (shared client), instead of the agreement pill
+                        headerLeft={ax ? <AgreementSelector align="left" value={workClient} onChange={setWorkClient} counts={Object.fromEntries(MY_PORTFOLIO.map(({ name: n }) => [n, decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen' && d.company === n).length]))} /> : undefined}
+                        onTurns={ax ? (turns) => { try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify(turns)); } catch { /* ignore */ } } : undefined}
                         onClose={(turns) => { setPanelCarry(turns.length ? { view: chatReturn, turns } : null); setChatCarry(null); setChatCollapsed(false); goView(chatReturn); }}
                     />
                 )}
@@ -1041,7 +1065,7 @@ export default function App() {
                         const active = ax ? view === id || (id === 'activity' && view === 'activitylog') : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const n = badgeFor[id] ?? 0;
                         return (
-                            <button key={id} onClick={() => goView(id)} className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-w-0"
+                            <button key={id} onClick={() => (ax && id === 'chat' ? openAxChat() : goView(id))} className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-w-0"
                                 style={{ color: active ? '#fff' : 'rgba(255,255,255,0.6)' }} aria-current={active ? 'page' : undefined}>
                                 <span className="relative flex items-center"><RIcon active={active} />
                                     {n > 0 && <span className="absolute rounded-full" style={{ top: -3, right: -5, width: 8, height: 8, background: ax ? '#ed9b2c' : COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />}
@@ -1109,7 +1133,7 @@ export default function App() {
             the EVA universe (the app above) in a rounded container over e-conomic, next to the same panel. */}
         {showEco && (
             <EconomicShell
-                panelOpen={ecoPanel}
+                panelOpen={ecoPanel && !chatFull}
                 onTogglePanel={() => setEcoPanel((o) => !o)}
                 flagged={ecoFlagged}
                 universe={embedded}
@@ -1123,7 +1147,7 @@ export default function App() {
                 }}
                 panel={
                     <ChatPanel
-                        key={'eco-' + lang}
+                        key={'eco-' + lang + '-' + ecoSeed}
                         storageKey="eva-economic"
                         subtitle=""
                         intro="I'm EVA. I can see you're in the daily journal — 15 entries, 3 without a document. Want me to check it before you post?"

@@ -448,7 +448,7 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
 
 // ---- Agreement selector (AX, Work's top-right) ----------------------------------------------
 // Pick whose work you see — like e-conomic's agreement selector: the client, its number, a searchable list.
-export function AgreementSelector({ value, onChange, counts }: { value: string | null; onChange: (name: string | null) => void; counts: Record<string, number> }) {
+export function AgreementSelector({ value, onChange, counts, align = 'right' }: { value: string | null; onChange: (name: string | null) => void; counts: Record<string, number>; align?: 'left' | 'right' }) {
     const { t } = useLang();
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
@@ -479,7 +479,7 @@ export function AgreementSelector({ value, onChange, counts }: { value: string |
             {open && (
                 <>
                     <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 z-40 rounded-xl bg-white overflow-hidden anim-in" style={{ top: 'calc(100% + 6px)', width: 300, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
+                    <div className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} z-40 rounded-xl bg-white overflow-hidden anim-in`} style={{ top: 'calc(100% + 6px)', width: 300, border: `1px solid ${COLORS.cardBorder}`, boxShadow: '0 12px 32px rgba(0,0,0,0.16)' }}>
                         <div className="p-2" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                             <div className="relative">
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: COLORS.textMuted }}><Icon name="search" /></span>
