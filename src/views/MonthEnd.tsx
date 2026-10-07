@@ -26,7 +26,7 @@ const rowsFor = () => MY_PORTFOLIO.map((c, i) => {
 });
 
 // `client`: one client's close (Controlling's client selector). `defaultOpen`: start with the steps showing.
-export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, onOpenThread, client, defaultOpen = false }: { decisions: DecisionItem[]; onReview: (d: DecisionItem) => void; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread?: (th: Thread) => void; client?: string | null; defaultOpen?: boolean }) {
+export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, onOpenThread, client, defaultOpen = false, noReport = false }: { decisions: DecisionItem[]; onReview: (d: DecisionItem) => void; threads?: Thread[]; onResolveDecision?: (id: string, taken: 'confirm' | 'alt', info?: ResolveInfo) => void; onOpenThread?: (th: Thread) => void; client?: string | null; defaultOpen?: boolean; noReport?: boolean /* AX Controlling: no month-end report */ }) {
     const { t } = useLang();
     const [open, setOpen] = useState(defaultOpen);
     const [report, setReport] = useState(false);
@@ -44,7 +44,7 @@ export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, 
         { title: 'Draft postings', stat: `96 ${t('drafted, ready to post')}`, state: 'running' },
         { title: 'Controlling', stat: flags.length ? `${lines.toLocaleString('da-DK')} ${t('postings checked')} · ${flags.length} ${t(flags.length === 1 ? 'flag for you' : 'flags for you')}` : `${lines.toLocaleString('da-DK')} ${t('postings checked')} · ${t('all clear')}`, state: flags.length ? 'you' : 'done', action: flags.length ? { label: 'Review', run: () => onReview(flags[0]) } : undefined },
         { title: 'Final posting & close', stat: `${closed} ${t('of')} ${total} ${t('clients closed')}`, state: 'running' },
-        { title: 'Month-end report', stat: t('Draft ready · final on 1 Oct'), state: 'running', action: { label: 'View', run: () => setReport(true) } },
+        ...(noReport ? [] : [{ title: 'Month-end report', stat: t('Draft ready · final on 1 Oct'), state: 'running' as const, action: { label: 'View', run: () => setReport(true) } }]),
     ];
     const dot = { done: '#16a34a', running: '#7c3aed', you: '#dc2626' };
 
@@ -59,7 +59,7 @@ export function MonthEndCard({ decisions, onReview, threads, onResolveDecision, 
                     </p>
                 </div>
                 <div className="hidden md:block rounded-full overflow-hidden" style={{ width: 180, height: 6, background: '#f1f1f3' }}><div style={{ width: `${(closed / total) * 100}%`, height: 6, background: '#16a34a' }} /></div>
-                <span onClick={(e) => { e.stopPropagation(); setReport(true); }} className="text-xs font-medium shrink-0 m-hide" style={{ color: '#4456c7' }}>{t('Month-end report')} →</span>
+                {!noReport && <span onClick={(e) => { e.stopPropagation(); setReport(true); }} className="text-xs font-medium shrink-0 m-hide" style={{ color: '#4456c7' }}>{t('Month-end report')} →</span>}
                 <Icon name={open ? 'chevron-up' : 'chevron-down'} style={{ color: '#b0b0b8' }} />
             </button>
             {open && (

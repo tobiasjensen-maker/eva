@@ -110,7 +110,7 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 <PageHeader title={t('Controlling')} showScope={false} right={<AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={flagsByClient} />} />
                 <div className="mx-auto px-8 pt-5 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
                     {/* 1 — the closing, summarised */}
-                    <div className="land"><MonthEndCard key={clientFilter ?? 'all'} decisions={mineAll} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} client={clientFilter} defaultOpen /></div>
+                    <div className="land"><MonthEndCard key={clientFilter ?? 'all'} decisions={mineAll} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} client={clientFilter} defaultOpen noReport /></div>
                     {/* 2 — the flags to consider: EVA's findings on booked postings */}
                     <div className="land" style={{ ['--d' as string]: '120ms' }}>
                         <Card className="overflow-hidden">
