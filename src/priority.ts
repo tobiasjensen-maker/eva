@@ -19,6 +19,7 @@ const DECISION_PRIO: Record<string, Priority> = {
     'd-ctrl': { level: 'medium', why: 'Changes Q3 VAT payable by 4.500 kr' },
     'd-payroll': { level: 'high', why: '9 people get paid on 30 Oct — approve by the 28th' },
     'd-supplier': { level: 'medium', why: 'Invoice is due for payment on Friday' },
+    'd-close': { level: 'medium', why: 'The month-end report goes to the client once it’s closed' },
     'd-bank': { level: 'medium', why: 'Holds up the September close' },
 };
 const THREAD_PRIO: Record<string, Priority> = {

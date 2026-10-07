@@ -2413,4 +2413,5 @@ const DA: Record<string, string> = {
     '46 of 46 matched': '46 af 46 matchet',
     'None': 'Ingen',
     'Open drafts': 'Åbne kladder',
+    'The month-end report goes to the client once it’s closed': 'Månedsrapporten sendes til kunden, når den er lukket',
 };

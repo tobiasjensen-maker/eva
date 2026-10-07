@@ -50,7 +50,8 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —
   a **global** client context, not an applied filter ("Clear filters" leaves it alone).
-  Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
+  Rows show **just what matters**, in two lines: the tag + EVA's finding/ask (not the routine-ish title), then
+  urgency dot · client · what it changes — and, muted on the right, the routine. Each item names the **routine that raised it** (Monthly Controlling → flags; Monthly Close → closing items;
   Weekly Bookkeeping → the rest — `routineOf`), with a routine filter next to the chips.
   Filters are **Flags | Actions** (not status); completed work isn't listed — it's in the **Activity** tab, which
   uses the same agreement selector (no area or client dropdowns). A list, not draggable; an empty *For review*

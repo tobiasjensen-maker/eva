@@ -8,7 +8,7 @@ import { MonthEndCard } from './MonthEnd';
 import { axHidesTask, useScopeMode } from '../edition';
 import { clientName, type LogEntry } from './ActivityView';
 import { MY_PORTFOLIO, TEAM, type Thread } from '../practice';
-import { PRIO_RANK, priorityOfDecision, priorityOfThread, type Priority } from '../priority';
+import { PRIO_RANK, PRIO_STYLE, priorityOfDecision, priorityOfThread, type Priority } from '../priority';
 import { PrioLine } from './Decisions';
 
 // ---- Praksis / AO-house task management ------------------------------------
@@ -671,11 +671,24 @@ function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: Work
             {col && <span className="shrink-0 -ml-1" style={{ color: it.kind !== 'logged' || it.task ? '#c4c4cc' : 'transparent' }} aria-hidden><Icon name="drag" /></span>}
             <button onClick={clickable ? onOpen : undefined} className="flex-1 min-w-0 flex items-center gap-3 text-left" style={{ cursor: clickable ? 'pointer' : 'default' }} title={clickable ? t('Open task') : undefined}>
                 <ClientAvatar name={it.company} size={30} />
+                {ax && it.kind === 'review' ? (
+                    // AX: just what matters — what's wrong / what to approve, then who and what it changes.
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium flex items-center min-w-0" style={{ color: COLORS.text }}><KindTag it={it} /><span className={`truncate ${clickable ? 'hover:underline' : ''}`}>{t(it.d.question)}</span></p>
+                        <p className="text-xs mt-0.5 flex items-center gap-1.5 min-w-0" style={{ color: COLORS.textMuted }}>
+                            {prioOf(it) && <span className="rounded-full shrink-0" title={t(PRIO_STYLE[prioOf(it)!.level].label)} style={{ width: 7, height: 7, background: PRIO_STYLE[prioOf(it)!.level].fg }} />}
+                            <span className="shrink-0" style={{ color: COLORS.text }}>{it.company}</span>
+                            {prioOf(it) && <span className="truncate">· {t(prioOf(it)!.why)}</span>}
+                            <span className="shrink-0 ml-auto pl-2" style={{ color: '#a1a1aa' }} title={t('Raised by this routine')}>{routineOf(it.d).emoji} {t(routineOf(it.d).label)}</span>
+                        </p>
+                    </div>
+                ) : (
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium flex items-center min-w-0" style={{ color: COLORS.text }}><KindTag it={it} /><span className={`truncate ${clickable ? 'hover:underline' : ''}`}>{it.title}</span></p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}><RoutineTag it={it} />{showCompany ? <>{it.company} · </> : null}{itemSub(it, t)}</p>
                     {prioOf(it) && <PrioLine p={prioOf(it)!} t={t} />}
                 </div>
+                )}
             </button>
             {(it.kind === 'review' || it.kind === 'reply') && <Button onClick={onOpen}>{t('Review')}</Button>}
             {/* AX: every row here is for review — no status pill (the Flag / Action tag says what it is) */}
