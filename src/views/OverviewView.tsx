@@ -98,11 +98,10 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
         : [t('Walk me through my day'), t('Which clients are ready for an advisory call?'), t('Do I have clients with cash-flow issues?')];
     const ask = (text: string) => { if (text.trim()) { onAsk(text.trim()); setQ(''); } };
 
-    // AX: this is Controlling — the post-booking analysis of the books. A client selector (shared with
-    // Bookkeeping), the closing summary on top, then the flags the AO has to consider.
+    // AX: this is Controlling — the post-booking analysis of the books: a client selector (shared with
+    // Bookkeeping) and the closing summary. (Its flags sit in Bookkeeping's queue, tagged Flag.)
     if (ax) {
         const mineAll = decisions.filter((d) => d.accountant === ME && (!clientFilter || d.company === clientFilter));
-        const flags = mineAll.filter((d) => !d.done && d.correction).sort((a, b) => PRIO_RANK[priorityOfDecision(a).level] - PRIO_RANK[priorityOfDecision(b).level]);
         const flagsByClient: Record<string, number> = {};
         decisions.forEach((d) => { if (!d.done && d.correction && d.accountant === ME) flagsByClient[d.company] = (flagsByClient[d.company] ?? 0) + 1; });
         return (
@@ -111,22 +110,6 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 <div className="mx-auto px-8 pt-5 pb-10 flex flex-col gap-5" style={{ maxWidth: 1240 }}>
                     {/* 1 — the closing, summarised */}
                     <div className="land"><MonthEndCard key={clientFilter ?? 'all'} decisions={mineAll} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} client={clientFilter} defaultOpen noReport /></div>
-                    {/* 2 — the flags to consider: EVA's findings on booked postings */}
-                    <div className="land" style={{ ['--d' as string]: '120ms' }}>
-                        <Card className="overflow-hidden">
-                            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-                                <span className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t('Control flags')}</span>
-                                <span className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Most urgent first')}</span>
-                                <CountBadge n={flags.length} showZero />
-                            </div>
-                            {flags.length === 0 ? (
-                                <div className="px-4 py-6 flex items-center gap-2.5">
-                                    <span className="flex items-center justify-center rounded-full" style={{ width: 28, height: 28, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
-                                    <p className="text-sm" style={{ color: COLORS.text }}>{t('No findings — the books look right.')}</p>
-                                </div>
-                            ) : flags.map((d, i) => <DecisionRow key={d.id} d={d} t={t} prio={priorityOfDecision(d)} last={i === flags.length - 1} onReview={() => setReview(d)} />)}
-                        </Card>
-                    </div>
                 </div>
                 {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
             </div>

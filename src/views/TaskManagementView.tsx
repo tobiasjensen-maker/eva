@@ -212,10 +212,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     // Ready for your review — the shared decisions, scoped like everything else here.
     // open items for your review per client — shown in the agreement selector
     const reviewByClient: Record<string, number> = {};
-    // AX: Bookkeeping is what's needed before booking — findings on booked postings belong to Controlling
-    const inQueue = (d: DecisionItem) => !(ax && d.correction);
-    decisions.forEach((d) => { if (!d.done && d.accountant === ME && inQueue(d)) reviewByClient[d.company] = (reviewByClient[d.company] ?? 0) + 1; });
-    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && inQueue(d) && forClient(d.company) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
+    decisions.forEach((d) => { if (!d.done && d.accountant === ME) reviewByClient[d.company] = (reviewByClient[d.company] ?? 0) + 1; });
+    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && forClient(d.company) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
 
     // --- the work, as one set of items: To do · In progress (Vision) · For review · Done ---
     // Done is read from the activity log — the one record of what happened today, by you
@@ -474,6 +472,27 @@ export function AgreementSelector({ value, onChange, counts }: { value: string |
     );
 }
 
+// AX: what kind of review item this is — a Flag (EVA's finding on a booked posting, with a correction
+// ready) or an Action (EVA's draft or request waiting for your approval before booking).
+function KindTag({ it }: { it: WorkItem }) {
+    const { t } = useLang();
+    const { ax } = useScopeMode();
+    if (!ax || it.kind !== 'review') return null;
+    const flag = !!it.d.correction;
+    return (
+        <span className="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-px mr-2 text-[11px] font-semibold align-middle"
+            style={flag ? { background: '#fdecec', color: '#b42318' } : { background: '#eef2ff', color: '#3341a8' }}
+            title={t(flag ? 'A finding on a booked posting — EVA has the correction ready' : 'EVA’s draft, waiting for your approval before it’s booked')}>
+            {flag ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 21V4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><path d="M5 4h11l-2 4 2 4H5" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
+            ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}
+            {t(flag ? 'Flag' : 'Action')}
+        </span>
+    );
+}
+
 // ---- Board + list pieces --------------------------------------------------------------------
 function BoardColumn({ s, count, children, footer, dnd }: { s: Col; count: number; children: ReactNode; footer?: ReactNode; dnd: Dnd }) {
     const { t } = useLang();
@@ -539,7 +558,7 @@ function WorkCard({ it, col, nextId, dnd, onOpen }: { it: WorkItem; col: Col; ne
             <div className="flex items-start gap-2">
                 <ClientAvatar name={it.company} size={20} />
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-snug" style={{ color: COLORS.text }}>{it.title}</p>
+                    <p className="text-sm font-medium leading-snug" style={{ color: COLORS.text }}><KindTag it={it} />{it.title}</p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{it.company}</p>
                     {prioOf(it) && <PrioLine p={prioOf(it)!} t={t} />}
                 </div>
@@ -565,7 +584,7 @@ function WorkRow({ it, col, nextId, dnd, showCompany, last, onOpen }: { it: Work
             <button onClick={clickable ? onOpen : undefined} className="flex-1 min-w-0 flex items-center gap-3 text-left" style={{ cursor: clickable ? 'pointer' : 'default' }} title={clickable ? t('Open task') : undefined}>
                 <ClientAvatar name={it.company} size={30} />
                 <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${clickable ? 'hover:underline' : ''}`} style={{ color: COLORS.text }}>{it.title}</p>
+                    <p className="text-sm font-medium flex items-center min-w-0" style={{ color: COLORS.text }}><KindTag it={it} /><span className={`truncate ${clickable ? 'hover:underline' : ''}`}>{it.title}</span></p>
                     <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.textMuted }}>{showCompany ? <>{it.company} · </> : null}{itemSub(it, t)}</p>
                     {prioOf(it) && <PrioLine p={prioOf(it)!} t={t} />}
                 </div>

@@ -2396,4 +2396,7 @@ const DA: Record<string, string> = {
     'You’re all caught up': 'Du er helt ajour',
     'Nothing from {client} needs your review. EVA puts anything new here as it comes in.': 'Intet fra {client} skal gennemgås. EVA lægger nyt her, så snart det kommer ind.',
     'Nothing needs your review right now. EVA puts anything new here as it comes in.': 'Intet skal gennemgås lige nu. EVA lægger nyt her, så snart det kommer ind.',
+    'Flag': 'Markering',
+    'A finding on a booked posting — EVA has the correction ready': 'Et fund på en bogført postering — EVA har rettelsen klar',
+    'EVA’s draft, waiting for your approval before it’s booked': 'EVAs udkast, der venter på din godkendelse, før det bogføres',
 };
