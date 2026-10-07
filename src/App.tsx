@@ -986,7 +986,11 @@ export default function App() {
                         // AX: the same client picker as on Tasks (shared client), instead of the agreement pill
                         headerLeft={ax ? <AgreementSelector align="left" value={workClient} onChange={setWorkClient} counts={Object.fromEntries(MY_PORTFOLIO.map(({ name: n }) => [n, decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen' && d.company === n).length]))} /> : undefined}
                         onTurns={ax ? (turns) => { try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify(turns)); } catch { /* ignore */ } } : undefined}
-                        onClose={(turns) => { setPanelCarry(turns.length ? { view: chatReturn, turns } : null); setChatCarry(null); setChatCollapsed(false); goView(chatReturn); }}
+                        onClose={(turns) => {
+                            // AX overlay: X closes EVA altogether, like the docked panel's X (conversation is already saved)
+                            if (embedded) { setChatCarry(null); closeUniverse(true); return; }
+                            setPanelCarry(turns.length ? { view: chatReturn, turns } : null); setChatCarry(null); setChatCollapsed(false); goView(chatReturn);
+                        }}
                     />
                 )}
                 {view === 'inbox' && <InboxView threads={threads} setThreads={setThreads} focusClient={inboxFocus} compose={compose} onComposeConsumed={() => setCompose(null)} />}
