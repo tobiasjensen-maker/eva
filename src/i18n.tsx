@@ -2393,4 +2393,7 @@ const DA: Record<string, string> = {
     'Mon at 06:00': 'Man. kl. 06:00',
     'September · 40 clients': 'September · 40 kunder',
     'September · 7 clients left to close': 'September · 7 kunder mangler at lukke',
+    'You’re all caught up': 'Du er helt ajour',
+    'Nothing from {client} needs your review. EVA puts anything new here as it comes in.': 'Intet fra {client} skal gennemgås. EVA lægger nyt her, så snart det kommer ind.',
+    'Nothing needs your review right now. EVA puts anything new here as it comes in.': 'Intet skal gennemgås lige nu. EVA lægger nyt her, så snart det kommer ind.',
 };

@@ -388,7 +388,16 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                             <SectionCard title={<span className="flex items-center gap-2 min-w-0">{g.title}</span>} count={g.items.length}>
                                 {g.items.map((it, i) => <WorkRow key={it.id} it={it} col={col} nextId={g.items[i + 1]?.id ?? null} dnd={dnd} showCompany last={i === g.items.length - 1 && !g.footer} onOpen={() => openItem(it)} />)}
                                 {col && dnd.over?.col === col && dnd.over.beforeId === null && dragId && <DropLine />}
-                                {col && g.items.length === 0 && <p className="text-xs px-4 py-4 text-center" style={{ color: COLORS.textMuted }}>{t(dragId ? 'Drop here' : 'Nothing here')}</p>}
+                                {col && g.items.length === 0 && (g.key === 'review' && !dragId ? (
+                                    // nothing waiting on you — say so properly
+                                    <div className="flex flex-col items-center text-center px-4 py-8 anim-in">
+                                        <span className="flex items-center justify-center rounded-full mb-3" style={{ width: 44, height: 44, background: '#e9f7ef', color: '#15803d' }}><Icon name="circle-tick" /></span>
+                                        <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('You’re all caught up')}</p>
+                                        <p className="text-xs mt-1" style={{ color: COLORS.textMuted, maxWidth: 340 }}>
+                                            {clientFilter ? t('Nothing from {client} needs your review. EVA puts anything new here as it comes in.').replace('{client}', clientFilter) : t('Nothing needs your review right now. EVA puts anything new here as it comes in.')}
+                                        </p>
+                                    </div>
+                                ) : <p className="text-xs px-4 py-4 text-center" style={{ color: COLORS.textMuted }}>{t(dragId ? 'Drop here' : 'Nothing here')}</p>)}
                                 {g.footer && <button onClick={() => onTab('activity')} className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: '#4456c7' }}>{t('See all in the activity log')} →</button>}
                             </SectionCard>
                             </div>
