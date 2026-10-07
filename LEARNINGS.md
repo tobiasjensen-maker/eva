@@ -42,6 +42,15 @@ the same app. **Vision** is the full product. Switch in the settings menu (profi
 or link straight in with `?scope=ax` / `?scope=vision` (the param only sets the start; the choice is kept
 in localStorage). AX shows an orange **AX** tag next to the logo.
 
+**AX's menu is four places** (`AX_RAIL` in App — no Work tabs, each its own item):
+- **Bookkeeping** (`#/work`) — what the bookkeeping needs from you: EVA's drafts and missing pieces to approve
+  *before* booking, with the agreement selector. Badge = those items.
+- **Controlling** (`#/home`) — the post-booking analysis: month-end close, Books status, **Control findings**
+  (decisions with a `correction` — e.g. the August rent VAT, the Q1 reverse charge) and the clients' books.
+  A client opens Bookkeeping filtered to them. Badge = findings.
+- **Routines** (`#/routines`) and **Activity** (`#/activity`).
+Expanding EVA from e-conomic opens on Bookkeeping. Anything else redirects to Bookkeeping in AX.
+
 Because it's one codebase, **every change to a shared screen shows up in both scopes.** AX hides:
 - **Pages:** Inbox, Practice, client Insights (+ Views, Customers) — `AX_HIDDEN_VIEWS`; the menu and
   phone tab bar filter them out and going there redirects to the overview.

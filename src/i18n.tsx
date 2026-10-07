@@ -2363,4 +2363,6 @@ const DA: Record<string, string> = {
     'Show all clients': 'Vis alle kunder',
     'Prototype': 'Prototype',
     'Version': 'Version',
+    'Control findings': 'Kontrolfund',
+    'No findings — the books look right.': 'Ingen fund — bøgerne ser rigtige ud.',
 };

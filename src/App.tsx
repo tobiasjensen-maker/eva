@@ -7,6 +7,10 @@ import {
     NodeMark,
     ProfileAvatar,
     TasksIcon,
+    ReviewIcon,
+    InsightsIcon,
+    RoutinesIcon,
+    ActivityIcon,
     HomeIcon,
     InboxIcon,
     PracticeIcon,
@@ -73,7 +77,7 @@ import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
 import { DecisionReview, ReplyReview } from './views/Decisions';
 import { EconomicShell, journalAnswer } from './views/EconomicShell';
-import { AX_HIDDEN_SKILLS, AX_HIDDEN_VIEWS, ScopeModeContext, initialScope, isPayroll, type Scope as ScopeMode } from './edition';
+import { AX_HIDDEN_SKILLS, ScopeModeContext, initialScope, isPayroll, type Scope as ScopeMode } from './edition';
 import type { ShareDraft } from './views/Attachment';
 import OverviewView, { overviewAnswer } from './views/OverviewView';
 import InboxView from './views/InboxView';
@@ -121,6 +125,16 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     { id: 'practice', label: 'Practice', Icon: PracticeIcon },
     // (Advisory → a client's analysis, reached from Clients; Views → #/views, off the rail.)
 ];
+
+// AX's menu — four places, no Work tabs: what the bookkeeping needs from you, the post-booking control of
+// the books, the routine setup, and what happened. (They reuse Work's views; Controlling is AX's home.)
+const AX_RAIL: typeof RAIL = [
+    { id: 'activity', label: 'Bookkeeping', Icon: ReviewIcon },
+    { id: 'home', label: 'Controlling', Icon: InsightsIcon },
+    { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
+    { id: 'activitylog', label: 'Activity', Icon: ActivityIcon },
+];
+const AX_VIEWS: ViewId[] = ['activity', 'home', 'skills', 'activitylog', 'chat'];
 
 // Work's tabs map to their own views/URLs, so each tab is linkable.
 const WORK_TAB_OF: Partial<Record<ViewId, WorkTab>> & Record<'activity' | 'activitylog' | 'skills', WorkTab> = { activity: 'tasks', activitylog: 'activity', skills: 'routines' };
@@ -228,13 +242,17 @@ export default function App() {
             if (url.searchParams.has('scope')) { url.searchParams.delete('scope'); window.history.replaceState(null, '', url.toString()); }
         } catch { /* ignore */ }
     };
-    const rail = ax ? RAIL.filter((r) => !AX_HIDDEN_VIEWS.includes(r.id)) : RAIL;
+    const rail = ax ? AX_RAIL : RAIL;
     // Menu colours: Vision's dark floating menu; AX's white menu flush in the overlay with dark icons.
     const sb = ax
         ? { bg: '#ffffff', fg: '#52525b', muted: '#71717a', activeFg: '#1c1b3a', activeBg: 'rgba(28, 27, 58, 0.07)', hover: 'rgba(28, 27, 58, 0.045)' }
         : { bg: SIDEBAR_BG, fg: 'rgba(255,255,255,0.65)', muted: 'rgba(255,255,255,0.6)', activeFg: '#ffffff', activeBg: 'rgba(255,255,255,0.12)', hover: 'rgba(255,255,255,0.06)' };
-    useEffect(() => { if (ax && AX_HIDDEN_VIEWS.includes(view)) goView('home'); }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
-    const badgeFor: Partial<Record<ViewId, number>> = { inbox: needsReply, activity: openDecisions + (ax ? 0 : needsReply) };
+    useEffect(() => { if (ax && !AX_VIEWS.includes(view)) goView('activity'); }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
+    // AX splits the queue: Bookkeeping = what's needed before booking; Controlling = findings on booked postings.
+    const mineOpen = decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen');
+    const badgeFor: Partial<Record<ViewId, number>> = ax
+        ? { activity: mineOpen.filter((d) => !d.correction).length, home: mineOpen.filter((d) => d.correction).length }
+        : { inbox: needsReply, activity: openDecisions + needsReply };
 
     const [skills, setSkills] = useState<Skill[]>(INITIAL_SKILLS);
     // AX: no payroll routine
@@ -706,7 +724,7 @@ export default function App() {
                     {rail.map(({ id, label: railLabel, Icon: RIcon }) => {
                         // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
                         // Sub-pages keep their parent lit: Work's Activity and Routines tabs, a client's analysis under the overview.
-                        const active = view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
+                        const active = ax ? view === id : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
@@ -1022,7 +1040,7 @@ export default function App() {
             {mobile && (
                 <nav className="shrink-0 flex items-stretch justify-around" style={{ background: SIDEBAR_BG, paddingBottom: 'env(safe-area-inset-bottom)' }}>
                     {rail.map(({ id, label: railLabel, Icon: RIcon }) => {
-                        const active = view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
+                        const active = ax ? view === id : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const n = badgeFor[id] ?? 0;
                         return (
                             <button key={id} onClick={() => goView(id)} className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-w-0"
@@ -1030,7 +1048,7 @@ export default function App() {
                                 <span className="relative flex items-center"><RIcon active={active} />
                                     {n > 0 && <span className="absolute rounded-full" style={{ top: -3, right: -5, width: 8, height: 8, background: COUNT_DOT, border: `2px solid ${SIDEBAR_BG}` }} />}
                                 </span>
-                                <span className="text-[10px] font-medium truncate max-w-full px-1">{t(id === 'home' ? 'Overview' : railLabel)}</span>
+                                <span className="text-[10px] font-medium truncate max-w-full px-1">{t(id === 'home' && !ax ? 'Overview' : railLabel)}</span>
                             </button>
                         );
                     })}
@@ -1125,7 +1143,7 @@ export default function App() {
                         onExpand={() => {
                             if (ecoUniverse) { closeUniverse(); return; } // back to e-conomic
                             if (!mobile) setEcoUniverse(true);
-                            goView('home');
+                            goView('activity'); // AX opens on Bookkeeping
                         }}
                         // in the universe this is the EVA panel — the overview's question box asks here
                         pendingAsk={embedded ? pendingAsk : null}

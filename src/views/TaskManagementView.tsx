@@ -212,8 +212,10 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
     // Ready for your review — the shared decisions, scoped like everything else here.
     // open items for your review per client — shown in the agreement selector
     const reviewByClient: Record<string, number> = {};
-    decisions.forEach((d) => { if (!d.done && d.accountant === ME) reviewByClient[d.company] = (reviewByClient[d.company] ?? 0) + 1; });
-    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && forClient(d.company) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
+    // AX: Bookkeeping is what's needed before booking — findings on booked postings belong to Controlling
+    const inQueue = (d: DecisionItem) => !(ax && d.correction);
+    decisions.forEach((d) => { if (!d.done && d.accountant === ME && inQueue(d)) reviewByClient[d.company] = (reviewByClient[d.company] ?? 0) + 1; });
+    const evaReview = decisions.filter((d) => !d.done && (!mine || d.accountant === ME) && inQueue(d) && forClient(d.company) && (!ql || t(d.label).toLowerCase().includes(ql) || d.company.toLowerCase().includes(ql)));
 
     // --- the work, as one set of items: To do · In progress (Vision) · For review · Done ---
     // Done is read from the activity log — the one record of what happened today, by you
@@ -310,9 +312,10 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         <div className={bare ? 'h-full' : 'h-full overflow-y-auto'}>
             {!bare && (
                 <PageHeader
-                    title={t('Work')}
+                    // AX: each tab is its own menu item (Bookkeeping, Activity, Routines) — no Work tabs
+                    title={t(ax ? (tab === 'tasks' ? 'Bookkeeping' : tab === 'activity' ? 'Activity' : 'Routines') : 'Work')}
                     showScope={false}
-                    badge={<SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
+                    badge={ax ? undefined : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
                     right={tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
                         : tab === 'routines' ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />
@@ -327,7 +330,8 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
                 {tab === 'tasks' && (<>
 
                 {/* operations first: this month's close across your clients, end to end */}
-                <div className="mb-4 land" style={{ ['--d' as string]: '260ms' }}><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>
+                {/* AX: the month-end close lives in Controlling */}
+                {!ax && <div className="mb-4 land" style={{ ['--d' as string]: '260ms' }}><MonthEndCard decisions={decisions.filter((d) => d.accountant === ME)} onReview={setReview} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} /></div>}
 
                 {/* toolbar — one line: Board / List, grouping (list), status filters, search */}
                 <div className="flex flex-wrap items-center gap-2 mb-4 land" style={{ ['--d' as string]: '310ms' }}>
