@@ -129,7 +129,7 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
 // routine setup. (They reuse Work's views.)
 const AX_RAIL: typeof RAIL = [
     // EVA, full screen — the same conversation as the docked panel (which steps aside while it's open)
-    { id: 'chat', label: 'EVA', Icon: ChatIcon },
+    { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Tasks', Icon: ReviewIcon },
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
 ];
@@ -721,7 +721,6 @@ export default function App() {
                         <>
                             <span className="flex items-center gap-2">
                                 <EconomicLogo white={!ax} />
-                                {ax && <span className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide" style={{ background: '#ed9b2c', color: '#1c1b3a' }} title={t('AX — what we build first')}>AX</span>}
                             </span>
                             <button
                                 onClick={() => setCollapsed(true)}
