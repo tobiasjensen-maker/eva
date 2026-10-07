@@ -42,17 +42,16 @@ the same app. **Vision** is the full product. Switch in the settings menu (profi
 or link straight in with `?scope=ax` / `?scope=vision` (the param only sets the start; the choice is kept
 in localStorage). AX shows an orange **AX** tag next to the logo.
 
-**AX's menu is four places** (`AX_RAIL` in App — no Work tabs, each its own item):
-- **Bookkeeping** (`#/work`) — the one queue: everything that needs the AO, each item tagged **Action** (EVA's
-  draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting, correction ready —
-  decisions with a `correction`), ranked together by urgency. Agreement selector top right. A list, not draggable;
-  an empty *For review* says "You're all caught up". Badge = the whole queue.
-- **Controlling** (`#/home`) — the post-booking side: the same client selector and the closing summary (the
-  month-end card, steps open, following the client, no month-end report). Its flags live in Bookkeeping.
+**AX's menu is two places** (`AX_RAIL` in App):
+- **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
+  **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
+  correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right.
+  A list, not draggable; an empty *For review* says "You're all caught up". The **Activity** tab is the log.
+  Badge = the whole queue.
 - **Routines** (`#/routines`) — exactly three, in order: **Weekly Bookkeeping**, **Monthly Controlling**,
   **Monthly Close** (`AX_FLOW_IDS`). No *New routine*, no *Suggested for you*.
-- **Activity** (`#/activity`).
-Expanding EVA from e-conomic opens on Bookkeeping. Anything else redirects to Bookkeeping in AX.
+Expanding EVA from e-conomic opens on Tasks; anything else redirects there. (Controlling — closing summary +
+client selector — was tried as its own page and taken out; its code is still in OverviewView's AX branch.)
 
 Because it's one codebase, **every change to a shared screen shows up in both scopes.** AX hides:
 - **Pages:** Inbox, Practice, client Insights (+ Views, Customers) — `AX_HIDDEN_VIEWS`; the menu and

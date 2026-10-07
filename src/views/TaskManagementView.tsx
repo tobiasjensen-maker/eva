@@ -310,10 +310,12 @@ export default function TaskManagementView({ tasks, setTasks, decisions, onResol
         <div className={bare ? 'h-full' : 'h-full overflow-y-auto'}>
             {!bare && (
                 <PageHeader
-                    // AX: each tab is its own menu item (Bookkeeping, Activity, Routines) — no Work tabs
-                    title={t(ax ? (tab === 'tasks' ? 'Bookkeeping' : tab === 'activity' ? 'Activity' : 'Routines') : 'Work')}
+                    // AX: Tasks (tabs: Tasks | Activity) and Routines are separate menu items
+                    title={t(ax ? (tab === 'routines' ? 'Routines' : 'Tasks') : 'Work')}
                     showScope={false}
-                    badge={ax ? undefined : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
+                    badge={ax
+                        ? (tab === 'routines' ? undefined : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }]} />)
+                        : <SegmentedTabs value={tab} onChange={(v) => onTab(v as WorkTab)} options={[{ value: 'tasks', label: t('Tasks') }, { value: 'activity', label: t('Activity') }, { value: 'routines', label: t('Routines') }]} />}
                     right={tab === 'tasks' ? (ax ? <AgreementSelector value={clientFilter} onChange={(n) => onClientChange?.(n)} counts={reviewByClient} /> : <Button appearance="primary" onClick={() => setCreating(true)}><Icon name="circle-plus" /> {t('New task')}</Button>)
                         : tab === 'routines' && !ax ? <Button appearance="primary" onClick={onNewRoutine}><Icon name="circle-plus" /> {t('New routine')}</Button> : undefined}
                 />

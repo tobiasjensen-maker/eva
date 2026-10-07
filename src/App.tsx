@@ -8,9 +8,7 @@ import {
     ProfileAvatar,
     TasksIcon,
     ReviewIcon,
-    InsightsIcon,
     RoutinesIcon,
-    ActivityIcon,
     HomeIcon,
     InboxIcon,
     PracticeIcon,
@@ -126,15 +124,13 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
     // (Advisory → a client's analysis, reached from Clients; Views → #/views, off the rail.)
 ];
 
-// AX's menu — four places, no Work tabs: what the bookkeeping needs from you, the post-booking control of
-// the books, the routine setup, and what happened. (They reuse Work's views; Controlling is AX's home.)
+// AX's menu — two places: Tasks (the queue of Actions and Flags, with the activity log as a tab) and the
+// routine setup. (They reuse Work's views.)
 const AX_RAIL: typeof RAIL = [
-    { id: 'activity', label: 'Bookkeeping', Icon: ReviewIcon },
-    { id: 'home', label: 'Controlling', Icon: InsightsIcon },
+    { id: 'activity', label: 'Tasks', Icon: ReviewIcon },
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
-    { id: 'activitylog', label: 'Activity', Icon: ActivityIcon },
 ];
-const AX_VIEWS: ViewId[] = ['activity', 'home', 'skills', 'activitylog', 'chat'];
+const AX_VIEWS: ViewId[] = ['activity', 'activitylog', 'skills', 'chat'];
 
 // Work's tabs map to their own views/URLs, so each tab is linkable.
 const WORK_TAB_OF: Partial<Record<ViewId, WorkTab>> & Record<'activity' | 'activitylog' | 'skills', WorkTab> = { activity: 'tasks', activitylog: 'activity', skills: 'routines' };
@@ -725,7 +721,7 @@ export default function App() {
                     {rail.map(({ id, label: railLabel, Icon: RIcon }) => {
                         // The Activity log is a subpage of Cockpit — keep Cockpit lit while there.
                         // Sub-pages keep their parent lit: Work's Activity and Routines tabs, a client's analysis under the overview.
-                        const active = ax ? view === id : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
+                        const active = ax ? view === id || (id === 'activity' && view === 'activitylog') : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const label = t(railLabel);
                         return (
                             <SidebarTooltip key={id} label={label} show={collapsed}>
@@ -1042,7 +1038,7 @@ export default function App() {
             {mobile && (
                 <nav className="shrink-0 flex items-stretch justify-around" style={{ background: SIDEBAR_BG, paddingBottom: 'env(safe-area-inset-bottom)' }}>
                     {rail.map(({ id, label: railLabel, Icon: RIcon }) => {
-                        const active = ax ? view === id : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
+                        const active = ax ? view === id || (id === 'activity' && view === 'activitylog') : view === id || (id === 'activity' && (view === 'activitylog' || view === 'skills')) || (id === 'home' && view === 'insights');
                         const n = badgeFor[id] ?? 0;
                         return (
                             <button key={id} onClick={() => goView(id)} className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-w-0"
