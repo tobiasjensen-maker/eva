@@ -21,6 +21,8 @@ interface Props {
     // Connector state lives in App so the Routines and Connectors pages share it.
     connStatus: Record<string, ConnStatus>;
     setConnStatus: Dispatch<SetStateAction<Record<string, ConnStatus>>>;
+    // AX full-screen EVA: the window controls (⤡ / ✕) after the header's own action
+    headerExtra?: ReactNode;
 }
 
 const SKILL_META: Record<string, { category: string; features: string[] }> = {
@@ -500,7 +502,7 @@ function preinstalledFlows(ids = PREINSTALLED_FLOW_IDS): LocalFlow[] {
 
 // Routines render inside Work (its Routines tab); the Office view is parked — see OfficeView.
 
-export default function AutomationsView({ skills, onEnable, page = 'routines', onDetailChange, newRoutineTick = 0, connStatus, setConnStatus }: Props) {
+export default function AutomationsView({ skills, onEnable, page = 'routines', onDetailChange, newRoutineTick = 0, connStatus, setConnStatus, headerExtra }: Props) {
     const { t } = useLang();
     const [openId, setOpenId] = useState<string | null>(null);
     const [newFlow, setNewFlow] = useState(false);
@@ -667,7 +669,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     // Connectors — its own menu item and page.
     return (
         <div className="h-full overflow-y-auto">
-            <PageHeader title={t('Connectors')} showScope={false} right={<Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>} />
+            <PageHeader title={t('Connectors')} showScope={false} right={<><Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>{headerExtra}</>} />
             <div className="mx-auto px-8 pt-5 pb-7 land-kids" style={{ maxWidth: 1240 }}>
                 <ConnectorsList
                     connStatus={connStatus}

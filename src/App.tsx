@@ -17,6 +17,7 @@ import {
     ConnectorsIcon,
     CustomersIcon,
     SidebarTooltip,
+    EvaWindowControls,
     CountBadge,
     COUNT_DOT,
     ScopeContext,
@@ -133,8 +134,10 @@ const AX_RAIL: typeof RAIL = [
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
     { id: 'activity', label: 'Tasks', Icon: ReviewIcon },
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
+    // e-conomic only in AX — "Add connector" asks which system you'd want
+    { id: 'connectors', label: 'Connectors', Icon: ConnectorsIcon },
 ];
-const AX_VIEWS: ViewId[] = ['activity', 'activitylog', 'skills', 'chat'];
+const AX_VIEWS: ViewId[] = ['activity', 'activitylog', 'skills', 'connectors', 'chat'];
 
 // Work's tabs map to their own views/URLs, so each tab is linkable.
 const WORK_TAB_OF: Partial<Record<ViewId, WorkTab>> & Record<'activity' | 'activitylog' | 'skills', WorkTab> = { activity: 'tasks', activitylog: 'activity', skills: 'routines' };
@@ -1070,7 +1073,8 @@ export default function App() {
                         {(() => { const th = replyOpen ? threads.find((x) => x.id === replyOpen) : undefined; return th ? <ReplyReview key={th.id} th={th} t={t} onClose={() => setReplyOpen(null)} onSend={(text, withAction) => sendReply(th.id, text, withAction)} /> : null; })()}
                     </>;
                 })()}
-                {view === 'connectors' && <SkillsView page="connectors" skills={skillsShown} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus} />}
+                {view === 'connectors' && <SkillsView page="connectors" skills={skillsShown} onEnable={enableSkill} connStatus={connStatus} setConnStatus={setConnStatus}
+                    headerExtra={embedded ? <EvaWindowControls onMinimise={() => closeUniverse()} onClose={() => closeUniverse(true)} /> : undefined} />}
                 {view === 'spaces' && <SpacesView spaces={spaces} onCreate={addSpace} onActiveSpaceChange={setActiveSpace} />}
             </main>
 

@@ -64,6 +64,7 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   says "You're all caught up". Badge = the whole queue.
 - **Routines** (`#/routines`) — exactly three, in order: **Weekly Bookkeeping**, **Monthly Controlling**,
   **Monthly Close** (`AX_FLOW_IDS`). No *New routine*, no *Suggested for you*.
+- **Connectors** (`#/connectors`) — e-conomic only; *Add connector* asks which system you'd want. Same ⤡ / ✕.
 Expanding EVA from e-conomic opens on Tasks; anything else redirects there. Note: the Vision / AX switch is `va-scope` in localStorage; the agreement scope has its own key
 (`va-agreement-scope`) — sharing one key made the chat show "ax" as an agreement and flipped AX to Vision on reload.
 (Controlling — closing summary +
