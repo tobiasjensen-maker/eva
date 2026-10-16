@@ -18,6 +18,7 @@ import {
     CustomersIcon,
     SidebarTooltip,
     EvaWindowControls,
+    HeaderFullWidthContext,
     CountBadge,
     COUNT_DOT,
     ScopeContext,
@@ -707,6 +708,7 @@ export default function App() {
         <LangContext.Provider value={{ lang, setLang, t }}>
         <ScopeModeContext.Provider value={{ scope: scopeMode, ax, setScope: setScopeMode }}>
         <ScopeContext.Provider value={{ scope, onChoose: chooseScope, liveAgreement, reviewCounts }}>
+        <HeaderFullWidthContext.Provider value={embedded}>
         <div className={`flex ${mobile ? 'flex-col' : ''} ${embedded ? (ecoClosing ? 'eva-universe-out' : 'eva-universe-in') : ''}`} style={mobile
             ? { width: '100%', height: '100%', background: view === 'home' && !ax ? HOME_BG : CANVAS }
             : embedded
@@ -1210,6 +1212,7 @@ export default function App() {
                 }
             />
         )}
+        </HeaderFullWidthContext.Provider>
         </ScopeContext.Provider>
         </ScopeModeContext.Provider>
         </LangContext.Provider>

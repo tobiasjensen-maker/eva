@@ -348,6 +348,10 @@ export function EvaChip({ label, onClick }: { label: string; onClick: () => void
 
 // Sticky page header for a scrollable content container — keeps the page title
 // (and its primary controls) pinned as the page scrolls.
+// Full-screen EVA (AX overlay): page headers span the whole width, so the window controls (⤡ / ✕) sit in the
+// top-right corner — the same place as on Chat. Content below keeps its centred width.
+export const HeaderFullWidthContext = createContext(false);
+
 export function PageHeader({
     title,
     badge,
@@ -366,11 +370,12 @@ export function PageHeader({
     // Pages that aren't client-scoped (e.g. Skills — bought for the practice) hide the scope pill.
     showScope?: boolean;
 }) {
+    const full = useContext(HeaderFullWidthContext);
     return (
         // z-30: above page toolbars (z-20) so header menus — e.g. the agreement selector — open over the content
         <div className="sticky top-0 z-30" style={{ background: CANVAS }}>
             {/* flex-wrap: when title + pill + controls don't fit (e.g. longer Danish labels), controls wrap below instead of crushing the title */}
-            <div className="mx-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 px-8 py-2 land" style={{ maxWidth, minHeight: 62 }}>
+            <div className={`mx-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 ${full ? 'px-6' : 'px-8'} py-2 land`} style={{ maxWidth: full ? undefined : maxWidth, minHeight: 62 }}>
                 {onBack && (
                     <button
                         onClick={onBack}

@@ -47,7 +47,8 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   (the reveal starts at the panel's edge) and there's *no side panel on any page* of full-screen EVA — the menu
   (EVA mark + name, a quarter narrower) leads to Tasks and Routines. Same conversation as the panel (seeded from
   it, written back as it changes). Header: the Tasks client picker. **Every page** of full-screen EVA has the
-  same window controls top right (`EvaWindowControls`): ⤡ back to the side panel, ✕ closes EVA. Chat also has
+  same window controls top right (`EvaWindowControls`): ⤡ back to the side panel, ✕ closes EVA — in the corner,
+  like Chat: page headers span the full width inside full-screen EVA (`HeaderFullWidthContext`). Chat also has
   the side panel's ⋮ (New chat, History) — same buttons expanded as in the panel.
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
