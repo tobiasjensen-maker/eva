@@ -89,8 +89,6 @@ function RegnskabNav() {
     );
 }
 
-// The dim over e-conomic (rgba(28,27,58,.45) on white), as a solid — so the panel column matches it.
-const DIM_ON_WHITE = '#9998a6';
 
 // Mock agreement (fictional).
 const AGREEMENT = { number: 612448, name: 'Holm Revision ApS', userId: 'THJ', isAdministrator: true, imageSrc: agreementAvatar };
@@ -181,10 +179,9 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
 
     return (
         // the kit's nav links are href="#" stand-ins — keep them from wiping the prototype's hash route
-        <div className="fixed inset-0 z-[60] flex eco-enter" style={{ background: '#fff' }} onClickCapture={(e) => { if ((e.target as HTMLElement).closest('a[href="#"]')) e.preventDefault(); }}>
-            {/* e-conomic: top menu + content (the EVA universe covers this part when open) */}
-            <div className="flex-1 min-w-0 flex flex-col relative">
-                {universe && <div className={`absolute inset-0 z-20 ${closing ? 'eco-dim-out' : 'eco-dim'}`} style={{ background: 'rgba(28, 27, 58, 0.45)' }} />}
+        <div className="fixed inset-0 z-[60] flex flex-col eco-enter" style={{ background: '#fff' }} onClickCapture={(e) => { if ((e.target as HTMLElement).closest('a[href="#"]')) e.preventDefault(); }}>
+            {/* e-conomic: top menu across, then the app — EVA's panel docks inside it, below the top bar */}
+            {universe && <div className={`absolute inset-0 z-20 ${closing ? 'eco-dim-out' : 'eco-dim'}`} style={{ background: 'rgba(28, 27, 58, 0.45)' }} />}
                 {/* Kit: AppShell header */}
                 <Header>
                     <Header.MenuButton onClick={() => setSidebarOpen((v) => !v)} />
@@ -279,19 +276,17 @@ export function EconomicShell({ panel, panelOpen, onTogglePanel, flagged, univer
                             </Table3>
                         </div>
                     </div>
+                    {/* EVA, docked inside the app below the top bar: its own rounded card beside the content.
+                        (Full-screen EVA has no panel — it grows from this panel's edge.) */}
+                    {panelOpen && (
+                        <div ref={panelRef} className="shrink-0 flex eco-panel-in" style={{ padding: '12px 12px 12px 4px', background: '#fff' }}>
+                            {panel}
+                        </div>
+                    )}
                 </div>
-            </div>
 
             {settingsAt && <ProtoMenu at={settingsAt} s={settings} onClose={() => setSettingsAt(null)} />}
 
-            {/* On its own, EVA is a rounded card docked on the right. With the universe open it becomes the right
-                side of that one surface — flush to its edges, inside its rounded corners. The panel keeps its
-                place either way: only the (covered) left padding changes. */}
-            {panelOpen && (
-                <div ref={panelRef} className="shrink-0 flex eco-panel-in" style={{ background: universe ? DIM_ON_WHITE : '#f4f4f6', borderLeft: universe ? 'none' : '1px solid #e9e9ec', padding: universe ? '10px 10px 10px 0' : 10, transition: 'background .36s ease' }}>
-                    <div className="flex overflow-hidden" style={{ borderRadius: universe ? '0 20px 20px 0' : 0, transition: 'border-radius .32s ease' }}>{panel}</div>
-                </div>
-            )}
         </div>
     );
 }

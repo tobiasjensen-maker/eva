@@ -395,7 +395,8 @@ taco `Header` + `AgreementSelector` and Regnskab `Navigation2` side nav, and the
 template's `Table3` — ported from taco 14 to this prototype's taco 6 (`LegacyButton` → `Button`, no `Text`).
 Mock data, mock agreement. The kit's `href="#"` links are swallowed so they can't wipe the hash route.
 
-- **EVA button** in the header (pulses once with a hint) docks EVA on the right, **full height** — the same
+- **EVA button** in the header (pulses once with a hint) docks EVA on the right **inside the app, below the top
+  bar** (a rounded card beside the journal, like today's e-conomic side panels) — the same
   `ChatPanel` as everywhere, with journal-aware chips. *Check this journal* marks 6 rows (wrong account,
   accrual, partial VAT, missing documents) — inline in Tekst, and the row tints via `tr:has(.eco-flag-cell)`.
 - **Expand ⤢** opens the **EVA universe** (the AX app) as a rounded container over e-conomic's top menu and

@@ -251,7 +251,8 @@ export default function App() {
     const sb = ax
         ? { bg: '#ffffff', fg: '#52525b', muted: '#71717a', activeFg: '#1c1b3a', activeBg: 'rgba(28, 27, 58, 0.07)', hover: 'rgba(28, 27, 58, 0.045)' }
         : { bg: SIDEBAR_BG, fg: 'rgba(255,255,255,0.65)', muted: 'rgba(255,255,255,0.6)', activeFg: '#ffffff', activeBg: 'rgba(255,255,255,0.12)', hover: 'rgba(255,255,255,0.06)' };
-    useEffect(() => { if (ax && !AX_VIEWS.includes(view)) goView('activity'); }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
+    // (on e-conomic, only fix the page behind it — changing the URL would leave e-conomic)
+    useEffect(() => { if (ax && !AX_VIEWS.includes(view)) { if (route === 'economic') setView('activity'); else goView('activity'); } }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
     // AX: Bookkeeping holds the whole queue — Actions (before booking) and Flags (findings on booked postings).
     const mineOpen = decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen');
     const badgeFor: Partial<Record<ViewId, number>> = ax
