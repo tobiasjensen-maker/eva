@@ -1419,6 +1419,12 @@ const SKILL_CONFIG: Record<string, SkillConfig> = {
     payroll: { trigger: 'schedule', frequency: 'Monthly', time: '06:00', autonomy: 'approval', guardrail: true, threshold: '50.000', notify: true },
     // Anomaly detection runs continuously and only advises
     anomalies: { trigger: 'continuous', autonomy: 'suggest', guardrail: false, notify: true },
+    // AX routines — the schedule matches the name (and the next run on the list)
+    't-ax-weekly': { trigger: 'schedule', frequency: 'Weekly', time: '06:00', autonomy: 'auto', guardrail: true, threshold: '25.000', notify: true },
+    't-ax-ctrl': { trigger: 'schedule', frequency: 'Monthly', time: '06:00', autonomy: 'suggest', guardrail: false, notify: true },
+    't-ax-close': { trigger: 'schedule', frequency: 'Monthly', time: '06:00', autonomy: 'approval', guardrail: true, threshold: '50.000', notify: true },
+    't-likvido': { trigger: 'event', event: 'An invoice passes the dunning limit', autonomy: 'approval', guardrail: true, threshold: '25.000', notify: true },
+    't-rackbeat': { trigger: 'schedule', frequency: 'Daily', time: '06:00', autonomy: 'approval', guardrail: true, threshold: '25.000', notify: true },
 };
 
 const DEFAULT_CONFIG: SkillConfig = { trigger: 'event', autonomy: 'approval', guardrail: true, notify: true };

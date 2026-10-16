@@ -2474,4 +2474,5 @@ const DA: Record<string, string> = {
     'Missing a system?': 'Mangler du et system?',
     'Tell us which one you’d like EVA to connect to — it helps us decide what to build next.': 'Fortæl os, hvilket system du gerne vil forbinde EVA til — det hjælper os med at beslutte, hvad vi bygger næste gang.',
     'e.g. Dinero, Billy, Salesforce…': 'fx Dinero, Billy, Salesforce…',
+    'An invoice passes the dunning limit': 'En faktura passerer rykkergrænsen',
 };
