@@ -64,7 +64,14 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   says "You're all caught up". Badge = the whole queue.
 - **Routines** (`#/routines`) — exactly three, in order: **Weekly Bookkeeping**, **Monthly Controlling**,
   **Monthly Close** (`AX_FLOW_IDS`). No *New routine*, no *Suggested for you*.
-- **Connectors** (`#/connectors`) — e-conomic only; *Add connector* asks which system you'd want. Same ⤡ / ✕.
+- **Partner examples** — two routines run through partner connectors, after the three: **Automated debt collection**
+  (Likvido — escalate invoices past the dunning limit, reconcile the payouts) and **Stock-aware reordering**
+  (RackBeat — sync stock, raise purchase orders). The same jobs can be **asked of EVA in Chat** ("Send Café
+  Solsikke's overdue invoices to Likvido", "Check stock and reorder in RackBeat" — also suggested): EVA proposes
+  a plan, you approve, it runs, and EVA offers to make it a routine. In the side panel EVA answers in words and
+  points to the plan in full screen (`partnerAnswer`).
+- **Connectors** (`#/connectors`) — e-conomic plus Likvido and RackBeat (the partner routines use them);
+  *Add connector* asks which system you'd want. Same ⤡ / ✕.
 Expanding EVA from e-conomic opens on Tasks; anything else redirects there. Note: the Vision / AX switch is `va-scope` in localStorage; the agreement scope has its own key
 (`va-agreement-scope`) — sharing one key made the chat show "ax" as an agreement and flipped AX to Vision on reload.
 (Controlling — closing summary +

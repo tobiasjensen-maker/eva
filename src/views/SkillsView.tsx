@@ -477,6 +477,8 @@ const NEXT_RUN: Record<string, { when: string; scope: string }> = {
     't-recon': { when: 'Tonight at 22:00', scope: 'All 40 of your clients' },
     't-supplier': { when: 'Tomorrow at 07:00', scope: '14 invoices waiting across 6 clients' },
     't-vatfile': { when: '10 Oct at 06:00', scope: '12 clients due this quarter' },
+    't-likvido': { when: 'Tomorrow at 07:00', scope: '3 invoices past the dunning limit · 18.400 kr' },
+    't-rackbeat': { when: 'Every day at 06:00', scope: 'Stock for 2 wholesale agreements' },
     't-ax-weekly': { when: 'Mon at 06:00', scope: 'All 40 of your clients' },
     't-ax-ctrl': { when: 'Tomorrow at 06:00', scope: 'September · 40 clients' },
     't-ax-close': { when: '10 Oct at 06:00', scope: 'September · 7 clients left to close' },
@@ -492,7 +494,9 @@ const whenRank = (w?: string) => {
 // Doc-based flows that ship already installed and running (keep their template ids so perf maps).
 const PREINSTALLED_FLOW_IDS = ['t-voucher', 't-recon', 't-supplier', 't-vatfile', 't-payroll'];
 // AX runs exactly three routines — fixed, in this order.
-const AX_FLOW_IDS = ['t-ax-weekly', 't-ax-ctrl', 't-ax-close'];
+// …plus two partner examples, run through their connectors: Likvido (collection) and RackBeat (stock).
+const AX_FLOW_IDS = ['t-ax-weekly', 't-ax-ctrl', 't-ax-close', 't-likvido', 't-rackbeat'];
+export const AX_PARTNERS = ['likvido', 'rackbeat'];
 function preinstalledFlows(ids = PREINSTALLED_FLOW_IDS): LocalFlow[] {
     return ids
         .map((id) => FLOW_TEMPLATES.find((tpl) => tpl.id === id))
@@ -746,15 +750,15 @@ function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, o
     onSimulateLost: (id: string) => void;
 }) {
     const { t } = useLang();
-    const { ax } = useScopeMode(); // AX: e-conomic only — partner connectors are Vision
-    const rows = CAPABILITIES.filter((c) => c.native || (!ax && c.id in connStatus));
+    const { ax } = useScopeMode(); // AX: e-conomic, plus the two partners its example routines use
+    const rows = CAPABILITIES.filter((c) => c.native || (ax ? AX_PARTNERS.includes(c.id) : c.id in connStatus));
     const metaLine = (c: Capability) =>
         t('{s} skills · {a} areas').replace('{s}', String(skillCount(c))).replace('{a}', String(c.areas.length));
     return (
         <div className="pb-10">
             <div className="flex flex-col gap-2.5">
                 {rows.map((c) => {
-                    const status: ConnStatus = c.native ? 'connected' : connStatus[c.id];
+                    const status: ConnStatus = c.native ? 'connected' : connStatus[c.id] ?? 'connected';
                     const disabled = status === 'off' || status === 'lost';
                     return (
                         <Card key={c.id} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3.5" style={disabled ? { background: '#fafafa' } : undefined}>
@@ -871,6 +875,8 @@ const FLOW_PERF: Record<string, { actions: number; hours: number; pct: number }>
     't-ax-weekly': { actions: 1342, hours: 96, pct: 94 },
     't-ax-ctrl': { actions: 318, hours: 22, pct: 88 },
     't-ax-close': { actions: 33, hours: 14, pct: 82 },
+    't-likvido': { actions: 41, hours: 9, pct: 88 },
+    't-rackbeat': { actions: 126, hours: 17, pct: 91 },
 };
 
 // ---- Office view (partner zoom): which routines run across which clients, what

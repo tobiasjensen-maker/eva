@@ -55,6 +55,7 @@ interface Props {
     seedTurns?: Turn[] | null; // the conversation so far, when opened from the EVA panel
     onTurns?: (turns: Turn[]) => void; // reports the conversation as it changes (AX keeps the docked panel in step)
     headerLeft?: ReactNode; // replaces the agreement pill (AX: the client picker from Tasks)
+    textSuggestions?: string[]; // suggestions after a text answer (AX: its own, incl. the partner examples)
     onMinimise?: () => void; // AX: shrink back into the side panel
 }
 
@@ -500,7 +501,8 @@ const SEED_HISTORY: HistoryItem[] = [
     },
 ];
 
-export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns, onTurns, headerLeft, onMinimise }: Props) {
+export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns, onTurns, headerLeft, onMinimise, textSuggestions }: Props) {
+    TEXT_SUGGESTIONS = textSuggestions ?? null;
     const { t, lang } = useLang();
     // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
     // Opened from the EVA panel: continue that conversation (shown as it was, not re-typed).
@@ -551,6 +553,10 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
 
     function classify(text: string): AssistantMsg {
         const t = text.toLowerCase();
+
+        // Partner actions, done through their connectors — proposed as a plan you approve, then offered as a routine.
+        const partner = partnerPlan(t);
+        if (partner) return { id: nextId(), role: 'assistant', kind: 'plan', phase: 'awaiting', ...partner, steps: partner.steps.map((label) => ({ label, status: 'todo' as const })) };
 
         const mentioned = spaces.find((s) => t.includes('@' + s.title.toLowerCase()));
         if (mentioned) {
@@ -1184,6 +1190,27 @@ function Composer({
     );
 }
 
+// Likvido (debt collection) and RackBeat (inventory): what EVA does when you ask, as a plan.
+function partnerPlan(t: string): { intro: string; steps: string[]; result: string; outcome: { title: string; sub: string }; workflow: { skill: string; skillDesc: string; value: string } } | null {
+    if (/likvido|inkasso|debt collection|to collection/.test(t)) return {
+        intro: 'I can do that through Likvido. Here’s my plan — nothing goes to collection until you approve.',
+        steps: ['Find Café Solsikke’s invoices past the dunning limit (3 · 18.400 kr)', 'Check each against payments and open disputes', 'Hand the 3 cases to Likvido collection', 'Book Likvido’s payouts and fees as they arrive'],
+        result: 'Done. 3 invoices (18.400 kr) are with Likvido collection. I’ll book the payouts and fees as they come in, and tell you if a customer disputes.',
+        outcome: { title: '3 invoices sent to Likvido', sub: '18.400 kr · Café Solsikke' },
+        workflow: { skill: 'Automated debt collection', skillDesc: 'Escalate overdue invoices to Likvido collection and reconcile the payouts automatically.', value: 'As a routine, I’d hand invoices to Likvido the day they pass the dunning limit — and book every payout without you lifting a finger.' },
+    };
+    if (/rackbeat|stock|reorder|purchase order|lager|genbestil|indkøb/.test(t)) return {
+        intro: 'I can do that through RackBeat. Here’s my plan — no purchase order goes out until you approve.',
+        steps: ['Read stock levels in RackBeat for Bryg & Co ApS', 'Compare with the last 8 weeks of sales (4 items below reorder point)', 'Draft purchase orders for the 4 items (2 suppliers)', 'Create the orders in RackBeat and sync stock to e-conomic'],
+        result: 'Done. I created 2 purchase orders in RackBeat (4 items, 23.750 kr) and synced the stock value to e-conomic. Delivery is expected Friday.',
+        outcome: { title: '2 purchase orders created', sub: '4 items · 23.750 kr · Bryg & Co ApS' },
+        workflow: { skill: 'Stock-aware reordering', skillDesc: 'Keep stock in sync with RackBeat and raise purchase orders before you run out.', value: 'As a routine, I’d check stock every morning and have the purchase orders ready before anything runs out.' },
+    };
+    return null;
+}
+// AX: suggestions after a text answer (set by the host; Vision keeps the defaults below)
+let TEXT_SUGGESTIONS: string[] | null = null;
+
 function followUpsFor(msg: AssistantMsg): string[] {
     switch (msg.kind) {
         case 'data': {
@@ -1225,7 +1252,7 @@ function followUpsFor(msg: AssistantMsg): string[] {
         case 'skill':
             return ['What else can you automate?', 'Show my active skills'];
         case 'text':
-            return ['Which invoices are overdue?', 'Show my Q4 P&L', 'Send payment reminders'];
+            return TEXT_SUGGESTIONS ?? ['Which invoices are overdue?', 'Show my Q4 P&L', 'Send payment reminders'];
         default:
             return [];
     }

@@ -160,6 +160,18 @@ const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
 let spaceSeq = 100;
 let skillSeq = 100;
 
+// AX side panel: asking EVA to use a partner — answered in words; the plan to approve is in full-screen Chat.
+function partnerAnswer(q: string, lang: 'en' | 'da'): string | null {
+    const s = q.toLowerCase();
+    if (/likvido|inkasso|collection/.test(s))
+        return lang === 'da' ? 'Det kan jeg gøre via Likvido: 3 af Café Solsikkes fakturaer er over rykkergrænsen (18.400 kr). Jeg overdrager dem til Likvido-inkasso og bogfører udbetalingerne, når de kommer. Åbn mig i fuld skærm ⤢ for at se planen og godkende den.'
+            : 'I can do that through Likvido: 3 of Café Solsikke’s invoices are past the dunning limit (18.400 kr). I’d hand them to Likvido collection and book the payouts as they arrive. Open me in full screen ⤢ to see the plan and approve it.';
+    if (/rackbeat|stock|reorder|lager|genbestil|indkøb/.test(s))
+        return lang === 'da' ? 'Det kan jeg gøre via RackBeat: 4 varer hos Bryg & Co ApS er under genbestillingspunktet. Jeg laver indkøbsordrer til 2 leverandører (23.750 kr) og synkroniserer lageret til e-conomic. Åbn mig i fuld skærm ⤢ for at se planen og godkende den.'
+            : 'I can do that through RackBeat: 4 items at Bryg & Co ApS are below their reorder point. I’d draft purchase orders for 2 suppliers (23.750 kr) and sync stock to e-conomic. Open me in full screen ⤢ to see the plan and approve it.';
+    return null;
+}
+
 export default function App() {
     const toast = useToast();
     const [view, setView] = useState<ViewId>(() => {
@@ -218,7 +230,7 @@ export default function App() {
     useEffect(() => { if (!['activity', 'activitylog', 'skills', 'home', 'chat'].includes(view)) setWorkClient(null); }, [view]);
     const [newRoutineTick, setNewRoutineTick] = useState(0);
     // Connector status — shared by Routines (template gating) and the Connectors page.
-    const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() => Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus])));
+    const [connStatus, setConnStatus] = useState<Record<string, ConnStatus>>(() => ({ ...Object.fromEntries(SYSTEM_CAPS.map((c) => [c.id, 'connected' as ConnStatus])), likvido: 'connected', rackbeat: 'connected' }));
     // The work board's tasks — shared by Work and the Portfolio overview's "My tasks".
     const [tasks, setTasks] = useState(TASKS);
     // Client conversations — shared so the rail badge and client profiles stay in sync.
@@ -997,6 +1009,7 @@ export default function App() {
                         onSelectClient={applyScope}
                         seedTurns={chatCarry}
                         onMinimise={embedded ? () => closeUniverse() : undefined}
+                        textSuggestions={ax ? ['Send Café Solsikke’s overdue invoices to Likvido', 'Check stock and reorder in RackBeat', 'What’s left to close September?'] : undefined}
                         // AX: the same client picker as on Tasks (shared client), instead of the agreement pill
                         headerLeft={ax ? <AgreementSelector align="left" value={workClient} onChange={setWorkClient} counts={Object.fromEntries(MY_PORTFOLIO.map(({ name: n }) => [n, decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen' && d.company === n).length]))} /> : undefined}
                         onTurns={ax ? (turns) => { try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify(turns)); } catch { /* ignore */ } } : undefined}
@@ -1176,6 +1189,8 @@ export default function App() {
                         respond={(q) => {
                             const j = journalAnswer(q, lang);
                             if (j) { setEcoFlagged(true); return j; }
+                            const p = partnerAnswer(q, lang);
+                            if (p) return p;
                             return EVA_CHIPS.includes(q) || !chatPanel ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }) : chatPanel.respond(q);
                         }}
                         collapsed={false}
