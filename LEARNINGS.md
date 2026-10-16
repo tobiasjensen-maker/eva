@@ -70,8 +70,13 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   Solsikke's overdue invoices to Likvido", "Check stock and reorder in RackBeat" — also suggested): EVA proposes
   a plan, you approve, it runs, and EVA offers to make it a routine. In the side panel EVA answers in words and
   points to the plan in full screen (`partnerAnswer`).
-- **Connectors** (`#/connectors`) — e-conomic plus Likvido and RackBeat (the partner routines use them);
-  *Add connector* asks which system you'd want. Same ⤡ / ✕.
+- **Routine setup** — Trigger → Actions; **no conditions in AX**. Each action step shows the **prompt** EVA follows
+  for it (`STEP_PROMPTS` in SkillsView — written for every step of the five AX routines; other steps get a
+  generic prompt built from the step name).
+- **Connectors** (`#/connectors`) — e-conomic plus Likvido and RackBeat (the partner routines use them) and
+  anything added in AX (its own installed set, kept for the session). *Add connector* shows the whole directory
+  (Bank feeds, Zenegy, Shopify, Minuba, HubSpot, Stripe, Outlook, Budget123, Creditro…) with a *Missing a
+  system?* request field below it. Same ⤡ / ✕.
 Expanding EVA from e-conomic opens on Tasks; anything else redirects there. Note: the Vision / AX switch is `va-scope` in localStorage; the agreement scope has its own key
 (`va-agreement-scope`) — sharing one key made the chat show "ax" as an agreement and flipped AX to Vision on reload.
 (Controlling — closing summary +

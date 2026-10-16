@@ -543,8 +543,11 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
     const dependentsOf = (capId: string) => flows.filter((f) => f.capId === capId).map((f) => t(f.skill.title));
 
     // --- connector lifecycle ---
-    const connectConnector = (id: string) => setConnStatus((prev) => ({ ...prev, [id]: 'connected' }));
-    const uninstallConnector = (id: string) => setConnStatus((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    // AX keeps its own set of installed connectors (e-conomic + the partners its routines use + what you add)
+    const [axConnected, setAxConnected] = useState<string[]>(() => { try { return JSON.parse(sessionStorage.getItem('va-ax-connected') ?? 'null') ?? AX_PARTNERS; } catch { return AX_PARTNERS; } });
+    useEffect(() => { try { sessionStorage.setItem('va-ax-connected', JSON.stringify(axConnected)); } catch { /* ignore */ } }, [axConnected]);
+    const connectConnector = (id: string) => { setConnStatus((prev) => ({ ...prev, [id]: 'connected' })); setAxConnected((p) => (p.includes(id) ? p : [...p, id])); };
+    const uninstallConnector = (id: string) => { setConnStatus((prev) => { const n = { ...prev }; delete n[id]; return n; }); setAxConnected((p) => p.filter((x) => x !== id)); };
     const simulateLost = (id: string) => setConnStatus((prev) => ({ ...prev, [id]: 'lost' }));
     function toggleConnector(id: string) {
         const status = connStatus[id];
@@ -613,6 +616,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
                     start={sheet.start}
                     startId={sheet.id}
                     connStatus={connStatus}
+                    installedIds={ax ? ['economic', ...axConnected] : undefined}
                     onConnect={connectConnector}
                     onUninstall={uninstallConnector}
                     onClose={() => setSheet(null)}
@@ -676,6 +680,7 @@ export default function AutomationsView({ skills, onEnable, page = 'routines', o
             <PageHeader title={t('Connectors')} showScope={false} right={<><Button appearance="primary" onClick={() => setSheet({ start: 'grid' })}><Icon name="circle-plus" /> {t('Add connector')}</Button>{headerExtra}</>} />
             <div className="mx-auto px-8 pt-5 pb-7 land-kids" style={{ maxWidth: 1240 }}>
                 <ConnectorsList
+                    axIds={axConnected}
                     connStatus={connStatus}
                     onAdd={() => setSheet({ start: 'grid' })}
                     onDetails={(id) => setSheet({ start: 'detail', id })}
@@ -740,7 +745,8 @@ function RowMenu({ items }: { items: { label: string; icon: string; onClick: () 
 }
 
 // ---- Connectors tab — the installed list (core + installed partners) ----
-function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, onUninstall, onSimulateLost }: {
+function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, onUninstall, onSimulateLost, axIds = [] }: {
+    axIds?: string[]; // AX: its installed set
     connStatus: Record<string, ConnStatus>;
     onAdd: () => void;
     onDetails: (id: string) => void;
@@ -751,7 +757,7 @@ function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, o
 }) {
     const { t } = useLang();
     const { ax } = useScopeMode(); // AX: e-conomic, plus the two partners its example routines use
-    const rows = CAPABILITIES.filter((c) => c.native || (ax ? AX_PARTNERS.includes(c.id) : c.id in connStatus));
+    const rows = CAPABILITIES.filter((c) => c.native || (ax ? axIds.includes(c.id) : c.id in connStatus));
     const metaLine = (c: Capability) =>
         t('{s} skills · {a} areas').replace('{s}', String(skillCount(c))).replace('{a}', String(c.areas.length));
     return (
@@ -809,11 +815,28 @@ function ConnectorsList({ connStatus, onAdd, onDetails, onToggle, onReconnect, o
 }
 
 // AX: no partner connectors to add yet — an empty state that asks which system you'd want.
-function ConnectorRequest() {
+function ConnectorRequest({ compact = false }: { compact?: boolean }) {
     const { t } = useLang();
     const [name, setName] = useState('');
     const [sent, setSent] = useState<string[]>([]);
     const send = () => { const v = name.trim(); if (!v) return; setSent((prev) => [...prev, v]); setName(''); };
+    // compact: under the directory — "missing one?"
+    if (compact) return (
+        <div className="mt-5 rounded-xl p-4" style={{ background: '#f7f7f8', border: `1px solid ${COLORS.cardBorder}` }}>
+            <p className="text-sm font-semibold" style={{ color: COLORS.text }}>{t('Missing a system?')}</p>
+            <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('Tell us which one you’d like EVA to connect to — it helps us decide what to build next.')}</p>
+            <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('e.g. Dinero, Billy, Salesforce…')}
+                    className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm bg-white" style={{ border: `1px solid ${COLORS.cardBorder}`, color: COLORS.text }} />
+                <Button appearance="primary" type="submit" disabled={!name.trim()}>{t('Request')}</Button>
+            </form>
+            {sent.map((n, i) => (
+                <p key={`${n}-${i}`} className="mt-2 flex items-center gap-2 text-sm rounded-lg px-3 py-2" style={{ background: '#eef7ef', color: '#15803d' }}>
+                    <Icon name="circle-tick" /> {t('Thanks — we’ve noted {name}.').replace('{name}', n)}
+                </p>
+            ))}
+        </div>
+    );
     return (
         <div className="flex flex-col items-center text-center py-4">
             <span className="flex items-center justify-center rounded-full mb-3" style={{ width: 48, height: 48, background: '#f4f4f6', color: COLORS.textMuted }}><Icon name="connection-revoke" /></span>
@@ -1116,7 +1139,8 @@ function ConnectorDirectoryCard({ cap, installed, onInstall, onOpen }: { cap: Ca
 }
 
 // ---- Connector sheet: directory → drill-down → consent, all one surface ----
-function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, onClose }: {
+function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, onClose, installedIds }: {
+    installedIds?: string[]; // AX: what's installed in AX (its own set), instead of every connection in connStatus
     start: 'grid' | 'detail' | 'reconnect';
     startId?: string;
     connStatus: Record<string, ConnStatus>;
@@ -1125,7 +1149,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
     onClose: () => void;
 }) {
     const { t } = useLang();
-    const { ax } = useScopeMode(); // AX: no partner directory yet — collect what people want instead
+    const { ax } = useScopeMode(); // AX: the directory too, plus a field to request what's missing
     const host = CAPABILITIES.find((c) => c.id === 'economic')!;
     const homeIsGrid = start === 'grid';
     const [view, setView] = useState<'grid' | 'detail' | 'consent'>(start === 'reconnect' ? 'consent' : start);
@@ -1136,7 +1160,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
     const [cat, setCat] = useState('All');
 
     const active = activeId ? CAPABILITIES.find((c) => c.id === activeId) ?? null : null;
-    const isInstalled = (id: string) => id in connStatus;
+    const isInstalled = (id: string) => (installedIds ? installedIds.includes(id) : id in connStatus);
 
     const partners = CAPABILITIES.filter((c) => !c.native);
     const categories = Array.from(new Set(partners.map((c) => c.category)));
@@ -1160,7 +1184,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
-            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: ax && view === 'grid' ? 'min(520px, 94vw)' : 'min(880px, 94vw)', height: ax && view === 'grid' ? 'auto' : 'min(760px, 92vh)', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl flex flex-col overflow-hidden anim-in" style={{ width: 'min(880px, 94vw)', height: 'min(760px, 92vh)', boxShadow: '0 24px 64px rgba(0,0,0,0.28)' }} onClick={(e) => e.stopPropagation()}>
                 {/* header / breadcrumb */}
                 <header className="flex items-center gap-2 px-5 py-4 shrink-0" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     {view === 'grid' && <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('Add a connector')}</h2>}
@@ -1177,8 +1201,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
 
                 {/* body */}
                 <div className="flex-1 overflow-y-auto p-5" style={{ minHeight: 0 }}>
-                    {view === 'grid' && ax && <ConnectorRequest />}
-                    {view === 'grid' && !ax && (
+                    {view === 'grid' && (
                         <>
                             <MarketFilters query={query} onQuery={setQuery} cat={cat} onCat={setCat} categories={categories} placeholder={t('Search connectors…')} />
                             {filtered.length === 0 ? (
@@ -1190,6 +1213,7 @@ function ConnectorSheet({ start, startId, connStatus, onConnect, onUninstall, on
                                     ))}
                                 </div>
                             )}
+                            {ax && <ConnectorRequest compact />}
                         </>
                     )}
 
@@ -1557,6 +1581,41 @@ function seedStarter(cfg: SkillConfig): string {
 function SectionLabel({ children }: { children: ReactNode }) {
     return <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.textMuted }}>{children}</p>;
 }
+// The prompt EVA follows for each action step — shown under the step in the routine setup.
+const STEP_PROMPTS: Record<string, string> = {
+    "Import bank transactions": "Fetch every new bank transaction for each agreement since the last run. Skip lines already imported; note any account whose feed is out of date.",
+    "Match transactions to documents": "Match each bank line to a document by amount, date and reference. If two documents fit, prefer the same supplier; if none fits within 3 days, leave the line for review.",
+    "Read new Inbox documents": "Read each new document in the Inbox: type, supplier, date, amounts and VAT. If something is unreadable or missing, say what and keep the document aside.",
+    "Draft postings with accounts and VAT": "Draft a posting per document using the account and VAT code this supplier was booked with before. If this is a new supplier or the amount is unusual, explain your choice.",
+    "Request missing documents from the client": "For bank lines with no document after 3 days, ask the client in one grouped message per agreement. Follow up every 3 days; stop when it arrives.",
+    "Post what’s confident, route the rest for review": "Post drafts you are at least 95% sure of and below the auto-booking limit. Send everything else to Tasks as an Action, with your reasoning.",
+    "Gather the month’s booked postings": "Collect every posting booked in the month for each agreement, including corrections and postings made by people.",
+    "Check accounts against the account plan and history": "Compare each posting’s account with how this supplier or customer has been booked over the last 12 months. Flag deviations that change the result or VAT.",
+    "Check VAT codes and reverse charge": "Check every VAT code against the transaction: domestic or EU, goods or services, deductible or not. Flag reverse-charge lines that look wrong.",
+    "Check periods and accruals": "Check that each cost and income sits in the right period. Suggest an accrual when the service period differs from the posting date.",
+    "Prepare corrections": "For each finding, prepare the correcting posting and the effect on the result and VAT. Do not post it.",
+    "Flag findings for you": "Add each finding to Tasks as a Flag, ranked by impact, with the voucher, what is wrong and the suggested fix.",
+    "Confirm the bank is fully reconciled": "Confirm every bank line in the period is matched. List anything still open per agreement.",
+    "Chase the last missing documents": "Send one last reminder for documents still missing in the period, naming the deadline for the close.",
+    "Post the remaining drafts": "Post the drafts that have been approved. Leave anything still waiting for review open and list it.",
+    "Run the final posting": "Run the period’s final postings: accruals, depreciation and the VAT settlement, as set up for the agreement.",
+    "Close the period": "When nothing is open, close the period so no more postings can land in it. If something is still open, stop and say what.",
+    "Send the month-end report": "Send the agreement a short month-end report: result, balance, VAT due, and anything they need to act on.",
+    "Find invoices past the dunning limit": "Find customer invoices past the agreement’s dunning limit that have had all reminders and no open dispute.",
+    "Escalate to collection": "Hand each collection-ready invoice to Likvido with the invoice, reminders and customer details. Never send a disputed invoice.",
+    "Reconcile Likvido payouts": "When Likvido pays out, book the payment against the invoice and the fee to the collection-cost account.",
+    "Sync stock levels": "Read stock levels from RackBeat and update stock values in e-conomic. Flag differences larger than 2%.",
+    "Create a purchase order": "For items below their reorder point, draft a purchase order with the usual supplier and quantity. Never send it without approval.",
+    "Book cost of goods": "Book the cost of goods sold from RackBeat’s sales for the period, by product group.",
+};
+function stepPrompt(label: string, t: (s: string) => string, lang: string): string {
+    const known = STEP_PROMPTS[label];
+    if (known) return t(known);
+    return lang === 'da'
+        ? `${t(label)} for hver aftale i rutinen. Brug aftalens kontoplan, de seneste 12 måneder og dens bilag. Er du i tvivl, så stop og giv det til revisoren med din begrundelse.`
+        : `${label} for each agreement in the routine. Use the agreement’s account plan, its last 12 months and its documents. When you’re not sure, stop and hand it to the accountant with your reasoning.`;
+}
+
 function FlowConnector() {
     return <div className="flex justify-center py-1.5"><span style={{ width: 2, height: 14, background: COLORS.cardBorder, borderRadius: 2 }} /></div>;
 }
@@ -1578,7 +1637,8 @@ function FlowDiagram({
     onRemoveAction?: (i: number) => void;
     onEditAction?: (i: number, step: FlowStep) => void;
 }) {
-    const { t } = useLang();
+    const { t, lang } = useLang();
+    const { ax } = useScopeMode(); // AX: no conditions — each step's prompt says when to stop and hand over
     const starterDef = FLOW_STARTERS.find((s) => s.id === starterId);
     const addBtn = (label: string, onClick: () => void) => (
         <button onClick={onClick} className="w-full flex items-center gap-2 rounded-xl p-3 text-sm font-medium" style={{ border: `1.5px dashed ${COLORS.cardBorder}`, color: '#4456c7' }}
@@ -1608,7 +1668,8 @@ function FlowDiagram({
 
             <FlowConnector />
 
-            {/* Conditions */}
+            {/* Conditions (not in AX) */}
+            {!ax && <>
             <SectionLabel>{t('Conditions')}</SectionLabel>
             <div className="flex flex-col">
                 {conditions.length === 0 && !onAddCondition && (
@@ -1632,6 +1693,7 @@ function FlowDiagram({
             </div>
 
             <FlowConnector />
+            </>}
 
             {/* Actions */}
             <SectionLabel>{t('Actions')}</SectionLabel>
@@ -1643,14 +1705,20 @@ function FlowDiagram({
                             {i > 0 && <FlowConnector />}
                             <div
                                 onClick={clickable ? () => onEditAction!(i, s) : undefined}
-                                className={`flex items-center gap-3 rounded-xl p-3 ${clickable ? 'cursor-pointer' : ''}`}
+                                className={`flex items-start gap-3 rounded-xl p-3 ${clickable ? 'cursor-pointer' : ''}`}
                                 style={{ border: `1px solid ${COLORS.cardBorder}`, background: '#fff' }}
                                 onMouseEnter={clickable ? (e) => (e.currentTarget.style.background = '#fafafa') : undefined}
                                 onMouseLeave={clickable ? (e) => (e.currentTarget.style.background = '#fff') : undefined}
                             >
                                 {tile(s.icon, s.capId ? '#f3f0fb' : '#f1f1f3', s.capId ? '#7c3aed' : '#52525b')}
-                                <span className="flex-1 text-sm" style={{ color: COLORS.text }}>{t(s.label)}</span>
-                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
+                                <div className="flex-1 min-w-0">
+                                    <span className="block text-sm pt-1" style={{ color: COLORS.text }}>{t(s.label)}</span>
+                                    {/* the prompt EVA follows for this step */}
+                                    <p className="mt-2 rounded-lg px-3 py-2 text-xs leading-relaxed" style={{ background: '#f7f7f8', border: `1px solid ${COLORS.cardBorder}`, color: '#3f3f46' }}>
+                                        <span className="font-semibold mr-1.5" style={{ color: COLORS.textMuted }}>{t('Prompt')}</span>{stepPrompt(s.label, t, lang)}
+                                    </p>
+                                </div>
+                                {s.capId && <span className="rounded-full px-2 py-0.5 text-xs shrink-0 mt-1" style={{ background: '#f3f0fb', color: '#7c3aed' }}>{CAPABILITIES.find((c) => c.id === s.capId)?.name}</span>}
                                 <ApproachTag step={s} />
                                 {clickable && <Icon name="settings" style={{ color: '#c4c4cc' }} />}
                                 {onRemoveAction && (
