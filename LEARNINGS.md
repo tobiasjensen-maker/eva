@@ -142,8 +142,8 @@ the day starts; every other page is "further in".**
   expertise** (with show-work) and **My clients** — your whole book of 40 (`MY_PORTFOLIO` in `practice.ts`), paginated 8 per page, whose rows open the client
   profile (talking points, peer benchmarks) and from there the client's deep analysis (the
   former Advisory page, `InsightsView.tsx`, `#/insights`).
-  **My clients defaults to an "Attention" card view** (`ClientCards.tsx`, Vision only; *Attention | List*
-  toggle, remembered in `va-portfolio-mode`): one card per client, ranked by a mock **health score**
+  **My clients has a *List | Priority* switch (List by default)** — Priority is a card view (`ClientCards.tsx`, Vision only; *Attention | List*
+  toggle, remembered in `va-portfolio-tab`): one card per client, ranked by a mock **health score**
   (`healthOf` — blocked books, EVA's flags/actions, signals, revenue dip, below target rate, open items,
   low automation) into *Needs you now* (<60) · *Keep an eye on* (<85) · *On track* (collapsed). A card
   answers two things at a glance (the reason lines were tried and cut — the ring + agent status say enough): the **financial

@@ -128,9 +128,9 @@ function ClientCard({ c, h, flags, actions, onOpen }: { c: Client; h: Health; fl
 
 export function ClientPortfolio({ decisions, onOpen }: { decisions: DecisionItem[]; onOpen: (c: Client) => void }) {
     const { t, lang } = useLang();
-    const [mode, setMode] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('va-portfolio-mode') === 'list' ? 'list' : 'cards'; } catch { return 'cards'; } });
+    const [mode, setMode] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('va-portfolio-tab') === 'cards' ? 'cards' : 'list'; } catch { return 'list'; } });
     const [showOk, setShowOk] = useState(false);
-    const setM = (m: 'cards' | 'list') => { setMode(m); try { localStorage.setItem('va-portfolio-mode', m); } catch { /* ignore */ } };
+    const setM = (m: 'cards' | 'list') => { setMode(m); try { localStorage.setItem('va-portfolio-tab', m); } catch { /* ignore */ } };
     const toggle = <SegmentedTabs value={mode} onChange={(v) => setM(v as 'cards' | 'list')} options={[{ value: 'list', label: t('List') }, { value: 'cards', label: t('Priority') }]} />;
     if (mode === 'list') return <ClientList onSelect={onOpen} headerExtra={toggle} />;
 
