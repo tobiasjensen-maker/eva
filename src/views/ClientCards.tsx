@@ -62,7 +62,8 @@ function Sparkline({ c }: { c: Client }) {
     const min = Math.min(...pts), max = Math.max(...pts), span = Math.max(1, max - min);
     const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${(i / 11) * 64},${20 - ((p - min) / span) * 18 + 1}`).join(' ');
     const up = c.trend >= 0;
-    return <svg width="64" height="22" viewBox="0 0 64 22" aria-hidden><path d={d} fill="none" stroke={up ? '#16a34a' : '#dc2626'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+    // Stretches to the column's width; the stroke keeps its weight however wide it gets.
+    return <svg width="100%" height="22" viewBox="0 0 64 22" preserveAspectRatio="none" aria-hidden style={{ display: 'block', overflow: 'visible' }}><path d={d} fill="none" stroke={up ? '#16a34a' : '#dc2626'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" /></svg>;
 }
 
 // Subtle status tags (tint + text), the same family as the Flag/Action and severity pills.
