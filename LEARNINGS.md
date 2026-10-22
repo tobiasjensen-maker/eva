@@ -148,8 +148,8 @@ the day starts; every other page is "further in".**
   low automation) into *Needs you now* (<60) · *Keep an eye on* (<85) · *On track* (collapsed). A card
   answers two things at a glance (the reason lines were tried and cut — the ring + agent status say enough): the **financial
   picture** (revenue trend + sparkline, kr/h vs target, EVA %) and **agent status** (Bookkeeping /
-  Controlling / Month-end). One CTA: *Review n* (opens the decision) — or, with nothing to approve but
-  low health, *See what EVA knows* (the client drawer). Lesson: with mostly healthy mock data, scoring
+  Controlling / Month-end). One CTA: *Review n* (opens the decision) — nothing else; an extra
+  "See what EVA knows" button was tried and cut (the card opens the drawer). Lesson: with mostly healthy mock data, scoring
   had to weigh many small signals or 37 of 40 landed "On track" — the view only works if it spreads.
   *Replaced:* the step-by-step "My day" chat briefing (in git history before this change);
   "Walk me through my day" in the question box carries its spirit.

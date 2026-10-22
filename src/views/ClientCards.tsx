@@ -123,7 +123,7 @@ function ClientCard({ c, h, flags, actions, onOpen, onReview }: { c: Client; h: 
             <div className="flex items-center gap-2 pt-1 mt-auto" onClick={(e) => e.stopPropagation()}>
                 {onReview ? <Button appearance="primary" onClick={onReview}>{t('Review')} {flags + actions}</Button>
                     : h.level === 'ok' ? <span className="flex items-center gap-1.5 text-xs" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Nothing for you')}</span>
-                    : <Button onClick={onOpen}>{t('See what EVA knows')}</Button>}
+                    : null}
                 <button onClick={onOpen} className="ml-auto text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open client')} →</button>
             </div>
         </div>
