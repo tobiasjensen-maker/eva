@@ -153,9 +153,8 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                 </div>
 
                 {/* the portfolio, ranked by what needs you (or the plain list, one toggle away) */}
-                <div className="land" style={{ ['--d' as string]: '440ms' }}><ClientPortfolio decisions={decisions.filter((d) => d.accountant === ME)} onOpen={setSel} onReview={setReview} /></div>
+                <div className="land" style={{ ['--d' as string]: '440ms' }}><ClientPortfolio decisions={decisions.filter((d) => d.accountant === ME)} onOpen={setSel} /></div>
             </div>
-            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
 
             {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
         </div>

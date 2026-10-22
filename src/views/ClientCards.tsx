@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Button, Icon } from '@economic/taco';
-import { COLORS, ClientAvatar, CountBadge, Orb, SegmentedTabs } from '../ui';
+import { COLORS, ClientAvatar, CountBadge, SegmentedTabs } from '../ui';
 import { useLang } from '../i18n';
 import type { DecisionItem } from '../day';
 import { MY_PORTFOLIO, TARGET_RATE, rateOf, type Client } from '../practice';
@@ -66,15 +65,18 @@ function Sparkline({ c }: { c: Client }) {
     return <svg width="64" height="22" viewBox="0 0 64 22" aria-hidden><path d={d} fill="none" stroke={up ? '#16a34a' : '#dc2626'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function ClientCard({ c, h, flags, actions, onOpen, onReview }: { c: Client; h: Health; flags: number; actions: number; onOpen: () => void; onReview?: () => void }) {
+// Subtle status tags (tint + text), the same family as the Flag/Action and severity pills.
+const TAG = { red: ['#fdecec', '#b42318'], amber: ['#fdf1dc', '#92710f'], green: ['#e9f7ef', '#15803d'], blue: ['#eef2ff', '#3341a8'] } as const;
+
+function ClientCard({ c, h, flags, actions, onOpen }: { c: Client; h: Health; flags: number; actions: number; onOpen: () => void }) {
     const { t } = useLang();
     const rate = rateOf(c);
     const rateOk = rate >= TARGET_RATE;
-    const close = c.books === 'closed' ? { label: 'Closed', fg: '#15803d' } : c.books === 'todo' ? { label: 'In progress', fg: '#2f6fb0' } : { label: 'Blocked', fg: '#dc2626' };
-    const agents: { emoji: string; label: string; state: string; fg: string }[] = [
-        { emoji: '🗓️', label: 'Bookkeeping', state: c.books === 'blocked' ? t('Waiting on documents') : actions ? `${actions} ${t('to approve')}` : t('Running'), fg: c.books === 'blocked' ? '#dc2626' : actions ? '#b9842b' : '#15803d' },
-        { emoji: '🔍', label: 'Controlling', state: flags ? `${flags} ${t(flags === 1 ? 'flag' : 'flags')}` : t('All clear'), fg: flags ? '#dc2626' : '#15803d' },
-        { emoji: '✅', label: 'Month-end', state: t(close.label), fg: close.fg },
+    const close = c.books === 'closed' ? { label: 'Closed', tone: 'green' } as const : c.books === 'todo' ? { label: 'In progress', tone: 'blue' } as const : { label: 'Blocked', tone: 'red' } as const;
+    const agents: { emoji: string; label: string; state: string; tone: keyof typeof TAG }[] = [
+        { emoji: '🗓️', label: 'Bookkeeping', state: c.books === 'blocked' ? t('Waiting on documents') : actions ? `${actions} ${t('to approve')}` : t('Running'), tone: c.books === 'blocked' ? 'red' : actions ? 'amber' : 'green' },
+        { emoji: '🔍', label: 'Controlling', state: flags ? `${flags} ${t(flags === 1 ? 'flag' : 'flags')}` : t('All clear'), tone: flags ? 'red' : 'green' },
+        { emoji: '✅', label: 'Month-end', state: t(close.label), tone: close.tone },
     ];
     return (
         <div onClick={onOpen} className="rounded-2xl bg-white p-4 flex flex-col gap-3 cursor-pointer transition-shadow"
@@ -85,7 +87,7 @@ function ClientCard({ c, h, flags, actions, onOpen, onReview }: { c: Client; h: 
                 <ClientAvatar name={c.name} size={34} />
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: COLORS.text }}>{c.name}</p>
-                    <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{t(c.industry)} · {c.no}</p>
+                    <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{c.no}</p>
                 </div>
                 <HealthRing score={h.score} level={h.level} />
             </div>
@@ -110,27 +112,21 @@ function ClientCard({ c, h, flags, actions, onOpen, onReview }: { c: Client; h: 
             </div>
 
             {/* agent status */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
                 {agents.map((a) => (
                     <div key={a.label} className="flex items-center gap-2 text-xs">
                         <span className="w-4 text-center">{a.emoji}</span>
                         <span className="flex-1" style={{ color: COLORS.textMuted }}>{t(a.label)}</span>
-                        <span className="font-medium" style={{ color: a.fg }}>{a.state}</span>
+                        <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: TAG[a.tone][0], color: TAG[a.tone][1] }}>{a.state}</span>
                     </div>
                 ))}
             </div>
 
-            <div className="flex items-center gap-2 pt-1 mt-auto" onClick={(e) => e.stopPropagation()}>
-                {onReview ? <Button appearance="primary" onClick={onReview}>{t('Review')} {flags + actions}</Button>
-                    : h.level === 'ok' ? <span className="flex items-center gap-1.5 text-xs" style={{ color: '#15803d' }}><Icon name="circle-tick" /> {t('Nothing for you')}</span>
-                    : null}
-                <button onClick={onOpen} className="ml-auto text-xs font-medium" style={{ color: '#4456c7' }}>{t('Open client')} →</button>
-            </div>
         </div>
     );
 }
 
-export function ClientPortfolio({ decisions, onOpen, onReview }: { decisions: DecisionItem[]; onOpen: (c: Client) => void; onReview: (d: DecisionItem) => void }) {
+export function ClientPortfolio({ decisions, onOpen }: { decisions: DecisionItem[]; onOpen: (c: Client) => void }) {
     const { t, lang } = useLang();
     const [mode, setMode] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('va-portfolio-mode') === 'list' ? 'list' : 'cards'; } catch { return 'cards'; } });
     const [showOk, setShowOk] = useState(false);
@@ -142,10 +138,9 @@ export function ClientPortfolio({ decisions, onOpen, onReview }: { decisions: De
     const rows = MY_PORTFOLIO.map((c) => {
         const mine = open.filter((d) => d.company === c.name);
         const flags = mine.filter((d) => d.correction).length, actions = mine.length - flags;
-        return { c, mine, flags, actions, h: healthOf(c, flags, actions, lang === 'da') };
+        return { c, flags, actions, h: healthOf(c, flags, actions, lang === 'da') };
     }).sort((a, b) => a.h.score - b.h.score);
     const groups: { key: Health['level']; items: typeof rows }[] = (['now', 'watch', 'ok'] as const).map((key) => ({ key, items: rows.filter((r) => r.h.level === key) }));
-    const counts = Object.fromEntries(groups.map((g) => [g.key, g.items.length]));
 
     const section = (key: Health['level'], items: typeof rows, extra?: ReactNode) => (
         <div key={key} className="flex flex-col gap-3">
@@ -156,21 +151,17 @@ export function ClientPortfolio({ decisions, onOpen, onReview }: { decisions: De
                 {extra}
             </div>
             <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                {items.map((r) => <ClientCard key={r.c.id} c={r.c} h={r.h} flags={r.flags} actions={r.actions} onOpen={() => onOpen(r.c)} onReview={r.mine.length ? () => onReview(r.mine[0]) : undefined} />)}
+                {items.map((r) => <ClientCard key={r.c.id} c={r.c} h={r.h} flags={r.flags} actions={r.actions} onOpen={() => onOpen(r.c)} />)}
             </div>
         </div>
     );
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('My clients')}</h2>
                 {toggle}
             </div>
-            <p className="text-sm mb-4 flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                <Orb size={14} />
-                {t('Ranked by what needs you')} — {counts.now} {t('now')}, {counts.watch} {t('to keep an eye on')}, {counts.ok} {t('on track')}.
-            </p>
             <div className="flex flex-col gap-6">
                 {groups[0].items.length > 0 && section('now', groups[0].items)}
                 {groups[1].items.length > 0 && section('watch', groups[1].items)}
