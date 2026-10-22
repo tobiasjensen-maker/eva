@@ -92,7 +92,7 @@ function ClientCard({ c, h, flags, actions, onOpen }: { c: Client; h: Health; fl
             </div>
 
             {/* financial picture */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl p-2.5" style={{ background: '#f7f7f8' }}>
+            <div className="grid grid-cols-2 gap-6 rounded-xl p-2.5" style={{ background: '#f7f7f8' }}>
                 <div className="min-w-0">
                     <p className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Revenue')}</p>
                     <p className="text-sm font-semibold" style={{ color: c.trend >= 0 ? '#15803d' : '#dc2626' }}>{c.trend >= 0 ? '↑' : '↓'} {Math.abs(c.trend)}%</p>
