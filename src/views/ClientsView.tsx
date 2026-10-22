@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
@@ -92,7 +92,7 @@ export function ExpertiseCard({ onOpen }: { onOpen?: (c: Client) => void }) {
 // The accountant's own client list — search, a status filter and the table. It's the
 // Portfolio overview's list, so it shows only the logged-in accountant's clients (the
 // whole office lives under Practice). Selecting a client is left to the host page.
-export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
+export function ClientList({ onSelect, headerExtra }: { onSelect: (c: Client) => void; headerExtra?: ReactNode }) {
     const { t } = useLang();
     const { ax } = useScopeMode(); // AX: no fee / EVA % / needs-you columns
     const [q, setQ] = useState('');
@@ -114,6 +114,7 @@ export function ClientList({ onSelect }: { onSelect: (c: Client) => void }) {
                 <div className="flex items-center gap-2 mb-3">
                     <h2 className="text-base font-semibold flex-1" style={{ color: COLORS.text }}>{t('My clients')}</h2>
                     {!ax && <Button><Icon name="circle-plus" /> {t('Add client')}</Button>}
+                    {headerExtra}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="relative flex-1" style={{ minWidth: 220 }}>

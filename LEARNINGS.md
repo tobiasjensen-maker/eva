@@ -142,6 +142,15 @@ the day starts; every other page is "further in".**
   expertise** (with show-work) and **My clients** — your whole book of 40 (`MY_PORTFOLIO` in `practice.ts`), paginated 8 per page, whose rows open the client
   profile (talking points, peer benchmarks) and from there the client's deep analysis (the
   former Advisory page, `InsightsView.tsx`, `#/insights`).
+  **My clients defaults to an "Attention" card view** (`ClientCards.tsx`, Vision only; *Attention | List*
+  toggle, remembered in `va-portfolio-mode`): one card per client, ranked by a mock **health score**
+  (`healthOf` — blocked books, EVA's flags/actions, signals, revenue dip, below target rate, open items,
+  low automation) into *Needs you now* (<60) · *Keep an eye on* (<85) · *On track* (collapsed). A card
+  answers three things at a glance: **why it needs you** (top two reasons, coloured dots), the **financial
+  picture** (revenue trend + sparkline, kr/h vs target, EVA %) and **agent status** (Bookkeeping /
+  Controlling / Month-end). One CTA: *Review n* (opens the decision) — or, with nothing to approve but
+  low health, *See what EVA knows* (the client drawer). Lesson: with mostly healthy mock data, scoring
+  had to weigh many small signals or 37 of 40 landed "On track" — the view only works if it spreads.
   *Replaced:* the step-by-step "My day" chat briefing (in git history before this change);
   "Walk me through my day" in the question box carries its spirit.
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,

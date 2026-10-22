@@ -5,7 +5,8 @@ import { useLang } from '../i18n';
 import type { DecisionItem, ResolveInfo } from '../day';
 import { BOOKS_STATUS, CLIENTS, ME, TARGET_RATE, rateOf, type Books, type Client, type Thread } from '../practice';
 import type { ViewId } from '../types';
-import { ClientList, ClientDrawer } from './ClientsView';
+import { ClientDrawer } from './ClientsView';
+import { ClientPortfolio } from './ClientCards';
 import { DecisionRow, DecisionReview, ReplyRow } from './Decisions';
 import { MonthEndCard, MonthEndReport } from './MonthEnd';
 import { axHidesTask, useScopeMode } from '../edition';
@@ -151,8 +152,10 @@ export default function OverviewView({ tasks, setTasks, onAddDecision, decisions
                     <BooksWidget t={t} flags={decisions.filter((d) => !d.done && d.correction && d.accountant === ME).length} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onOpenThread={onOpenThread} />
                 </div>
 
-                <div className="land" style={{ ['--d' as string]: '440ms' }}><ClientList onSelect={setSel} /></div>
+                {/* the portfolio, ranked by what needs you (or the plain list, one toggle away) */}
+                <div className="land" style={{ ['--d' as string]: '440ms' }}><ClientPortfolio decisions={decisions.filter((d) => d.accountant === ME)} onOpen={setSel} onReview={setReview} /></div>
             </div>
+            {review && <DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision(review.id, taken, info); setReview(null); }} />}
 
             {sel && <ClientDrawer c={sel} onClose={() => setSel(null)} onOpenBooks={onOpenBooks} onMessage={onMessage} decisions={decisions} threads={threads} onResolveDecision={onResolveDecision} onShare={onShare} />}
         </div>
