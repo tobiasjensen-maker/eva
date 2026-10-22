@@ -70,8 +70,6 @@ const TAG = { red: ['#fdecec', '#b42318'], amber: ['#fdf1dc', '#92710f'], green:
 
 function ClientCard({ c, h, flags, actions, onOpen }: { c: Client; h: Health; flags: number; actions: number; onOpen: () => void }) {
     const { t } = useLang();
-    const rate = rateOf(c);
-    const rateOk = rate >= TARGET_RATE;
     const close = c.books === 'closed' ? { label: 'Closed', tone: 'green' } as const : c.books === 'todo' ? { label: 'In progress', tone: 'blue' } as const : { label: 'Blocked', tone: 'red' } as const;
     const agents: { emoji: string; label: string; state: string; tone: keyof typeof TAG }[] = [
         { emoji: '🗓️', label: 'Bookkeeping', state: c.books === 'blocked' ? t('Waiting on documents') : actions ? `${actions} ${t('to approve')}` : t('Running'), tone: c.books === 'blocked' ? 'red' : actions ? 'amber' : 'green' },
@@ -93,16 +91,11 @@ function ClientCard({ c, h, flags, actions, onOpen }: { c: Client; h: Health; fl
             </div>
 
             {/* financial picture */}
-            <div className="grid grid-cols-3 gap-2 rounded-xl p-2.5" style={{ background: '#f7f7f8' }}>
+            <div className="grid grid-cols-2 gap-2 rounded-xl p-2.5" style={{ background: '#f7f7f8' }}>
                 <div className="min-w-0">
                     <p className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Revenue')}</p>
                     <p className="text-sm font-semibold" style={{ color: c.trend >= 0 ? '#15803d' : '#dc2626' }}>{c.trend >= 0 ? '↑' : '↓'} {Math.abs(c.trend)}%</p>
                     <Sparkline c={c} />
-                </div>
-                <div className="min-w-0">
-                    <p className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('Profitability')}</p>
-                    <p className="text-sm font-semibold" style={{ color: rateOk ? COLORS.text : '#b9842b' }}>{rate.toLocaleString('da-DK')} {t('kr/h')}</p>
-                    <p className="text-[11px]" style={{ color: rateOk ? '#15803d' : '#b9842b' }}>{t(rateOk ? 'Above target' : 'Below target')}</p>
                 </div>
                 <div className="min-w-0">
                     <p className="text-[11px]" style={{ color: COLORS.textMuted }}>{t('EVA does')}</p>

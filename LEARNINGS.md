@@ -147,7 +147,7 @@ the day starts; every other page is "further in".**
   (`healthOf` — blocked books, EVA's flags/actions, signals, revenue dip, below target rate, open items,
   low automation) into *Needs you now* (<60) · *Keep an eye on* (<85) · *On track* (collapsed). A card
   answers two things at a glance (the reason lines were tried and cut — the ring + agent status say enough): the **financial
-  picture** (revenue trend + sparkline, kr/h vs target, EVA %) and **agent status** (Bookkeeping /
+  picture** (revenue trend + sparkline, EVA %; profitability was tried and cut) and **agent status** (Bookkeeping /
   Controlling / Month-end as subtle tinted tags, not coloured text). No buttons, no subtitle, no industry — the whole
   card opens the client drawer; buttons, reason lines and a "Ranked by…" line were tried and cut. Lesson: with mostly healthy mock data, scoring
   had to weigh many small signals or 37 of 40 landed "On track" — the view only works if it spreads.
