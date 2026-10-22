@@ -151,6 +151,10 @@ the day starts; every other page is "further in".**
   Controlling / Month-end as subtle tinted tags, not coloured text). No buttons, no subtitle, no industry — the whole
   card opens the client drawer; buttons, reason lines and a "Ranked by…" line were tried and cut. Lesson: with mostly healthy mock data, scoring
   had to weigh many small signals or 37 of 40 landed "On track" — the view only works if it spreads.
+  **The client drawer opens with "EVA needs you"** — that client's open flags/actions (tagged), each with a
+  primary *Review* that opens the same `DecisionReview`; resolving clears it in place. Empty: "Nothing from EVA
+  needs you". The modal is portaled to `body` (the drawer's slide transform traps fixed children) and wrapped in
+  a stopPropagation div — React events bubble through portals and would otherwise close the drawer.
   *Replaced:* the step-by-step "My day" chat briefing (in git history before this change);
   "Walk me through my day" in the question box carries its spirit.
 - **Inbox** (`InboxView.tsx`) — every client conversation, tied to its transaction; EVA asks,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
@@ -10,6 +11,7 @@ import type { DecisionItem, ResolveInfo } from '../day';
 import { BudgetModal } from './Budget';
 import type { ShareDraft } from './Attachment';
 import { NotesList } from '../memory';
+import { DecisionReview } from './Decisions';
 
 // ---- Clients — the whole portfolio in one place ---------------------------------
 // One list of every client the office serves, with the firm's own client number,
@@ -194,13 +196,16 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
     const { t } = useLang();
     const [noted, setNoted] = useState(false);
     const [sheet, setSheet] = useState<'cash' | 'budget' | 'books' | null>(null);
+    const [review, setReview] = useState<DecisionItem | null>(null);
     const { ax } = useScopeMode();
+    const needs = decisions.filter((d) => !d.done && d.company === c.name);
     const owner = OWNER[c.name];
     const pb = PLAYBOOKS.find((p) => p.id === c.playbook);
     const threads = (liveThreads ?? THREADS).filter((x) => x.client === c.name && x.status !== 'done');
     const b = BOOKS[c.books];
     return (
         <div className="fixed inset-0 z-50 flex justify-end" style={{ background: 'rgba(0,0,0,0.25)' }} onClick={onClose}>
+            {review && createPortal(<div onClick={(e) => e.stopPropagation()}><DecisionReview d={review} t={t} onClose={() => setReview(null)} onResolve={(taken, info) => { onResolveDecision?.(review.id, taken, info); setReview(null); }} /></div>, document.body)}
             <div className="h-full bg-white overflow-y-auto anim-slide" style={{ width: 'min(520px, 100vw)', boxShadow: '-12px 0 40px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start gap-3 px-6 py-5" style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
                     <ClientAvatar name={c.name} size={40} />
@@ -216,6 +221,27 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                 </div>
 
                 <div className="px-6 py-5 flex flex-col gap-6">
+                    {/* what EVA needs from you for this client — first, one click to review each */}
+                    <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${needs.length ? '#ece2fc' : COLORS.cardBorder}`, background: needs.length ? '#faf7fe' : '#fff' }}>
+                        <div className="flex items-center gap-2 px-4 py-3">
+                            <Orb size={16} />
+                            <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t(needs.length ? 'EVA needs you' : 'Nothing from EVA needs you')}</p>
+                            {needs.length > 0 && <CountBadge n={needs.length} />}
+                        </div>
+                        {needs.map((d) => (
+                            <div key={d.id} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: '1px solid #ece2fc' }}>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                        <span className="rounded-md px-1.5 py-px text-[11px] font-semibold" style={d.correction ? { background: '#fdecec', color: '#b42318' } : { background: '#eef2ff', color: '#3341a8' }}>{d.correction ? `⚑ ${t('Flag')}` : `✓ ${t('Action')}`}</span>
+                                        {t(d.label)}
+                                    </p>
+                                    <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                                </div>
+                                <Button appearance="primary" onClick={() => setReview(d)}>{t('Review')}</Button>
+                            </div>
+                        ))}
+                    </div>
+
                     {!ax && <div className="grid grid-cols-4 gap-2">
                         {[
                             { l: 'Fee / mo', v: kr(c.fee) },

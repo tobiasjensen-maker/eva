@@ -2504,4 +2504,6 @@ const DA: Record<string, string> = {
     'Flour and energy costs up 31% — margin squeezed': 'Mel- og energiomkostninger op 31% — presset margin',
     'Revenue up 25% — ready for a CFO-level conversation': 'Omsætning op 25% — klar til en CFO-samtale',
     'Month-end': 'Månedsafslutning',
+    'EVA needs you': 'EVA har brug for dig',
+    'Nothing from EVA needs you': 'Intet fra EVA kræver dig',
 };
