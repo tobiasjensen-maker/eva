@@ -153,7 +153,11 @@ the day starts; every other page is "further in".**
   had to weigh many small signals or 37 of 40 landed "On track" — the view only works if it spreads.
   **The client drawer opens with "EVA needs you"** — that client's open flags/actions (tagged), each with a
   primary *Review* that opens the same `DecisionReview`; resolving clears it in place. Empty: "Nothing from EVA
-  needs you". The modal is portaled to `body` (the drawer's slide transform traps fixed children) and wrapped in
+  needs you". Below the review rows: **documents EVA has requested** from the client (`DOC_REQUESTS` in
+  `practice.ts`) — amber *Requested* tag, who was asked and when, reminders, "EVA follows up …"; no button, since
+  EVA chases them itself. With only requests, the title reads "Nothing needs you — EVA is waiting on the client".
+  Store follow-up timing as whole phrases ("on Monday", "tomorrow") — lowercasing a translated day gave "mon".
+  The modal is portaled to `body` (the drawer's slide transform traps fixed children) and wrapped in
   a stopPropagation div — React events bubble through portals and would otherwise close the drawer.
   *Replaced:* the step-by-step "My day" chat briefing (in git history before this change);
   "Walk me through my day" in the question box carries its spirit.

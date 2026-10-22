@@ -102,6 +102,19 @@ export interface Thread {
     messages: Msg[];
     suggestion?: { action: string; reply: string; result: string }; // EVA's proposed next step
 }
+// Documents EVA has requested from a client and is still waiting for (mock). EVA chases them itself;
+// the accountant only needs to know they're outstanding.
+export interface DocRequest { what: string; to: string; asked: string; next: string; reminders: number }
+export const DOC_REQUESTS: Record<string, DocRequest[]> = {
+    'Nordic Build ApS': [{ what: 'Receipt — Bauhaus 14.900 kr', to: 'Henrik', asked: 'Mon', next: 'on Thursday', reminders: 1 }],
+    'Café Solsikke': [
+        { what: 'Supplier invoices — Hørkram, September', to: 'Ida', asked: '2 Oct', next: 'tomorrow', reminders: 2 },
+        { what: 'Bank statement — Lunar, September', to: 'Ida', asked: '2 Oct', next: 'tomorrow', reminders: 2 },
+    ],
+    'Nielsen Malerfirma': [{ what: '3 receipts — paint and materials, September', to: 'Lars', asked: '7 Oct', next: 'on Friday', reminders: 1 }],
+    'Office Supplies Co': [{ what: 'Tax card — Laura Kim', to: 'Maria', asked: 'Yesterday', next: 'on Monday', reminders: 0 }],
+};
+
 export const THREADS: Thread[] = [
     {
         id: 't1', client: 'Bryg & Co ApS', contact: 'Mads Bryg', subject: 'Question about a restaurant bill', status: 'needs', at: '09:14',

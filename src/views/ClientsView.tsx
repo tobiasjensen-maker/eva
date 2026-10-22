@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Button, Icon } from '@economic/taco';
 import { Card, ClientAvatar, CountBadge, Orb, SegmentedTabs, COLORS } from '../ui';
 import { useLang } from '../i18n';
-import { CLIENTS, FIRM_CLIENTS, MY_PORTFOLIO, OWNER, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client, type Thread } from '../practice';
+import { CLIENTS, DOC_REQUESTS, FIRM_CLIENTS, MY_PORTFOLIO, OWNER, PLAYBOOKS, THREADS, benchmarks, talkingPoints, whyOf, type Books, type Client, type Thread } from '../practice';
 import { LiquidityModal } from './Liquidity';
 import { LedgerModal } from './Ledger';
 import { useScopeMode } from '../edition';
@@ -199,6 +199,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
     const [review, setReview] = useState<DecisionItem | null>(null);
     const { ax } = useScopeMode();
     const needs = decisions.filter((d) => !d.done && d.company === c.name);
+    const requested = DOC_REQUESTS[c.name] ?? [];
     const owner = OWNER[c.name];
     const pb = PLAYBOOKS.find((p) => p.id === c.playbook);
     const threads = (liveThreads ?? THREADS).filter((x) => x.client === c.name && x.status !== 'done');
@@ -225,7 +226,7 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                     <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${needs.length ? '#ece2fc' : COLORS.cardBorder}`, background: needs.length ? '#faf7fe' : '#fff' }}>
                         <div className="flex items-center gap-2 px-4 py-3">
                             <Orb size={16} />
-                            <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t(needs.length ? 'EVA needs you' : 'Nothing from EVA needs you')}</p>
+                            <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t(needs.length ? 'EVA needs you' : requested.length ? 'Nothing needs you — EVA is waiting on the client' : 'Nothing from EVA needs you')}</p>
                             {needs.length > 0 && <CountBadge n={needs.length} />}
                         </div>
                         {needs.map((d) => (
@@ -238,6 +239,19 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
                                     <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(d.question)}</p>
                                 </div>
                                 <Button appearance="primary" onClick={() => setReview(d)}>{t('Review')}</Button>
+                            </div>
+                        ))}
+                        {requested.map((r) => (
+                            <div key={r.what} className="flex items-start gap-3 px-4 py-3" style={{ borderTop: `1px solid ${needs.length ? '#ece2fc' : COLORS.cardBorder}`, background: '#fff' }}>
+                                <span className="shrink-0 flex items-center justify-center rounded-lg mt-0.5" style={{ width: 28, height: 28, background: '#fdf1dc', color: '#92710f' }}><Icon name="document" /></span>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                        <span className="rounded-md px-1.5 py-px text-[11px] font-semibold" style={{ background: '#fdf1dc', color: '#92710f' }}>{t('Requested')}</span>
+                                        {t('Asked {name}').replace('{name}', r.to)} · {t(r.asked)}{r.reminders ? ` · ${t(r.reminders === 1 ? 'reminded once' : 'reminded {n} times').replace('{n}', String(r.reminders))}` : ''}
+                                    </p>
+                                    <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(r.what)}</p>
+                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('EVA follows up {when}').replace('{when}', t(r.next))}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
