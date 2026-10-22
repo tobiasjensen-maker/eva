@@ -437,6 +437,13 @@ export default function App() {
     const [ecoUniverse, setEcoUniverse] = useState(() => ssGet('va-eco-universe'));
     const [ecoFlagged, setEcoFlagged] = useState(false);
     const showEco = route === 'economic' || (ecoUniverse && ax); // the universe overlay is an AX thing
+    // Today's e-conomic with EVA on top is the AX experience — landing there (e.g. a link without ?scope=ax after a
+    // Vision visit) switches to AX, so expanding the panel opens AX's EVA, not the Vision app. Explicit ?scope=vision wins.
+    useEffect(() => {
+        const explicitVision = new URLSearchParams(window.location.search).get('scope') === 'vision';
+        if (route === 'economic' && !ax && !explicitVision) setScopeMode('ax');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [route]);
     // Close the universe back to e-conomic — the EVA panel stays open (route set now, so the shell never unmounts).
     // It retracts into the panel first (eva-universe-out), then goes.
     const [ecoClosing, setEcoClosing] = useState(false);
@@ -1202,6 +1209,7 @@ export default function App() {
                         docked={embedded}
                         onExpand={() => {
                             if (ecoUniverse) { closeUniverse(); return; } // back to e-conomic
+                            if (!ax) setScopeMode('ax'); // the overlay is AX — never expand into the Vision app
                             if (!mobile) setEcoUniverse(true);
                             openAxChat(); // full-screen EVA opens in the chat, with the panel's conversation
                         }}

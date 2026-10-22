@@ -448,3 +448,8 @@ Mock data, mock agreement. The kit's `href="#"` links are swallowed so they can'
 The universe container must not keep a `clip-path` (it would cut modal backdrops off at the EVA panel) — the
 reveal animation isn't held (`backwards`) and the seam is hidden with a left-cast shadow instead. Portaled
 modals (the month-end report) sit at `z-[70]`, above the overlay (60/61).
+
+- **Bug fixed — expand opened the Vision app.** `va-scope` persists across visits, so opening `#/economic`
+  without `?scope=ax` after a Vision visit showed the (identical-looking) e-conomic shell in Vision scope, and
+  expanding the panel landed in Vision's chat. Now `#/economic` switches to AX on arrival (unless the URL says
+  `?scope=vision`), and expanding the panel forces AX too.
