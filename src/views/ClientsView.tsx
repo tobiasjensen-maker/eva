@@ -223,37 +223,41 @@ export function ClientDrawer({ c, onClose, onOpenBooks, onMessage, decisions = [
 
                 <div className="px-6 py-5 flex flex-col gap-6">
                     {/* what EVA needs from you for this client — first, one click to review each */}
-                    <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${needs.length ? '#ece2fc' : COLORS.cardBorder}`, background: needs.length ? '#faf7fe' : '#fff' }}>
+                    <div className="rounded-xl bg-white" style={{ border: `1px solid ${COLORS.cardBorder}` }}>
                         <div className="flex items-center gap-2 px-4 py-3">
                             <Orb size={16} />
                             <p className="text-sm font-semibold flex-1" style={{ color: COLORS.text }}>{t(needs.length ? 'EVA needs you' : requested.length ? 'Nothing needs you — EVA is waiting on the client' : 'Nothing from EVA needs you')}</p>
                             {needs.length > 0 && <CountBadge n={needs.length} />}
                         </div>
-                        {needs.map((d) => (
-                            <div key={d.id} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: '1px solid #ece2fc' }}>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                                        <span className="rounded-md px-1.5 py-px text-[11px] font-semibold" style={d.correction ? { background: '#fdecec', color: '#b42318' } : { background: '#eef2ff', color: '#3341a8' }}>{d.correction ? `⚑ ${t('Flag')}` : `✓ ${t('Action')}`}</span>
-                                        {t(d.label)}
-                                    </p>
-                                    <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                        {(needs.length > 0 || requested.length > 0) && <div className="flex flex-col gap-2 px-3 pb-3">
+                            {/* each item for review in its own EVA-tinted card */}
+                            {needs.map((d) => (
+                                <div key={d.id} className="flex items-center gap-3 rounded-lg p-3" style={{ background: '#faf7fe', border: '1px solid #ece2fc' }}>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                            <span className="rounded-md px-1.5 py-px text-[11px] font-semibold" style={d.correction ? { background: '#fdecec', color: '#b42318' } : { background: '#eef2ff', color: '#3341a8' }}>{d.correction ? `⚑ ${t('Flag')}` : `✓ ${t('Action')}`}</span>
+                                            {t(d.label)}
+                                        </p>
+                                        <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(d.question)}</p>
+                                    </div>
+                                    <Button appearance="primary" onClick={() => setReview(d)}>{t('Review')}</Button>
                                 </div>
-                                <Button appearance="primary" onClick={() => setReview(d)}>{t('Review')}</Button>
-                            </div>
-                        ))}
-                        {requested.map((r) => (
-                            <div key={r.what} className="flex items-start gap-3 px-4 py-3" style={{ borderTop: `1px solid ${needs.length ? '#ece2fc' : COLORS.cardBorder}`, background: '#fff' }}>
-                                <span className="shrink-0 flex items-center justify-center rounded-lg mt-0.5" style={{ width: 28, height: 28, background: '#fdf1dc', color: '#92710f' }}><Icon name="document" /></span>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
-                                        <span className="rounded-md px-1.5 py-px text-[11px] font-semibold" style={{ background: '#fdf1dc', color: '#92710f' }}>{t('Requested')}</span>
-                                        {t('Asked {name}').replace('{name}', r.to)} · {t(r.asked)}{r.reminders ? ` · ${t(r.reminders === 1 ? 'reminded once' : 'reminded {n} times').replace('{n}', String(r.reminders))}` : ''}
-                                    </p>
-                                    <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(r.what)}</p>
-                                    <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('EVA follows up {when}').replace('{when}', t(r.next))}</p>
+                            ))}
+                            {/* documents EVA has asked the client for — EVA chases them, so no action here */}
+                            {requested.map((r) => (
+                                <div key={r.what} className="flex items-start gap-3 px-1 py-1.5">
+                                    <span className="shrink-0 flex items-center justify-center rounded-lg mt-0.5" style={{ width: 28, height: 28, background: '#fdf1dc', color: '#92710f' }}><Icon name="document" /></span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs flex items-center gap-1.5" style={{ color: COLORS.textMuted }}>
+                                            <span className="rounded-md px-1.5 py-px text-[11px] font-semibold" style={{ background: '#fdf1dc', color: '#92710f' }}>{t('Requested')}</span>
+                                            {t('Asked {name}').replace('{name}', r.to)} · {t(r.asked)}{r.reminders ? ` · ${t(r.reminders === 1 ? 'reminded once' : 'reminded {n} times').replace('{n}', String(r.reminders))}` : ''}
+                                        </p>
+                                        <p className="text-sm mt-1" style={{ color: COLORS.text }}>{t(r.what)}</p>
+                                        <p className="text-xs mt-0.5" style={{ color: COLORS.textMuted }}>{t('EVA follows up {when}').replace('{when}', t(r.next))}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>}
                     </div>
 
                     {!ax && <div className="grid grid-cols-4 gap-2">
