@@ -131,7 +131,7 @@ export function ClientPortfolio({ decisions, onOpen }: { decisions: DecisionItem
     const [mode, setMode] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('va-portfolio-mode') === 'list' ? 'list' : 'cards'; } catch { return 'cards'; } });
     const [showOk, setShowOk] = useState(false);
     const setM = (m: 'cards' | 'list') => { setMode(m); try { localStorage.setItem('va-portfolio-mode', m); } catch { /* ignore */ } };
-    const toggle = <SegmentedTabs value={mode} onChange={(v) => setM(v as 'cards' | 'list')} options={[{ value: 'cards', label: t('Attention') }, { value: 'list', label: t('List') }]} />;
+    const toggle = <SegmentedTabs value={mode} onChange={(v) => setM(v as 'cards' | 'list')} options={[{ value: 'list', label: t('List') }, { value: 'cards', label: t('Priority') }]} />;
     if (mode === 'list') return <ClientList onSelect={onOpen} headerExtra={toggle} />;
 
     const open = decisions.filter((d) => !d.done);

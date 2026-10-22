@@ -2482,7 +2482,6 @@ const DA: Record<string, string> = {
     'now': 'nu',
     'to keep an eye on': 'at holde øje med',
     'on track': 'på sporet',
-    'Attention': 'Opmærksomhed',
     'Show all': 'Vis alle',
     'Running': 'Kører',
     'All clear': 'Alt i orden',
