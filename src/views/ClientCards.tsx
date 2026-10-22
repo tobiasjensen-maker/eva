@@ -37,7 +37,6 @@ export function healthOf(c: Client, flags: number, actions: number, da = false):
     return { score, level, reasons };
 }
 
-const TONE = { red: '#dc2626', amber: '#b9842b', green: '#16a34a' };
 const LEVEL = {
     now: { label: 'Needs you now', color: '#dc2626', bg: '#fdecec' },
     watch: { label: 'Keep an eye on', color: '#b9842b', bg: '#fdf1dc' },
@@ -89,15 +88,6 @@ function ClientCard({ c, h, flags, actions, onOpen, onReview }: { c: Client; h: 
                     <p className="text-xs truncate" style={{ color: COLORS.textMuted }}>{t(c.industry)} · {c.no}</p>
                 </div>
                 <HealthRing score={h.score} level={h.level} />
-            </div>
-
-            {/* why it needs you — the top two reasons */}
-            <div className="flex flex-col gap-1.5">
-                {h.reasons.slice(0, 2).map((r) => (
-                    <p key={r.text} className="flex items-start gap-2 text-[13px] leading-snug" style={{ color: COLORS.text }}>
-                        <span className="rounded-full shrink-0 mt-1.5" style={{ width: 7, height: 7, background: TONE[r.tone] }} />{t(r.text)}
-                    </p>
-                ))}
             </div>
 
             {/* financial picture */}

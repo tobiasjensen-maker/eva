@@ -146,7 +146,7 @@ the day starts; every other page is "further in".**
   toggle, remembered in `va-portfolio-mode`): one card per client, ranked by a mock **health score**
   (`healthOf` — blocked books, EVA's flags/actions, signals, revenue dip, below target rate, open items,
   low automation) into *Needs you now* (<60) · *Keep an eye on* (<85) · *On track* (collapsed). A card
-  answers three things at a glance: **why it needs you** (top two reasons, coloured dots), the **financial
+  answers two things at a glance (the reason lines were tried and cut — the ring + agent status say enough): the **financial
   picture** (revenue trend + sparkline, kr/h vs target, EVA %) and **agent status** (Bookkeeping /
   Controlling / Month-end). One CTA: *Review n* (opens the decision) — or, with nothing to approve but
   low health, *See what EVA knows* (the client drawer). Lesson: with mostly healthy mock data, scoring
