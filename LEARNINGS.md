@@ -457,3 +457,7 @@ modals (the month-end report) sit at `z-[70]`, above the overlay (60/61).
   (`#/review`, `#/chat`, `#/routines` …) rendered full-screen EVA on its own, without e-conomic behind it, so
   there was no shrink/close. In AX (desktop) any non-`#/economic` route now opens as the overlay. The effect runs
   on route changes only — keyed on `ax` too, the Vision → AX switch (which heads to `#/economic`) would pop it open.
+- **Bug fixed — Vision links opened as the AX overlay.** The fix above caught Vision pages too: with AX
+  remembered, a link to the portfolio (`#/home`) showed only the overlay. A link to a page AX doesn't have
+  (`#/home`, `#/clients`, `#/inbox`, `#/practice` …) now starts in Vision, whatever scope was remembered;
+  explicit `?scope=ax` still wins. Links to pages both scopes have (`#/review`, `#/chat`) keep the remembered scope.

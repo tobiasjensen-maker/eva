@@ -243,7 +243,17 @@ export default function App() {
     // Menu counts — one subtle badge style for every item.
     // Work's badge is its For review queue: EVA's drafts to review + client replies drafted in the Inbox.
     // Vision (the full product) vs AX (what we build first: agent management + period closing).
-    const [scopeMode, setScopeModeState] = useState<ScopeMode>(initialScope);
+    // A link to a page AX doesn't have (#/home — the portfolio, #/inbox …) is a Vision link, whatever scope was
+    // remembered; otherwise AX would wrap it in the overlay. Explicit ?scope=ax still wins.
+    const [scopeMode, setScopeModeState] = useState<ScopeMode>(() => {
+        const linked = SLUG_VIEW[window.location.hash.replace(/^#\/?/, '')];
+        const explicitAx = new URLSearchParams(window.location.search).get('scope') === 'ax';
+        if (linked && !AX_VIEWS.includes(linked) && !explicitAx) {
+            try { localStorage.setItem('va-scope', 'vision'); } catch { /* ignore */ }
+            return 'vision';
+        }
+        return initialScope();
+    });
     const ax = scopeMode === 'ax';
     // The logged-in accountant's open decisions — the Work badge and the overview count.
     // AX leaves payroll out — screens get these filtered lists; actions still update the full state.
