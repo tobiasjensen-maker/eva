@@ -442,6 +442,10 @@ export default function App() {
     useEffect(() => {
         const explicitVision = new URLSearchParams(window.location.search).get('scope') === 'vision';
         if (route === 'economic' && !ax && !explicitVision) setScopeMode('ax');
+        // …and in AX, full-screen EVA only exists over e-conomic: a link straight to an EVA page (#/review, #/chat …)
+        // opens it as the overlay, with shrink / close back to e-conomic. Runs on route changes only, so switching
+        // Vision → AX (which heads to #/economic) doesn't pop the overlay open.
+        else if (ax && route !== 'economic' && !ecoUniverse && !mobile) setEcoUniverse(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [route]);
     // Close the universe back to e-conomic — the EVA panel stays open (route set now, so the shell never unmounts).

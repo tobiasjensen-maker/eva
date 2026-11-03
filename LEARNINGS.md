@@ -453,3 +453,7 @@ modals (the month-end report) sit at `z-[70]`, above the overlay (60/61).
   without `?scope=ax` after a Vision visit showed the (identical-looking) e-conomic shell in Vision scope, and
   expanding the panel landed in Vision's chat. Now `#/economic` switches to AX on arrival (unless the URL says
   `?scope=vision`), and expanding the panel forces AX too.
+- **Bug fixed — AX deep links had no way back.** With AX remembered, a link straight to an EVA page
+  (`#/review`, `#/chat`, `#/routines` …) rendered full-screen EVA on its own, without e-conomic behind it, so
+  there was no shrink/close. In AX (desktop) any non-`#/economic` route now opens as the overlay. The effect runs
+  on route changes only — keyed on `ax` too, the Vision → AX switch (which heads to `#/economic`) would pop it open.
