@@ -5,6 +5,8 @@ import { Orb, MicIcon, EmojiTile, ScopeSwitcher, EvaChip, EvaWindowControls, COL
 import { ArtifactPreview } from '../SpaceArtifact';
 import { CHAT_SUGGESTIONS, AGREEMENTS } from '../data';
 import { useLang } from '../i18n';
+import { useScopeMode } from '../edition';
+import { portfolioAnswer, reminderPlan } from '../portfolio';
 import type { Skill, Space, ViewId } from '../types';
 
 type PlanStep = { label: string; status: 'todo' | 'running' | 'done' };
@@ -65,6 +67,14 @@ const MONTHS = [
 ];
 
 // ---- portfolio (cross-client) mode ----
+// AX: EVA across the portfolio (cross-portfolio brief) — where to start, the same task on several agreements,
+// colleagues' work on shared agreements, automations not used yet.
+const AX_PORTFOLIO_SUGGESTIONS = [
+    'Where should I start today?',
+    'Which agreements are waiting on documents?',
+    'What have my colleagues done on shared agreements?',
+    'Which automations could save me time?',
+];
 const PORTFOLIO_SUGGESTIONS = [
     'Which clients have overdue invoices?',
     'Which client had the highest revenue last month?',
@@ -504,6 +514,7 @@ const SEED_HISTORY: HistoryItem[] = [
 export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, onCreateSpace, onCreateSkill, seedWelcome, onWelcomeConsumed, scope = 'portfolio', scopeName = 'All agreements', onActiveChange, analyticsUnlocked = false, onSelectClient, onClose, seedTurns, onTurns, headerLeft, onMinimise, textSuggestions }: Props) {
     TEXT_SUGGESTIONS = textSuggestions ?? null;
     const { t, lang } = useLang();
+    const { ax } = useScopeMode();
     // Seed EVA's getting-started message right after onboarding (lazy init → StrictMode-safe)
     // Opened from the EVA panel: continue that conversation (shown as it was, not re-typed).
     const [seeded] = useState<ChatMsg[]>(() => (seedTurns ?? []).map((x): ChatMsg => (x.role === 'user' ? { id: nextId(), role: 'user', text: x.text } : { id: nextId(), role: 'assistant', kind: 'text', text: x.text })));
@@ -555,6 +566,13 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
         const t = text.toLowerCase();
 
         // Partner actions, done through their connectors — proposed as a plan you approve, then offered as a routine.
+        // AX, across the portfolio: who's waiting on documents → one reminder plan for all of them (edit, then approve)
+        if (ax && /waiting on documents|missing documents|remind .*documents|venter på bilag|mangler bilag/.test(t)) {
+            const p = reminderPlan(lang === 'da');
+            return { id: nextId(), role: 'assistant', kind: 'plan', phase: 'awaiting', ...p, steps: p.steps.map((label) => ({ label, status: 'todo' as const })) };
+        }
+        const pf = ax ? portfolioAnswer(t, lang === 'da') : null;
+        if (pf) return { id: nextId(), role: 'assistant', kind: 'text', text: pf };
         const partner = partnerPlan(t);
         if (partner) return { id: nextId(), role: 'assistant', kind: 'plan', phase: 'awaiting', ...partner, steps: partner.steps.map((label) => ({ label, status: 'todo' as const })) };
 
@@ -790,7 +808,7 @@ export default function ChatView({ skills, spaces, onEnableSkill, onNavigate, on
     }
 
     const empty = messages.length === 0;
-    const suggestions = scope === 'portfolio' ? PORTFOLIO_SUGGESTIONS : CHAT_SUGGESTIONS;
+    const suggestions = ax ? AX_PORTFOLIO_SUGGESTIONS : scope === 'portfolio' ? PORTFOLIO_SUGGESTIONS : CHAT_SUGGESTIONS;
 
     return (
         <div className="flex h-full">

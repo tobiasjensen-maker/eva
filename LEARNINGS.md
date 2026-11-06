@@ -50,6 +50,26 @@ in localStorage). AX shows an orange **AX** tag next to the logo.
   same window controls top right (`EvaWindowControls`): ⤡ back to the side panel, ✕ closes EVA — in the corner,
   like Chat: page headers span the full width inside full-screen EVA (`HeaderFullWidthContext`). Chat also has
   the side panel's ⋮ (New chat, History) — same buttons expanded as in the panel.
+- **Portfolio** (`#/agreements`, `src/views/PortfolioView.tsx`, data in `src/portfolio.ts`) — EVA across every
+  agreement, from the brief *EVA Cross Portfolio Collaboration* (Slite J90MD-7zZX). Full screen only (the brief:
+  the portfolio level needs EVA's full-screen mode). Three tabs:
+  - **Priorities** — EVA's one-line read ("7 of your 40 agreements need you. Start with …"), **Handle together**
+    (the same task on several agreements — 4 waiting on September documents → *Send reminders*), and **Where to
+    start**: agreements ranked, each row says why (first reason · live flag/action counts · documents requested),
+    deadline chip, the colleague it's shared with. Expanding shows *Why it's #n*, what's open, *Since you were last
+    here* (a colleague's work) and **Ask EVA** — a follow-up in Chat, scoped to that agreement — or **See tasks**.
+  - **Setup** — package, add-ons, automation level, routines per agreement (lowest automation first; routines a
+    colleague set up say so on hover). EVA's suggestion on top: *3 agreements don't use Smart Inbox yet — about
+    2.5 hours a week saved, based on your work on them* → set it up for all of them in one plan.
+  - **Colleagues** — per shared agreement: EVA's summary since you were last there, who did what when (*via EVA*
+    where EVA did it for them), and what they set up (routines, rules, tasks) so you don't duplicate it.
+  - **One plan, several agreements** (`BulkPlan`): every agreement and what happens to it, *Remove* one before you
+    approve, then it runs one by one and shows the result per agreement (one reminder bounces, on purpose). Each
+    agreement's Activity logs it as done by EVA, *approved by Tobias Holm Jensen*.
+  - **Chat** in AX suggests the cross-portfolio questions (*Where should I start today?*, *Which agreements are
+    waiting on documents?* — answered as an editable reminder plan, colleagues, automations). The side panel over
+    e-conomic (one agreement open) has *Where should I start across my agreements?* — answered in words, pointing
+    to full screen. `#/agreements` always opens AX (AX-only page).
 - **Tasks** (`#/work`, tabs *Tasks | Activity*) — the one queue: everything that needs the AO, each item tagged
   **Action** (EVA's draft or request to approve *before* booking) or **Flag** (a finding on a *booked* posting,
   correction ready — decisions with a `correction`), ranked together by urgency. Agreement selector top right —

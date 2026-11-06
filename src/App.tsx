@@ -74,6 +74,8 @@ import { INITIAL_SKILLS, INITIAL_SPACES, AGREEMENTS } from './data';
 import type { Skill, Space, ViewId } from './types';
 import ChatView from './views/ChatView';
 import InsightsView, { INSIGHTS_PRICE, insightsAnswer, insightsIntro, insightsChips } from './views/InsightsView';
+import PortfolioView from './views/PortfolioView';
+import { portfolioAnswer } from './portfolio';
 import { ACTIVITY_ENTRIES, reviewAnswer, isAdvisory, ActivityFeedView, workEntry, type LogEntry } from './views/ActivityView';
 import SkillsView, { SYSTEM_CAPS, type ConnStatus } from './views/SkillsView';
 import TaskManagementView, { AgreementSelector, tasksAnswer, TASKS, TaskModal, handTaskToEva, type WorkTab } from './views/TaskManagementView';
@@ -133,23 +135,25 @@ const RAIL: { id: ViewId; label: string; Icon: (p: { active: boolean }) => JSX.E
 const AX_RAIL: typeof RAIL = [
     // EVA, full screen — the same conversation as the docked panel (which steps aside while it's open)
     { id: 'chat', label: 'Chat', Icon: ChatIcon },
+    // EVA across every agreement: where to start, the same task on several at once, setup, shared work
+    { id: 'portfolio', label: 'Portfolio', Icon: HomeIcon },
     { id: 'activity', label: 'Tasks', Icon: ReviewIcon },
     { id: 'skills', label: 'Routines', Icon: RoutinesIcon },
     // e-conomic only in AX — "Add connector" asks which system you'd want
     { id: 'connectors', label: 'Connectors', Icon: ConnectorsIcon },
 ];
-const AX_VIEWS: ViewId[] = ['activity', 'activitylog', 'skills', 'connectors', 'chat'];
+const AX_VIEWS: ViewId[] = ['activity', 'activitylog', 'skills', 'connectors', 'chat', 'portfolio'];
 
 // Work's tabs map to their own views/URLs, so each tab is linkable.
 const WORK_TAB_OF: Partial<Record<ViewId, WorkTab>> & Record<'activity' | 'activitylog' | 'skills', WorkTab> = { activity: 'tasks', activitylog: 'activity', skills: 'routines' };
 const WORK_VIEW_OF: Record<WorkTab, ViewId> = { tasks: 'activity', activity: 'activitylog', routines: 'skills' };
 
-const VIEW_IDS: ViewId[] = ['home', 'inbox', 'practice', 'connectors', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers'];
+const VIEW_IDS: ViewId[] = ['home', 'inbox', 'practice', 'connectors', 'chat', 'insights', 'activity', 'activitylog', 'tasks', 'skills', 'spaces', 'customers', 'portfolio'];
 
 // Friendly URL slugs for each page (the Review page's internal id is 'activity';
 // Artifacts kept the internal id 'spaces' — '#/spaces' is a legacy alias).
-const VIEW_SLUG: Record<ViewId, string> = { home: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', connectors: 'connectors', chat: 'chat', activity: 'work', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers' };
-const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'home', portfolio: 'home', overview: 'home', practice: 'practice', connectors: 'connectors', integrations: 'connectors', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', work: 'activity', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers' };
+const VIEW_SLUG: Record<ViewId, string> = { home: 'home', inbox: 'inbox', clients: 'clients', practice: 'practice', connectors: 'connectors', chat: 'chat', activity: 'work', activitylog: 'activity', tasks: 'tasks', insights: 'insights', skills: 'routines', spaces: 'views', customers: 'customers', portfolio: 'agreements' };
+const SLUG_VIEW: Record<string, ViewId> = { home: 'home', 'my-day': 'home', today: 'home', inbox: 'inbox', clients: 'home', portfolio: 'home', overview: 'home', practice: 'practice', connectors: 'connectors', integrations: 'connectors', firm: 'practice', playbooks: 'practice', capacity: 'practice', chat: 'chat', work: 'activity', review: 'activity', cockpit: 'activity', tasks: 'activity', praksis: 'activity', activity: 'activitylog', insights: 'insights', routines: 'skills', skills: 'skills', views: 'spaces', artifacts: 'spaces', spaces: 'spaces', customers: 'customers', agreements: 'portfolio' };
 
 const ACCOUNT_ITEMS: { icon: string; label: string; badge?: boolean }[] = [
     { icon: 'search', label: 'Search' },
@@ -252,6 +256,11 @@ export default function App() {
             try { localStorage.setItem('va-scope', 'vision'); } catch { /* ignore */ }
             return 'vision';
         }
+        // …and the other way round: AX's Portfolio (#/agreements) only exists in AX
+        if (linked === 'portfolio' && new URLSearchParams(window.location.search).get('scope') !== 'vision') {
+            try { localStorage.setItem('va-scope', 'ax'); } catch { /* ignore */ }
+            return 'ax';
+        }
         return initialScope();
     });
     const ax = scopeMode === 'ax';
@@ -275,6 +284,7 @@ export default function App() {
         ? { bg: '#ffffff', fg: '#52525b', muted: '#71717a', activeFg: '#1c1b3a', activeBg: 'rgba(28, 27, 58, 0.07)', hover: 'rgba(28, 27, 58, 0.045)' }
         : { bg: SIDEBAR_BG, fg: 'rgba(255,255,255,0.65)', muted: 'rgba(255,255,255,0.6)', activeFg: '#ffffff', activeBg: 'rgba(255,255,255,0.12)', hover: 'rgba(255,255,255,0.06)' };
     // (on e-conomic, only fix the page behind it — changing the URL would leave e-conomic)
+    useEffect(() => { if (!ax && view === 'portfolio') goView('home'); }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => { if (ax && !AX_VIEWS.includes(view)) { if (route === 'economic') setView('activity'); else goView('activity'); } }, [ax, view]); // eslint-disable-line react-hooks/exhaustive-deps
     // AX: Bookkeeping holds the whole queue — Actions (before booking) and Flags (findings on booked postings).
     const mineOpen = decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen');
@@ -483,6 +493,14 @@ export default function App() {
         const q = lang === 'da' ? `Fortæl mig om “${t(d.label)}” for ${d.company}` : `Tell me about “${d.label}” for ${d.company}`;
         const a = `${t(d.question)} ${t(d.recommend)}\n\n${lang === 'da' ? 'Det har jeg gjort' : 'What I did'}:\n• ${d.steps.map((x) => t(x)).join('\n• ')}`;
         try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify([...turns, { role: 'user', text: q }, { role: 'assistant', text: a }])); } catch { /* ignore */ }
+        openAxChat();
+    };
+    // AX Portfolio: a follow-up about one agreement — Chat continues the conversation, scoped to that agreement
+    const askEvaPortfolio = (q: string, a: string, name?: string) => {
+        let turns: Turn[] = [];
+        try { turns = JSON.parse(sessionStorage.getItem(ECO_CHAT_KEY) ?? '[]'); } catch { /* none */ }
+        try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify([...turns, { role: 'user', text: q }, { role: 'assistant', text: a }])); } catch { /* ignore */ }
+        if (name) setWorkClient(name);
         openAxChat();
     };
     const openAxChat = () => {
@@ -1032,7 +1050,7 @@ export default function App() {
                         onSelectClient={applyScope}
                         seedTurns={chatCarry}
                         onMinimise={embedded ? () => closeUniverse() : undefined}
-                        textSuggestions={ax ? ['Send Café Solsikke’s overdue invoices to Likvido', 'Check stock and reorder in RackBeat', 'What’s left to close September?'] : undefined}
+                        textSuggestions={ax ? ['Where should I start today?', 'Send Café Solsikke’s overdue invoices to Likvido', 'Check stock and reorder in RackBeat'] : undefined}
                         // AX: the same client picker as on Tasks (shared client), instead of the agreement pill
                         headerLeft={ax ? <AgreementSelector align="left" value={workClient} onChange={setWorkClient} counts={Object.fromEntries(MY_PORTFOLIO.map(({ name: n }) => [n, decisionsShown.filter((d) => !d.done && d.accountant === 'Tobias Holm Jensen' && d.company === n).length]))} /> : undefined}
                         onTurns={ax ? (turns) => { try { sessionStorage.setItem(ECO_CHAT_KEY, JSON.stringify(turns)); } catch { /* ignore */ } } : undefined}
@@ -1095,6 +1113,15 @@ export default function App() {
                     />
                 )}
                 {view === 'customers' && <CustomersView />}
+                {view === 'portfolio' && ax && (
+                    <PortfolioView
+                        decisions={decisionsShown}
+                        onOpenTasks={(name) => { setWorkClient(name); goView('activity'); }}
+                        onAsk={askEvaPortfolio}
+                        onLog={(entries) => setActivity((prev) => [...entries, ...prev])}
+                        evaControls={embedded ? { onMinimise: () => closeUniverse(), onClose: () => closeUniverse(true) } : undefined}
+                    />
+                )}
                 {doneToast && <DoneToast key={doneToast.key} verb={doneToast.verb} title={t(doneToast.title)} sub={doneToast.sub} t={t} onClose={() => setDoneToast(null)}
                     onUndo={doneToast.undo ? () => { const u = doneToast.undo!; setDoneToast(null); u(); } : undefined} />}
                 {(() => {
@@ -1208,12 +1235,14 @@ export default function App() {
                         storageKey="eva-economic"
                         subtitle=""
                         intro="I'm EVA. I can see you're in the daily journal — 15 entries, 3 without a document. Want me to check it before you post?"
-                        chips={['Check this journal before I post it', 'What’s left to close September?', 'What did EVA do overnight?']}
+                        chips={['Check this journal before I post it', 'What’s left to close September?', 'Where should I start across my agreements?']}
                         respond={(q) => {
                             const j = journalAnswer(q, lang);
                             if (j) { setEcoFlagged(true); return j; }
                             const p = partnerAnswer(q, lang);
                             if (p) return p;
+                            const pf = portfolioAnswer(q, lang === 'da');
+                            if (pf) return pf.replace(/ (See it all in Portfolio|Se det hele under Portefølje)\.$/, lang === 'da' ? ' Åbn mig i fuld skærm ⤢ og gå til Portefølje for at se det hele.' : ' Open me in full screen ⤢ and go to Portfolio to see it all.');
                             return EVA_CHIPS.includes(q) || !chatPanel ? overviewAnswer(q, lang, { decisions: openDecisions, replies: needsReply, ax: true }) : chatPanel.respond(q);
                         }}
                         collapsed={false}
