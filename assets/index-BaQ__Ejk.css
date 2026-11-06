@@ -2945,6 +2945,10 @@ table[data-taco='table3'] td[data-taco='save-status'] [data-taco='spinner'] svg 
   margin-left: 0.75rem;
   margin-right: 0.75rem;
 }
+.mx-4 {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
 .mx-5 {
   margin-left: 1.25rem;
   margin-right: 1.25rem;
